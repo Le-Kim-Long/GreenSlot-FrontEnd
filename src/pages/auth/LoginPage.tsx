@@ -23,7 +23,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     await new Promise(r => setTimeout(r, 600));
-    const ok = login(form.email, form.password);
+    const ok = await login(form.email, form.password);
     setLoading(false);
     if (ok) {
       navigate('/');

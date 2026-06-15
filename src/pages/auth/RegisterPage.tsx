@@ -30,7 +30,7 @@ export default function RegisterPage() {
     }
     setLoading(true);
     await new Promise(r => setTimeout(r, 800));
-    const ok = register(form.name, form.email, form.password, form.role);
+    const ok = await register(form.name, form.email, form.password, form.role);
     setLoading(false);
     if (ok) {
       navigate(form.role === 'owner' ? '/dashboard/owner' : '/dashboard/customer');

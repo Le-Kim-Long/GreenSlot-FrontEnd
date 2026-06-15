@@ -1,12 +1,12 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import type { User, UserRole } from '../types';
-import { mockUsers } from '../data/mockData';
+import { authApi } from '../api/authApi';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, _password: string) => boolean;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, _password: string, role: UserRole) => boolean;
+  register: (name: string, email: string, password: string, role: UserRole) => Promise<boolean>;
   isAuthenticated: boolean;
 }
 
@@ -15,27 +15,69 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
-  const login = (email: string, _password: string): boolean => {
-    const found = mockUsers.find(u => u.email === email);
-    if (found) {
-      setUser(found);
-      return true;
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    if (token && storedUser) {
+      setUser(JSON.parse(storedUser));
     }
-    return false;
+  }, []);
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const data = await authApi.login({ username: email, password });
+      if (data && data.token) {
+        localStorage.setItem('token', data.token);
+        
+        // Map backend roles to frontend roles roughly
+        let role: UserRole = 'customer';
+        if (data.roles?.includes('ROLE_ADMIN')) role = 'admin';
+        else if (data.roles?.includes('ROLE_MANAGER')) role = 'staff';
+        else if (data.roles?.includes('ROLE_FARMER')) role = 'owner';
+        
+        const loggedUser: User = {
+          id: data.id?.toString(),
+          name: data.fullName || data.username,
+          email: data.email,
+          role,
+          createdAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem('user', JSON.stringify(loggedUser));
+        setUser(loggedUser);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Login failed", error);
+      return false;
+    }
   };
 
-  const logout = () => setUser(null);
+  const logout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setUser(null);
+  };
 
-  const register = (name: string, email: string, _password: string, role: UserRole): boolean => {
-    const exists = mockUsers.find(u => u.email === email);
-    if (exists) return false;
-    const newUser: User = {
-      id: `u${Date.now()}`, name, email, role,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    mockUsers.push(newUser);
-    setUser(newUser);
-    return true;
+  const register = async (name: string, email: string, password: string, role: UserRole): Promise<boolean> => {
+    try {
+      const data = await authApi.register({
+        username: email,
+        email: email,
+        password: password,
+        fullName: name,
+        role: [role === 'admin' ? 'admin' : role === 'owner' ? 'farmer' : role === 'staff' ? 'manager' : 'customer']
+      });
+      if (data) {
+        // Automatically login after register, or just return true and let user login
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Registration failed", error);
+      return false;
+    }
   };
 
   return (
