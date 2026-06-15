@@ -8,6 +8,9 @@ import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import GardenListPage from './pages/gardens/GardenListPage';
 import GardenDetailPage from './pages/gardens/GardenDetailPage';
+import ServicesPage from './pages/ServicesPage';
+import PricingPage from './pages/PricingPage';
+import HowItWorksPage from './pages/HowItWorksPage';
 
 // Customer
 import CustomerDashboard from './pages/customer/CustomerDashboard';
@@ -26,6 +29,7 @@ import StaffDashboard from './pages/staff/StaffDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
 
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[];
@@ -40,15 +44,32 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   return <>{children}</>;
 }
 
+function GuestRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, user } = useAuth();
+  if (isAuthenticated && user) {
+    const paths: Record<string, string> = {
+      customer: '/dashboard/customer',
+      owner: '/dashboard/owner',
+      staff: '/dashboard/staff',
+      admin: '/dashboard/admin',
+    };
+    return <Navigate to={paths[user.role] || '/'} replace />;
+  }
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
       <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+      <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
       <Route path="/gardens" element={<GardenListPage />} />
       <Route path="/gardens/:id" element={<GardenDetailPage />} />
+      <Route path="/services" element={<ServicesPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/how-it-works" element={<HowItWorksPage />} />
 
       {/* Customer */}
       <Route path="/dashboard/customer" element={<ProtectedRoute allowedRoles={['customer']}><CustomerDashboard /></ProtectedRoute>} />

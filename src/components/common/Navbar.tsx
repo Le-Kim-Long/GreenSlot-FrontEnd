@@ -52,9 +52,9 @@ export default function Navbar() {
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-6">
             <Link to="/gardens" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Khám phá vườn</Link>
-            <Link to="/#how-it-works" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Cách hoạt động</Link>
-            <Link to="/#services" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Dịch vụ</Link>
-            <Link to="/#pricing" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Bảng giá</Link>
+            <Link to="/how-it-works" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Cách hoạt động</Link>
+            <Link to="/services" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Dịch vụ</Link>
+            <Link to="/pricing" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Bảng giá</Link>
           </div>
 
           {/* Right side */}
@@ -142,8 +142,9 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3">
           <Link to="/gardens" className="block text-gray-700 font-medium py-2">Khám phá vườn</Link>
-          <Link to="/#how-it-works" className="block text-gray-700 font-medium py-2">Cách hoạt động</Link>
-          <Link to="/#services" className="block text-gray-700 font-medium py-2">Dịch vụ</Link>
+          <Link to="/how-it-works" className="block text-gray-700 font-medium py-2">Cách hoạt động</Link>
+          <Link to="/services" className="block text-gray-700 font-medium py-2">Dịch vụ</Link>
+          <Link to="/pricing" className="block text-gray-700 font-medium py-2">Bảng giá</Link>
           {isAuthenticated ? (
             <>
               <Link to={getDashboardPath()} className="block text-green-600 font-medium py-2">Dashboard</Link>
