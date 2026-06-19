@@ -11,18 +11,11 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const demoAccounts = [
-    { role: 'Khách hàng', email: 'an@gmail.com', color: 'bg-blue-50 border-blue-200 text-blue-700' },
-    { role: 'Chủ vườn', email: 'binh@gmail.com', color: 'bg-green-50 border-green-200 text-green-700' },
-    { role: 'Nhân viên', email: 'cuong@gmail.com', color: 'bg-purple-50 border-purple-200 text-purple-700' },
-    { role: 'Admin', email: 'admin@greenslot.vn', color: 'bg-red-50 border-red-200 text-red-700' },
-  ];
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
     const ok = await login(form.email, form.password);
     setLoading(false);
     if (ok) {
@@ -32,7 +25,6 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemo = (email: string) => setForm({ email, password: '123456' });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
@@ -91,7 +83,7 @@ export default function LoginPage() {
                 <input type="checkbox" className="rounded border-gray-300" />
                 Ghi nhớ đăng nhập
               </label>
-              <a href="#" className="text-green-600 hover:text-green-700 font-medium">Quên mật khẩu?</a>
+              <Link to="/forgot-password" className="text-green-600 hover:text-green-700 font-medium">Quên mật khẩu?</Link>
             </div>
             <button type="submit" className="btn-primary w-full py-3 text-base" disabled={loading}>
               {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
@@ -104,19 +96,6 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Demo accounts */}
-        <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-3">Tài khoản demo (mật khẩu: 123456)</p>
-          <div className="grid grid-cols-2 gap-2">
-            {demoAccounts.map(acc => (
-              <button key={acc.email} onClick={() => fillDemo(acc.email)}
-                className={`text-left text-xs px-3 py-2 rounded-lg border ${acc.color} hover:opacity-80 transition-opacity`}>
-                <div className="font-semibold">{acc.role}</div>
-                <div className="opacity-75 truncate">{acc.email}</div>
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
     </div>
   );

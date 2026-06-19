@@ -29,7 +29,6 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
     const ok = await register(form.name, form.email, form.password, form.role);
     setLoading(false);
     if (ok) {

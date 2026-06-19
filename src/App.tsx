@@ -6,6 +6,8 @@ import type { UserRole } from './types';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import GardenListPage from './pages/gardens/GardenListPage';
 import GardenDetailPage from './pages/gardens/GardenDetailPage';
 import ServicesPage from './pages/ServicesPage';
@@ -65,6 +67,8 @@ function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
       <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+      <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+      <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
       <Route path="/gardens" element={<GardenListPage />} />
       <Route path="/gardens/:id" element={<GardenDetailPage />} />
       <Route path="/services" element={<ServicesPage />} />
