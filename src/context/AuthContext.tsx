@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, password: string, role: UserRole) => Promise<boolean>;
+  register: (name: string, email: string, password: string, role: UserRole, phone?: string) => Promise<boolean>;
   isAuthenticated: boolean;
 }
 
@@ -60,14 +60,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const register = async (name: string, email: string, password: string, role: UserRole): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string, role: UserRole, phone?: string): Promise<boolean> => {
     try {
       const data = await authApi.register({
         username: email,
         email: email,
         password: password,
         fullName: name,
-        role: [role === 'admin' ? 'admin' : role === 'owner' ? 'farmer' : role === 'staff' ? 'manager' : 'customer']
+        phone: phone || '',
+        roles: [role === 'admin' ? 'admin' : role === 'owner' ? 'farmer' : role === 'staff' ? 'manager' : 'customer']
       });
       if (data) {
         // Automatically login after register, or just return true and let user login

@@ -29,7 +29,7 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
-    const ok = await register(form.name, form.email, form.password, form.role);
+    const ok = await register(form.name, form.email, form.password, form.role, form.phone);
     setLoading(false);
     if (ok) {
       navigate(form.role === 'owner' ? '/dashboard/owner' : '/dashboard/customer');
