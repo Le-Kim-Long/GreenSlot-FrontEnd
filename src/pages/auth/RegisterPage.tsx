@@ -1,21 +1,16 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Leaf, AlertCircle, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Leaf, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import type { UserRole } from '../../types';
 
 export default function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPwd: '', role: 'customer' as UserRole, phone: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPwd: '', phone: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const roles = [
-    { value: 'customer', label: 'Khách hàng', desc: 'Thuê vườn và chăm sóc cây' },
-    { value: 'owner', label: 'Chủ vườn', desc: 'Đăng ký cho thuê vườn của bạn' },
-  ];
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -29,10 +24,10 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
-    const ok = await register(form.name, form.email, form.password, form.role, form.phone);
+    const ok = await register(form.name, form.email, form.password, 'customer', form.phone);
     setLoading(false);
     if (ok) {
-      navigate(form.role === 'owner' ? '/dashboard/owner' : '/dashboard/customer');
+      navigate('/login');
     } else {
       setError('Email đã được sử dụng');
     }
@@ -62,21 +57,6 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Role selection */}
-            <div>
-              <label className="label">Vai trò của bạn</label>
-              <div className="grid grid-cols-2 gap-3">
-                {roles.map(r => (
-                  <button key={r.value} type="button" onClick={() => setForm(p => ({ ...p, role: r.value as UserRole }))}
-                    className={`text-left p-3 rounded-xl border-2 transition-all ${form.role === r.value ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                    {form.role === r.value && <CheckCircle className="w-4 h-4 text-green-600 mb-1" />}
-                    <div className="text-sm font-semibold text-gray-900">{r.label}</div>
-                    <div className="text-xs text-gray-500">{r.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div>
               <label className="label">Họ và tên</label>
               <input type="text" className="input" placeholder="Nguyễn Văn A" value={form.name}

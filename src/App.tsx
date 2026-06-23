@@ -24,8 +24,14 @@ import CareServicesPage from './pages/customer/CareServicesPage';
 import OwnerDashboard from './pages/owner/OwnerDashboard';
 import AddGardenPage from './pages/owner/AddGardenPage';
 
-// Staff
+// Staff / Manager
 import StaffDashboard from './pages/staff/StaffDashboard';
+import LocationManagement from './pages/staff/LocationManagement';
+import PillarManagement from './pages/staff/PillarManagement';
+import SlotManagement from './pages/staff/SlotManagement';
+import ServiceManagement from './pages/staff/ServiceManagement';
+import ActiveRentals from './pages/staff/ActiveRentals';
+import RevenueAnalytics from './pages/staff/RevenueAnalytics';
 
 // Admin
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -85,8 +91,14 @@ function AppRoutes() {
       <Route path="/dashboard/owner" element={<ProtectedRoute allowedRoles={['owner']}><OwnerDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/owner/gardens/add" element={<ProtectedRoute allowedRoles={['owner']}><AddGardenPage /></ProtectedRoute>} />
 
-      {/* Staff */}
+      {/* Staff / Manager */}
       <Route path="/dashboard/staff" element={<ProtectedRoute allowedRoles={['staff']}><StaffDashboard /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/locations" element={<ProtectedRoute allowedRoles={['staff']}><LocationManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/pillars" element={<ProtectedRoute allowedRoles={['staff']}><PillarManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/slots" element={<ProtectedRoute allowedRoles={['staff']}><SlotManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/services" element={<ProtectedRoute allowedRoles={['staff']}><ServiceManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/rentals" element={<ProtectedRoute allowedRoles={['staff']}><ActiveRentals /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/revenue" element={<ProtectedRoute allowedRoles={['staff']}><RevenueAnalytics /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route path="/dashboard/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
