@@ -52,11 +52,11 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="label">Email</label>
+              <label className="label">Email hoặc Username</label>
               <input
-                type="email"
+                type="text"
                 className="input"
-                placeholder="email@example.com"
+                placeholder="Email hoặc username"
                 value={form.email}
                 onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
                 required
