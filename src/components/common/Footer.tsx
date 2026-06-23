@@ -3,7 +3,7 @@ import { Leaf, Facebook, Instagram, Youtube, Mail, Phone, MapPin } from 'lucide-
 
 export default function Footer() {
   return (
-    <footer className="bg-gray-900 text-gray-300">
+    <footer className="bg-green-900 text-green-100 border-t border-green-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand */}
@@ -19,7 +19,7 @@ export default function Footer() {
             </p>
             <div className="flex gap-3">
               {[Facebook, Instagram, Youtube].map((Icon, i) => (
-                <a key={i} href="#" className="w-8 h-8 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-green-600 transition-colors">
+                <a key={i} href="#" className="w-8 h-8 bg-green-800 rounded-lg flex items-center justify-center hover:bg-green-600 transition-colors">
                   <Icon className="w-4 h-4" />
                 </a>
               ))}
@@ -65,7 +65,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 pt-6 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
+        <div className="mt-10 pt-6 border-t border-green-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-gray-500">
           <p>© 2024 GreenSlot. Tất cả quyền được bảo lưu.</p>
           <div className="flex gap-4">
             <Link to="#" className="hover:text-gray-300">Chính sách bảo mật</Link>

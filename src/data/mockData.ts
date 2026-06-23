@@ -62,7 +62,7 @@ export const mockGardens: Garden[] = [
     area: 35,
     floors: 6,
     pricePerMonth: 2000000,
-    images: ['https://images.unsplash.com/photo-1477092888588-33b72cd7e1a0?w=600'],
+    images: ['https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?w=600'],
     amenities: ['Hệ thống tưới nhỏ giọt', 'Đèn UV', 'Cảm biến IoT', 'Máy lọc nước', 'Kho chứa thiết bị'],
     status: 'available',
     ownerId: 'u2',
@@ -149,7 +149,7 @@ export const mockRentals: Rental[] = [
   },
   {
     id: 'r2', gardenId: 'g3', gardenName: 'Green Tower Thủ Đức',
-    gardenImage: 'https://images.unsplash.com/photo-1477092888588-33b72cd7e1a0?w=400',
+    gardenImage: 'https://images.unsplash.com/photo-1523348837708-15d4a09cfac2?w=400',
     customerId: 'u1', customerName: 'Nguyễn Văn An',
     startDate: '2024-09-01', endDate: '2024-10-31',
     totalPrice: 4000000, status: 'completed', paymentStatus: 'paid',

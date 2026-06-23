@@ -10,9 +10,9 @@ export default function PricingPage() {
       price: 'Miễn phí',
       period: 'mãi mãi',
       desc: 'Phù hợp cho người muốn tìm hiểu nền tảng và tự chăm sóc vườn cơ bản.',
-      color: 'border-gray-200',
-      bg: 'bg-white',
-      btn: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
+      border: 'border-green-100',
+      btn: 'bg-[#1a2e1f] text-gray-200 hover:bg-[#243828] border border-green-800/40',
+      popular: false,
       features: [
         { name: 'Truy cập tìm kiếm & Thuê vườn', included: true },
         { name: 'Quản lý hợp đồng điện tử', included: true },
@@ -29,10 +29,9 @@ export default function PricingPage() {
       price: '199.000đ',
       period: '/ tháng',
       desc: 'Dành cho những người yêu cây, muốn tối ưu hoá năng suất qua IoT.',
-      color: 'border-green-500 shadow-xl relative scale-105 z-10',
-      bg: 'bg-green-50/30',
-      btn: 'bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-600/30',
-      badge: 'Phổ biến nhất',
+      border: 'border-green-500 shadow-xl shadow-green-500/10 relative scale-105 z-10',
+      btn: 'bg-green-500 text-white hover:bg-green-400 shadow-lg shadow-green-500/25',
+      popular: true,
       features: [
         { name: 'Truy cập tìm kiếm & Thuê vườn', included: true },
         { name: 'Quản lý hợp đồng điện tử', included: true },
@@ -49,9 +48,9 @@ export default function PricingPage() {
       price: '899.000đ',
       period: '/ tháng',
       desc: 'Trải nghiệm canh tác nhàn nhã 100%. Mọi thứ đã có chuyên gia lo.',
-      color: 'border-gray-200',
-      bg: 'bg-white',
-      btn: 'bg-gray-900 text-white hover:bg-gray-800',
+      border: 'border-green-100',
+      btn: 'bg-white text-green-900 hover:bg-gray-100 font-bold',
+      popular: false,
       features: [
         { name: 'Truy cập tìm kiếm & Thuê vườn', included: true },
         { name: 'Quản lý hợp đồng điện tử', included: true },
@@ -72,9 +71,9 @@ export default function PricingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-[#f0faf4] flex flex-col">
       <Navbar />
-      
+
       <main className="flex-grow">
         <section className="pt-20 pb-12 text-center px-4">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">Bảng Giá Dịch Vụ</h1>
@@ -86,10 +85,10 @@ export default function PricingPage() {
         <section className="py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
             {plans.map((plan, idx) => (
-              <div key={idx} className={`rounded-3xl border ${plan.color} ${plan.bg} p-8 flex flex-col h-full transition-transform duration-300`}>
-                {plan.badge && (
-                  <div className="absolute top-0 right-8 -translate-y-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-bold px-4 py-1 rounded-full shadow-lg">
-                    {plan.badge}
+              <div key={idx} className={`rounded-3xl border ${plan.border} bg-white p-8 flex flex-col h-full transition-all duration-300 hover:border-green-300`}>
+                {plan.popular && (
+                  <div className="absolute top-0 right-8 -translate-y-1/2 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-sm font-bold px-4 py-1 rounded-full shadow-lg shadow-green-500/25">
+                    Phổ biến nhất
                   </div>
                 )}
                 <div className="mb-8">
@@ -97,19 +96,19 @@ export default function PricingPage() {
                   <p className="text-sm text-gray-500 mb-6">{plan.desc}</p>
                   <div className="flex items-baseline gap-1">
                     <span className="text-4xl font-black text-gray-900">{plan.price}</span>
-                    <span className="text-gray-500 font-medium">{plan.period}</span>
+                    <span className="text-gray-400 font-medium">{plan.period}</span>
                   </div>
                 </div>
-                
+
                 <ul className="space-y-4 mb-8 flex-grow">
                   {plan.features.map((feat, i) => (
                     <li key={i} className="flex items-start gap-3">
                       {feat.included ? (
                         <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                       ) : (
-                        <XCircle className="w-5 h-5 text-gray-300 flex-shrink-0 mt-0.5" />
+                        <XCircle className="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" />
                       )}
-                      <span className={`text-sm ${feat.included ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                      <span className={`text-sm ${feat.included ? 'text-gray-700 font-medium' : 'text-gray-500'}`}>
                         {feat.name}
                       </span>
                     </li>
@@ -124,15 +123,14 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* FAQs */}
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-[#e6f5ec]">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">Câu hỏi thường gặp</h2>
             <div className="space-y-6">
               {faqs.map((faq, idx) => (
-                <div key={idx} className="p-6 rounded-2xl bg-gray-50 border border-gray-100">
+                <div key={idx} className="p-6 rounded-2xl bg-white border border-green-100">
                   <h3 className="text-lg font-bold text-gray-900 mb-3">{faq.q}</h3>
-                  <p className="text-gray-600 leading-relaxed">{faq.a}</p>
+                  <p className="text-gray-500 leading-relaxed">{faq.a}</p>
                 </div>
               ))}
             </div>
