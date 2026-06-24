@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wrench, Plus, Edit2, X, Tag, Layers } from 'lucide-react';
+import { Plus, Edit2, X, Tag, Layers } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
