@@ -77,6 +77,7 @@ function AppRoutes() {
       <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
       <Route path="/gardens" element={<GardenListPage />} />
       <Route path="/gardens/:id" element={<GardenDetailPage />} />
+      <Route path="/gardens/slot/:id" element={<GardenDetailPage />} />
       <Route path="/services" element={<ServicesPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
