@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, MapPin, Star, Wifi, SlidersHorizontal, X, Grid3X3, DollarSign } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, X, Grid3X3, DollarSign } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import { bookingApi, type AvailableSlot } from '../../api/bookingApi';
