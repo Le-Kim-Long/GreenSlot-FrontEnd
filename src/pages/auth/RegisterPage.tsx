@@ -39,13 +39,13 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
-    const ok = await register(form.name, form.email, form.password, 'customer', form.phone);
+    const result = await register(form.name, form.email, form.password, 'customer', form.phone);
     setLoading(false);
-    if (ok) {
+    if (result === true) {
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } else {
-      setError('Email đã được sử dụng');
+      setError(result);
     }
   };
 

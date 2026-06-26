@@ -6,7 +6,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, password: string, role: UserRole, phone?: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, role: UserRole, phone?: string) => Promise<string | true>;
   isAuthenticated: boolean;
 }
 
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const register = async (name: string, email: string, password: string, role: UserRole, phone?: string): Promise<boolean> => {
+  const register = async (name: string, email: string, password: string, role: UserRole, phone?: string): Promise<string | true> => {
     try {
       const data = await authApi.register({
         username: email,
@@ -71,13 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         roles: [role === 'admin' ? 'admin' : role === 'owner' ? 'farmer' : role === 'staff' ? 'manager' : 'customer']
       });
       if (data) {
-        // Automatically login after register, or just return true and let user login
         return true;
       }
-      return false;
-    } catch (error) {
-      console.error("Registration failed", error);
-      return false;
+      return 'Đăng ký thất bại. Vui lòng thử lại.';
+    } catch (error: any) {
+      const message = error?.response?.data?.message;
+      if (message) return message;
+      return 'Đăng ký thất bại. Vui lòng thử lại.';
     }
   };
 
