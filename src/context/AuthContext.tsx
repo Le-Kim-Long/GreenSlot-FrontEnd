@@ -7,7 +7,7 @@ interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (username: string, name: string, email: string, password: string, phone?: string) => Promise<boolean>;
+  register: (username: string, name: string, email: string, password: string, phone?: string) => Promise<string | true>;
   isAuthenticated: boolean;
 }
 
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const register = async (username: string, name: string, email: string, password: string, phone?: string): Promise<boolean> => {
+  const register = async (username: string, name: string, email: string, password: string, phone?: string): Promise<string | true> => {
     try {
       await authApi.register({
         username,
@@ -66,9 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: phone || undefined,
       });
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed', error);
-      return false;
+      const msg = error?.response?.data?.message || error?.response?.data;
+      return typeof msg === 'string' ? msg : 'Đăng ký thất bại. Vui lòng thử lại.';
     }
   };
 
