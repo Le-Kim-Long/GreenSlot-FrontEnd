@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import { Leaf, Wifi, Users, Star, ArrowRight, CheckCircle, Sprout, ShieldCheck, BarChart3, Droplets, Thermometer, Sun, MapPin, ChevronRight, Play, Zap, Heart, ArrowDown, Quote } from 'lucide-react';
 import Navbar from '../components/common/Navbar';
 import Footer from '../components/common/Footer';
-import { mockGardens } from '../data/mockData';
 import { useScrollReveal, useCounter } from '../hooks/useScrollReveal';
 import clsx from 'clsx';
 
@@ -71,7 +70,11 @@ function StatCard({ value, suffix, label, icon, isActive, delay }: { value: numb
 }
 
 export default function LandingPage() {
-  const featuredGardens = mockGardens.filter(g => g.status === 'available').slice(0, 3);
+  const featuredGardens = [
+    { id: '1', name: 'Vườn Xanh Quận 1', address: '12 Nguyễn Huệ, Bến Nghé', district: 'Quận 1', area: 25, pricePerMonth: 2500000, hasIoT: true, rating: 4.8, plantTypes: ['Rau muống', 'Cải xanh', 'Mồng tơi'], description: 'Không gian canh tác thẳng đứng hiện đại tại trung tâm thành phố. Phù hợp trồng rau sạch, cây dược liệu và cây cảnh mini.', images: ['https://images.unsplash.com/photo-1585320806297-9794b3e4ce88?q=80&w=2938&auto=format&fit=crop'] },
+    { id: '2', name: 'Nông trại thông minh Phú Mỹ Hưng', address: '105 Tôn Dật Tiên, Tân Phú', district: 'Quận 7', area: 50, pricePerMonth: 4000000, hasIoT: true, rating: 4.9, plantTypes: ['Dưa lưới', 'Cà chua bi', 'Dâu tây'], description: 'Hệ thống thủy canh tuần hoàn khép kín công nghệ Israel. Bao gồm hệ thống đèn LED chuyên dụng và tự động hóa toàn diện.', images: ['https://images.unsplash.com/photo-1530836369250-ef71a3f5e9cb?q=80&w=2940&auto=format&fit=crop'] },
+    { id: '3', name: 'Vườn sinh thái Thảo Điền', address: '42 Quốc Hương, Thảo Điền', district: 'Quận 2', area: 30, pricePerMonth: 3200000, hasIoT: false, rating: 4.6, plantTypes: ['Rau thơm', 'Xà lách', 'Cải thảo'], description: 'Vườn hữu cơ truyền thống trên sân thượng với hệ thống tưới nhỏ giọt tự động. View sông Sài Gòn tuyệt đẹp.', images: ['https://images.unsplash.com/photo-1595955615714-3d0cf3b12384?q=80&w=2942&auto=format&fit=crop'] }
+  ];
   const statsReveal = useScrollReveal(0.1);
 
   const howItWorks = [

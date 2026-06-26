@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, Menu, X, Leaf, ChevronDown, LogOut, User, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { mockNotifications } from '../../data/mockData';
+import { getDashboardPath as resolveDashboardPath, roleLabel } from '../../utils/roleMap';
 
 export default function Navbar() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -11,18 +11,9 @@ export default function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const unreadCount = mockNotifications.filter(n => !n.read && n.userId === user?.id).length;
+  const unreadCount = 0;
 
-  const getDashboardPath = () => {
-    if (!user) return '/login';
-    const paths: Record<string, string> = {
-      customer: '/dashboard/customer',
-      owner: '/dashboard/owner',
-      staff: '/dashboard/staff',
-      admin: '/dashboard/admin',
-    };
-    return paths[user.role] || '/login';
-  };
+  const dashboardPath = user ? resolveDashboardPath(user.role) : '/login';
 
   const handleLogout = () => {
     logout();
@@ -31,15 +22,17 @@ export default function Navbar() {
   };
 
   const roleLabels: Record<string, string> = {
-    customer: 'Khách hàng',
-    owner: 'Chủ vườn',
-    staff: 'Nhân viên',
-    admin: 'Quản trị viên',
+    customer: roleLabel('customer'),
+    garden_staff: roleLabel('garden_staff'),
+    location_manager: roleLabel('location_manager'),
+    manager: roleLabel('manager'),
+    admin: roleLabel('admin'),
   };
 
   return (
-    <nav className="bg-white/80 backdrop-blur-md shadow-sm border-b border-green-100 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <>
+      <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md shadow-sm border-b border-green-100 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
@@ -50,12 +43,14 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center gap-6">
-            <Link to="/gardens" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Khám phá vườn</Link>
-            <Link to="/how-it-works" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Cách hoạt động</Link>
-            <Link to="/services" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Dịch vụ</Link>
-            <Link to="/pricing" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Bảng giá</Link>
-          </div>
+          {(!user || user.role === 'customer') && (
+            <div className="hidden md:flex items-center gap-6">
+              <Link to="/gardens" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Khám phá vườn</Link>
+              <Link to="/how-it-works" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Cách hoạt động</Link>
+              <Link to="/services" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Dịch vụ</Link>
+              <Link to="/pricing" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">Bảng giá</Link>
+            </div>
+          )}
 
           {/* Right side */}
           <div className="hidden md:flex items-center gap-3">
@@ -76,14 +71,8 @@ export default function Navbar() {
                       <div className="px-4 py-3 border-b border-gray-100">
                         <h3 className="font-semibold text-gray-900">Thông báo</h3>
                       </div>
-                      <div className="max-h-72 overflow-y-auto">
-                        {mockNotifications.filter(n => n.userId === user.id).slice(0, 5).map(n => (
-                          <div key={n.id} className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer ${!n.read ? 'bg-green-50' : ''}`}>
-                            <p className="text-sm font-medium text-gray-900">{n.title}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{n.message}</p>
-                            <p className="text-xs text-gray-400 mt-1">{new Date(n.createdAt).toLocaleDateString('vi-VN')}</p>
-                          </div>
-                        ))}
+                      <div className="max-h-72 overflow-y-auto px-4 py-6 text-center text-sm text-gray-400">
+                        Chưa có thông báo
                       </div>
                       <div className="px-4 py-2 text-center">
                         <button className="text-sm text-green-600 hover:text-green-700 font-medium">Xem tất cả</button>
@@ -106,7 +95,7 @@ export default function Navbar() {
                   </button>
                   {userMenuOpen && (
                     <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
-                      <Link to={getDashboardPath()} onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                      <Link to={dashboardPath} onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                         <LayoutDashboard className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-700">Dashboard</span>
                       </Link>
@@ -141,13 +130,17 @@ export default function Navbar() {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden border-t border-green-100 bg-white px-4 py-4 space-y-3">
-          <Link to="/gardens" className="block text-gray-700 font-medium py-2">Khám phá vườn</Link>
-          <Link to="/how-it-works" className="block text-gray-700 font-medium py-2">Cách hoạt động</Link>
-          <Link to="/services" className="block text-gray-700 font-medium py-2">Dịch vụ</Link>
-          <Link to="/pricing" className="block text-gray-700 font-medium py-2">Bảng giá</Link>
+          {(!user || user.role === 'customer') && (
+            <>
+              <Link to="/gardens" className="block text-gray-700 font-medium py-2">Khám phá vườn</Link>
+              <Link to="/how-it-works" className="block text-gray-700 font-medium py-2">Cách hoạt động</Link>
+              <Link to="/services" className="block text-gray-700 font-medium py-2">Dịch vụ</Link>
+              <Link to="/pricing" className="block text-gray-700 font-medium py-2">Bảng giá</Link>
+            </>
+          )}
           {isAuthenticated ? (
             <>
-              <Link to={getDashboardPath()} className="block text-green-600 font-medium py-2">Dashboard</Link>
+              <Link to={dashboardPath} className="block text-green-600 font-medium py-2">Dashboard</Link>
               <button onClick={handleLogout} className="block w-full text-left text-red-600 font-medium py-2">Đăng xuất</button>
             </>
           ) : (
@@ -158,6 +151,9 @@ export default function Navbar() {
           )}
         </div>
       )}
-    </nav>
+      </nav>
+      {/* Spacer to prevent content from jumping under the fixed navbar */}
+      <div className="h-16 w-full" />
+    </>
   );
 }

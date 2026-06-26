@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import type { UserRole } from './types';
+import { getDashboardPath } from './utils/roleMap';
 
-// Pages
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
@@ -14,17 +14,12 @@ import ServicesPage from './pages/ServicesPage';
 import PricingPage from './pages/PricingPage';
 import HowItWorksPage from './pages/HowItWorksPage';
 
-// Customer
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import MyRentalsPage from './pages/customer/MyRentalsPage';
 import IoTMonitoringPage from './pages/customer/IoTMonitoringPage';
 import CareServicesPage from './pages/customer/CareServicesPage';
+import PaymentHistoryPage from './pages/customer/PaymentHistoryPage';
 
-// Owner
-import OwnerDashboard from './pages/owner/OwnerDashboard';
-import AddGardenPage from './pages/owner/AddGardenPage';
-
-// Staff / Manager
 import StaffDashboard from './pages/staff/StaffDashboard';
 import LocationManagement from './pages/staff/LocationManagement';
 import PillarManagement from './pages/staff/PillarManagement';
@@ -33,10 +28,10 @@ import ServiceManagement from './pages/staff/ServiceManagement';
 import ActiveRentals from './pages/staff/ActiveRentals';
 import RevenueAnalytics from './pages/staff/RevenueAnalytics';
 
-// Admin
+import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
+
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
-
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -47,7 +42,7 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={getDashboardPath(user.role)} replace />;
   }
   return <>{children}</>;
 }
@@ -55,13 +50,7 @@ function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
 function GuestRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuth();
   if (isAuthenticated && user) {
-    const paths: Record<string, string> = {
-      customer: '/dashboard/customer',
-      owner: '/dashboard/owner',
-      staff: '/dashboard/staff',
-      admin: '/dashboard/admin',
-    };
-    return <Navigate to={paths[user.role] || '/'} replace />;
+    return <Navigate to={getDashboardPath(user.role)} replace />;
   }
   return <>{children}</>;
 }
@@ -69,7 +58,6 @@ function GuestRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
       <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
@@ -87,25 +75,28 @@ function AppRoutes() {
       <Route path="/dashboard/customer/rentals" element={<ProtectedRoute allowedRoles={['customer']}><MyRentalsPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/monitoring" element={<ProtectedRoute allowedRoles={['customer']}><IoTMonitoringPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/care" element={<ProtectedRoute allowedRoles={['customer']}><CareServicesPage /></ProtectedRoute>} />
-
-      {/* Owner */}
-      <Route path="/dashboard/owner" element={<ProtectedRoute allowedRoles={['owner']}><OwnerDashboard /></ProtectedRoute>} />
-      <Route path="/dashboard/owner/gardens/add" element={<ProtectedRoute allowedRoles={['owner']}><AddGardenPage /></ProtectedRoute>} />
+      <Route path="/dashboard/customer/payments" element={<ProtectedRoute allowedRoles={['customer']}><PaymentHistoryPage /></ProtectedRoute>} />
 
       {/* Staff / Manager */}
-      <Route path="/dashboard/staff" element={<ProtectedRoute allowedRoles={['staff']}><StaffDashboard /></ProtectedRoute>} />
-      <Route path="/dashboard/staff/locations" element={<ProtectedRoute allowedRoles={['staff']}><LocationManagement /></ProtectedRoute>} />
-      <Route path="/dashboard/staff/pillars" element={<ProtectedRoute allowedRoles={['staff']}><PillarManagement /></ProtectedRoute>} />
-      <Route path="/dashboard/staff/slots" element={<ProtectedRoute allowedRoles={['staff']}><SlotManagement /></ProtectedRoute>} />
-      <Route path="/dashboard/staff/services" element={<ProtectedRoute allowedRoles={['staff']}><ServiceManagement /></ProtectedRoute>} />
-      <Route path="/dashboard/staff/rentals" element={<ProtectedRoute allowedRoles={['staff']}><ActiveRentals /></ProtectedRoute>} />
-      <Route path="/dashboard/staff/revenue" element={<ProtectedRoute allowedRoles={['staff']}><RevenueAnalytics /></ProtectedRoute>} />
+      <Route path="/dashboard/staff" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffDashboard /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/locations" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><LocationManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/pillars" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><PillarManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/slots" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><SlotManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/services" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><ServiceManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/rentals" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><ActiveRentals /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/revenue" element={<ProtectedRoute allowedRoles={['manager']}><RevenueAnalytics /></ProtectedRoute>} />
+
+      {/* Garden Staff */}
+      <Route path="/dashboard/garden-staff" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffDashboard /></ProtectedRoute>} />
+      <Route path="/dashboard/garden-staff/monitoring" element={<ProtectedRoute allowedRoles={['garden_staff']}><IoTMonitoringPage /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route path="/dashboard/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagementPage /></ProtectedRoute>} />
 
-      {/* Fallback */}
+      {/* Legacy owner routes → redirect */}
+      <Route path="/dashboard/owner/*" element={<Navigate to="/gardens" replace />} />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
