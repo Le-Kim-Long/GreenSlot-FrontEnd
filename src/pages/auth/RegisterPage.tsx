@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Leaf, AlertCircle, Sprout, TreePine, Flower2, User, Mail, Phone, Lock, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Leaf, AlertCircle, Sprout, TreePine, Flower2, User, Mail, Phone, Lock, CheckCircle, AtSign } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 function GrowingPlant({ delay, x }: { delay: number; x: number }) {
@@ -20,7 +20,7 @@ function GrowingPlant({ delay, x }: { delay: number; x: number }) {
 export default function RegisterPage() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPwd: '', phone: '' });
+  const [form, setForm] = useState({ username: '', name: '', email: '', password: '', confirmPwd: '', phone: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -30,6 +30,14 @@ export default function RegisterPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    if (!form.username.trim()) {
+      setError('Vui lòng nhập tên đăng nhập');
+      return;
+    }
+    if (form.username.trim().length < 3) {
+      setError('Tên đăng nhập phải có ít nhất 3 ký tự');
+      return;
+    }
     if (form.password !== form.confirmPwd) {
       setError('Mật khẩu xác nhận không khớp');
       return;
@@ -39,13 +47,13 @@ export default function RegisterPage() {
       return;
     }
     setLoading(true);
-    const ok = await register(form.name, form.email, form.password, 'customer', form.phone);
+    const ok = await register(form.username.trim(), form.name, form.email, form.password, form.phone);
     setLoading(false);
     if (ok) {
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } else {
-      setError('Email đã được sử dụng');
+      setError('Không thể tạo tài khoản. Tên đăng nhập hoặc email có thể đã được sử dụng.');
     }
   };
 
@@ -204,6 +212,18 @@ export default function RegisterPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Username */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tên đăng nhập</label>
+                <div className={`relative rounded-xl border-2 transition-all duration-300 ${focused === 'username' ? 'border-green-500 shadow-lg shadow-green-500/10' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <AtSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input type="text" className="w-full bg-transparent pl-10 pr-4 py-3 text-sm focus:outline-none rounded-xl" placeholder="vd: nguyenvana"
+                    value={form.username} onChange={e => setForm(p => ({ ...p, username: e.target.value.replace(/\s/g, '') }))}
+                    onFocus={() => setFocused('username')} onBlur={() => setFocused('')} required autoComplete="username" />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Dùng để đăng nhập — ít nhất 3 ký tự, không dấu cách</p>
+              </div>
+
               {/* Name */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Họ và tên</label>

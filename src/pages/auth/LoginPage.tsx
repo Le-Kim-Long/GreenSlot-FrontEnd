@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Leaf, AlertCircle, Sprout, Sun, Droplets, Wind } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getDashboardPath } from '../../utils/roleMap';
 
 function FloatingLeaf({ delay, x, size, duration }: { delay: number; x: number; size: number; duration: number }) {
   return (
@@ -20,9 +21,9 @@ function FloatingLeaf({ delay, x, size, duration }: { delay: number; x: number; 
 }
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ username: '', password: '' });
   const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -32,12 +33,14 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const ok = await login(form.email, form.password);
+    const ok = await login(form.username, form.password);
     setLoading(false);
     if (ok) {
-      navigate('/');
+      const stored = localStorage.getItem('user');
+      const role = stored ? JSON.parse(stored).role : user?.role;
+      navigate(role ? getDashboardPath(role) : '/');
     } else {
-      setError('Email hoặc mật khẩu không đúng');
+      setError('Tên đăng nhập hoặc mật khẩu không đúng');
     }
   };
 
@@ -148,16 +151,17 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Email hoặc Username</label>
-                <div className={`relative rounded-xl border-2 transition-all duration-300 ${focused === 'email' ? 'border-green-500 shadow-lg shadow-green-500/10' : 'border-gray-200 hover:border-gray-300'}`}>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tên đăng nhập</label>
+                <div className={`relative rounded-xl border-2 transition-all duration-300 ${focused === 'username' ? 'border-green-500 shadow-lg shadow-green-500/10' : 'border-gray-200 hover:border-gray-300'}`}>
                   <input
                     type="text"
                     className="w-full bg-transparent px-4 py-3 text-sm focus:outline-none rounded-xl"
-                    placeholder="Nhập email hoặc username"
-                    value={form.email}
-                    onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                    onFocus={() => setFocused('email')}
+                    placeholder="Tên đăng nhập của bạn"
+                    value={form.username}
+                    onChange={e => setForm(p => ({ ...p, username: e.target.value }))}
+                    onFocus={() => setFocused('username')}
                     onBlur={() => setFocused('')}
+                    autoComplete="username"
                     required
                   />
                 </div>

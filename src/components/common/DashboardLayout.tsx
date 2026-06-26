@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Leaf, Menu, X, LogOut, Bell, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
+import { roleLabel } from '../../utils/roleMap';
 
 interface NavItem {
   label: string;
@@ -20,7 +21,7 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
 
   const handleLogout = () => {
     logout();
@@ -28,16 +29,18 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
   };
 
   const roleLabels: Record<string, string> = {
-    customer: 'Khách hàng',
-    owner: 'Chủ vườn',
-    staff: 'Nhân viên',
-    admin: 'Quản trị viên',
+    customer: roleLabel('customer'),
+    garden_staff: roleLabel('garden_staff'),
+    location_manager: roleLabel('location_manager'),
+    manager: roleLabel('manager'),
+    admin: roleLabel('admin'),
   };
 
   const roleColors: Record<string, string> = {
     customer: 'bg-blue-100 text-blue-700',
-    owner: 'bg-green-100 text-green-700',
-    staff: 'bg-purple-100 text-purple-700',
+    garden_staff: 'bg-emerald-100 text-emerald-700',
+    location_manager: 'bg-purple-100 text-purple-700',
+    manager: 'bg-indigo-100 text-indigo-700',
     admin: 'bg-red-100 text-red-700',
   };
 
@@ -50,9 +53,9 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
 
       {/* Sidebar */}
       <aside className={clsx(
-        'fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-100 z-50 flex flex-col transition-transform duration-300',
-        'lg:translate-x-0 lg:static lg:z-auto',
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        'fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-100 z-50 flex flex-col transition-all duration-300',
+        'lg:static lg:z-auto',
+        sidebarOpen ? 'translate-x-0 lg:ml-0' : '-translate-x-full lg:-ml-64'
       )}>
         {/* Logo */}
         <div className="flex items-center justify-between px-5 h-16 border-b border-gray-100 flex-shrink-0">
@@ -90,7 +93,9 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
               <li key={item.path}>
                 <Link
                   to={item.path}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={() => {
+                    if (window.innerWidth < 1024) setSidebarOpen(false);
+                  }}
                   className={clsx(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
                     location.pathname === item.path
@@ -124,7 +129,7 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
         {/* Top bar */}
         <header className="bg-white border-b border-gray-100 h-16 flex items-center justify-between px-4 lg:px-6 flex-shrink-0 sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 rounded-lg hover:bg-gray-100">
               <Menu className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
