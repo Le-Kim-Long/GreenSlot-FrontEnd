@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Users, Leaf, DollarSign, TrendingUp, Settings, BarChart3, ShieldCheck, Search, Eye, Edit, Trash2, UserPlus, X, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Users, Leaf, DollarSign, TrendingUp, Settings, BarChart3, ShieldCheck, Search, Eye, Edit, Trash2, UserPlus, X, CheckCircle, XCircle, Loader2, KeyRound } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { userApi, type UserAdminDTO } from '../../api/userApi';
+import { authApi } from '../../api/authApi';
 import type { UserRole } from '../../types';
 import clsx from 'clsx';
 
@@ -50,6 +51,9 @@ export default function UserManagementPage() {
   const [roleFilter, setRoleFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
 
+  const [resetLoading, setResetLoading] = useState<number | null>(null);
+  const [resetMessage, setResetMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const fetchUsers = async (page = 0) => {
     setLoading(true);
     setError('');
@@ -70,6 +74,21 @@ export default function UserManagementPage() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const handleSendResetEmail = async (user: UserAdminDTO) => {
+    if (resetLoading) return;
+    setResetLoading(user.id);
+    setResetMessage(null);
+    try {
+      await authApi.forgotPassword({ email: user.email });
+      setResetMessage({ type: 'success', text: `Đã gửi email đặt lại mật khẩu đến ${user.email}` });
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Gửi email thất bại. Vui lòng thử lại.';
+      setResetMessage({ type: 'error', text: msg });
+    } finally {
+      setResetLoading(null);
+    }
+  };
 
   const filtered = users.filter(u => {
     const name = u.fullName || u.username || '';
@@ -122,6 +141,14 @@ export default function UserManagementPage() {
           <option value="admin">Admin</option>
         </select>
       </div>
+
+      {/* Reset password message */}
+      {resetMessage && (
+        <div className={clsx('mb-4 p-3 rounded-xl text-sm flex items-center justify-between', resetMessage.type === 'success' ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700')}>
+          <span>{resetMessage.text}</span>
+          <button onClick={() => setResetMessage(null)} className="ml-2 hover:opacity-70"><X className="w-4 h-4" /></button>
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -190,10 +217,18 @@ export default function UserManagementPage() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex items-center justify-end gap-1">
-                          <button className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600 transition-colors"><Eye className="w-4 h-4" /></button>
-                          <button className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600 transition-colors"><Edit className="w-4 h-4" /></button>
+                          <button className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600 transition-colors" title="Xem"><Eye className="w-4 h-4" /></button>
+                          <button className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600 transition-colors" title="Sửa"><Edit className="w-4 h-4" /></button>
+                          <button
+                            onClick={() => { if (confirm(`Gửi email đặt lại mật khẩu cho ${u.email}?`)) handleSendResetEmail(u); }}
+                            disabled={resetLoading === u.id}
+                            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-orange-600 transition-colors disabled:opacity-50"
+                            title="Gửi email đặt lại mật khẩu"
+                          >
+                            {resetLoading === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                          </button>
                           {role !== 'admin' && (
-                            <button className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                            <button className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600 transition-colors" title="Xóa"><Trash2 className="w-4 h-4" /></button>
                           )}
                         </div>
                       </td>
