@@ -1,20 +1,30 @@
 import apiClient from './axiosConfig';
+import type { JwtResponse } from '../types/api';
+
+export interface LoginRequest {
+  username: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+  address?: string;
+}
 
 export const authApi = {
-  login: async (credentials: any) => {
-    const response = await apiClient.post('/auth/login', credentials);
-    return response.data;
-  },
-  register: async (userData: any) => {
-    const response = await apiClient.post('/auth/register', userData);
-    return response.data;
-  },
-  forgotPassword: async (data: any) => {
-    const response = await apiClient.post('/auth/forgot-password', data);
-    return response.data;
-  },
-  resetPassword: async (data: any) => {
-    const response = await apiClient.post('/auth/reset-password', data);
-    return response.data;
-  }
+  login: (credentials: LoginRequest): Promise<JwtResponse> =>
+    apiClient.post('/auth/login', credentials).then(r => r.data),
+
+  register: (userData: RegisterRequest) =>
+    apiClient.post('/auth/register', userData).then(r => r.data),
+
+  forgotPassword: (data: { email: string }) =>
+    apiClient.post('/auth/forgot-password', data).then(r => r.data),
+
+  resetPassword: (data: { token: string; newPassword: string }) =>
+    apiClient.post('/auth/reset-password', data).then(r => r.data),
 };

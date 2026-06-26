@@ -3,21 +3,10 @@ import { Calendar, Search } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
-
-interface Rental {
-  id: number;
-  slotNumber?: string;
-  customerName?: string;
-  customerEmail?: string;
-  startDate?: string;
-  endDate?: string;
-  status?: string;
-  totalPrice?: number;
-  [key: string]: unknown;
-}
+import type { ActiveRental } from '../../types/api';
 
 export default function ActiveRentals() {
-  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [rentals, setRentals] = useState<ActiveRental[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -32,6 +21,8 @@ export default function ActiveRentals() {
   const filtered = rentals.filter(r =>
     JSON.stringify(r).toLowerCase().includes(search.toLowerCase())
   );
+
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString('vi-VN');
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Đang thuê">
@@ -56,27 +47,27 @@ export default function ActiveRentals() {
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
+              <tr className="text-left text-gray-500 border-b text-xs uppercase">
                 <th className="pb-3 font-medium">ID</th>
                 <th className="pb-3 font-medium">Ô vườn</th>
                 <th className="pb-3 font-medium">Khách hàng</th>
-                <th className="pb-3 font-medium">Ngày bắt đầu</th>
-                <th className="pb-3 font-medium">Ngày kết thúc</th>
-                <th className="pb-3 font-medium">Tổng tiền</th>
+                <th className="pb-3 font-medium">Cơ sở</th>
+                <th className="pb-3 font-medium">Bắt đầu</th>
+                <th className="pb-3 font-medium">Kết thúc</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y">
               {filtered.map(r => (
-                <tr key={r.id} className="hover:bg-gray-50">
-                  <td className="py-3 font-medium text-gray-900">#{r.id}</td>
-                  <td className="py-3 text-gray-600">{r.slotNumber || '-'}</td>
+                <tr key={r.rentalId} className="hover:bg-gray-50">
+                  <td className="py-3 font-medium">#{r.rentalId}</td>
+                  <td className="py-3">{r.slotNumber} ({r.pillarCode})</td>
                   <td className="py-3">
-                    <div className="text-gray-900">{r.customerName || '-'}</div>
-                    {r.customerEmail && <div className="text-xs text-gray-400">{r.customerEmail}</div>}
+                    <div>{r.fullName}</div>
+                    <div className="text-xs text-gray-400">{r.username}</div>
                   </td>
-                  <td className="py-3 text-gray-600">{r.startDate || '-'}</td>
-                  <td className="py-3 text-gray-600">{r.endDate || '-'}</td>
-                  <td className="py-3 font-semibold text-green-600">{r.totalPrice ? `${r.totalPrice.toLocaleString('vi-VN')}đ` : '-'}</td>
+                  <td className="py-3">{r.locationName}</td>
+                  <td className="py-3">{fmt(r.startTime)}</td>
+                  <td className="py-3">{fmt(r.endTime)}</td>
                 </tr>
               ))}
             </tbody>

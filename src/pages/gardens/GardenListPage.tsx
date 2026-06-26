@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, MapPin, SlidersHorizontal, X, Grid3X3, DollarSign } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, X, Grid3X3, DollarSign, LogIn } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+import { useAuth } from '../../context/AuthContext';
 import { bookingApi, type AvailableSlot } from '../../api/bookingApi';
 import clsx from 'clsx';
 
 export default function GardenListPage() {
+  const { isAuthenticated } = useAuth();
   const [slots, setSlots] = useState<AvailableSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,21 +18,37 @@ export default function GardenListPage() {
   const [sortBy, setSortBy] = useState('price_asc');
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setLoading(false);
+      return;
+    }
     bookingApi.getAvailableSlots()
-      .then(data => {
-        const list = Array.isArray(data) ? data : [];
-        setSlots(list);
-      })
+      .then(data => setSlots(Array.isArray(data) ? data : []))
       .catch(() => setError('Không thể tải danh sách ô vườn'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [isAuthenticated]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar />
+        <div className="max-w-lg mx-auto px-4 py-24 text-center">
+          <Grid3X3 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <h2 className="text-xl font-bold mb-2">Đăng nhập để xem ô vườn</h2>
+          <p className="text-gray-500 text-sm mb-6">API <code>/bookings/available</code> yêu cầu JWT trên backend hiện tại.</p>
+          <Link to="/login" className="btn-primary inline-flex items-center gap-2"><LogIn className="w-4 h-4" /> Đăng nhập</Link>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   const filtered = slots
     .filter(s => {
       if (search) {
         const q = search.toLowerCase();
         const matchSlot = s.slotNumber?.toLowerCase().includes(q);
-        const matchLocation = s.locationName?.toLowerCase().includes(q) || s.locationAddress?.toLowerCase().includes(q);
+        const matchLocation = s.locationName?.toLowerCase().includes(q);
         const matchPillar = s.pillarCode?.toLowerCase().includes(q);
         if (!matchSlot && !matchLocation && !matchPillar) return false;
       }
