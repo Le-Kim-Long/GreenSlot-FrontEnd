@@ -20,6 +20,29 @@ const ALL_ROLES = [
   'ROLE_ADMIN',
 ];
 
+const BACKEND_ROLE_MAP: Record<string, UserRole> = {
+  ROLE_ADMIN: 'admin',
+  ROLE_MANAGER: 'staff',
+  ROLE_FARMER: 'owner',
+  ROLE_CUSTOMER: 'customer',
+};
+
+function mapBackendRole(roles: string[]): UserRole {
+  if (roles.includes('ROLE_ADMIN')) return 'admin';
+  if (roles.includes('ROLE_MANAGER')) return 'staff';
+  if (roles.includes('ROLE_FARMER')) return 'owner';
+  return 'customer';
+}
+
+const roleConfig: Record<UserRole, { label: string; cls: string }> = {
+  customer: { label: 'Khách hàng', cls: 'badge-blue' },
+  owner: { label: 'Chủ vườn', cls: 'badge-green' },
+  staff: { label: 'Nhân viên', cls: 'badge-gray' },
+  admin: { label: 'Admin', cls: 'badge-red' },
+};
+
+const PAGE_SIZE = 20;
+
 export default function UserManagementPage() {
   const [users, setUsers] = useState<UserAdmin[]>([]);
   const [page, setPage] = useState(0);
@@ -135,7 +158,56 @@ export default function UserManagementPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filtered.map(u => {
+                  const role = mapBackendRole(u.roles);
+                  const displayName = u.fullName || u.username;
+                  return (
+                    <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <span className="text-green-700 font-bold text-sm">{displayName.charAt(0).toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-900 text-sm">{displayName}</div>
+                            <div className="text-xs text-gray-500">{u.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        <span className={roleConfig[role].cls}>{roleConfig[role].label}</span>
+                      </td>
+                      <td className="px-4 py-4 hidden sm:table-cell text-sm text-gray-600">{u.phone || '—'}</td>
+                      <td className="px-4 py-4 hidden md:table-cell text-sm text-gray-500">{u.address || '—'}</td>
+                      <td className="px-4 py-4">
+                        {u.enabled ? (
+                          <span className="badge-green flex items-center gap-1 w-fit"><CheckCircle className="w-3 h-3" /> Hoạt động</span>
+                        ) : (
+                          <span className="badge-red flex items-center gap-1 w-fit"><XCircle className="w-3 h-3" /> Bị khóa</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-blue-600 transition-colors" title="Xem"><Eye className="w-4 h-4" /></button>
+                          <button className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600 transition-colors" title="Sửa"><Edit className="w-4 h-4" /></button>
+                          <button
+                            onClick={() => { if (confirm(`Gửi email đặt lại mật khẩu cho ${u.email}?`)) handleSendResetEmail(u); }}
+                            disabled={resetLoading === u.id}
+                            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-orange-600 transition-colors disabled:opacity-50"
+                            title="Gửi email đặt lại mật khẩu"
+                          >
+                            {resetLoading === u.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                          </button>
+                          {role !== 'admin' && (
+                            <button className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600 transition-colors" title="Xóa"><Trash2 className="w-4 h-4" /></button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
           <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500">
