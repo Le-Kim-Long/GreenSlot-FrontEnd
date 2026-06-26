@@ -1,15 +1,21 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL;
+function resolveApiBaseUrl(): string {
+  if (import.meta.env.DEV) {
+    return '/api';
+  }
+  const raw = import.meta.env.VITE_API_URL || '/api';
+  const trimmed = raw.replace(/\/$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
 
 const apiClient = axios.create({
-  baseURL: API_URL,
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor for adding the JWT token to requests
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -18,7 +24,19 @@ apiClient.interceptors.request.use(
     }
     return config;
   },
+  (error) => Promise.reject(error)
+);
+
+apiClient.interceptors.response.use(
+  (response) => response,
   (error) => {
+    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/login')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname.startsWith('/dashboard')) {
+        window.location.href = '/login';
+      }
+    }
     return Promise.reject(error);
   }
 );

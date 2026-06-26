@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Grid3X3, MapPin, ChevronLeft, Calendar, DollarSign, Loader2 } from 'lucide-react';
+import { Grid3X3, ChevronLeft, Calendar, DollarSign, Loader2 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import { bookingApi, type AvailableSlot } from '../../api/bookingApi';
+import { cacheSlotId } from '../../utils/slotCache';
 import { useAuth } from '../../context/AuthContext';
 
 export default function GardenDetailPage() {
@@ -52,6 +53,7 @@ export default function GardenDetailPage() {
         durationInMonths: bookingMonths,
         startTime: new Date(startDate).toISOString(),
       });
+      cacheSlotId(slot.slotNumber, slot.id);
       if (result.paymentUrl) {
         window.location.href = result.paymentUrl;
       } else {
@@ -135,12 +137,6 @@ export default function GardenDetailPage() {
                   <div className="p-3 bg-gray-50 rounded-xl">
                     <div className="text-xs text-gray-500">Vị trí</div>
                     <div className="text-sm font-semibold text-gray-900">{slot.locationName}</div>
-                  </div>
-                )}
-                {slot.locationAddress && (
-                  <div className="p-3 bg-gray-50 rounded-xl col-span-2">
-                    <div className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" /> Địa chỉ</div>
-                    <div className="text-sm font-semibold text-gray-900">{slot.locationAddress}</div>
                   </div>
                 )}
                 <div className="p-3 bg-gray-50 rounded-xl">
