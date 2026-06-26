@@ -49,7 +49,7 @@ export default function RegisterPage() {
     setLoading(true);
     const ok = await register(form.username.trim(), form.name, form.email, form.password, form.phone);
     setLoading(false);
-    if (ok) {
+    if (result === true) {
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } else {
