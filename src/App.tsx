@@ -32,6 +32,7 @@ import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
+import ProfilePage from './pages/profile/ProfilePage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -69,6 +70,9 @@ function AppRoutes() {
       <Route path="/services" element={<ServicesPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
+
+      {/* Profile – accessible by all authenticated users */}
+      <Route path="/dashboard/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
       {/* Customer */}
       <Route path="/dashboard/customer" element={<ProtectedRoute allowedRoles={['customer']}><CustomerDashboard /></ProtectedRoute>} />
