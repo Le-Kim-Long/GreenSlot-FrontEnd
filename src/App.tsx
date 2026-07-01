@@ -32,6 +32,7 @@ import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
+import AuditLogsPage from './pages/admin/AuditLogsPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import PaymentResultPage from './pages/payment/PaymentResultPage';
 
@@ -99,6 +100,7 @@ function AppRoutes() {
       {/* Admin */}
       <Route path="/dashboard/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagementPage /></ProtectedRoute>} />
+      <Route path="/dashboard/admin/audit" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogsPage /></ProtectedRoute>} />
 
       {/* Legacy owner routes → redirect */}
       <Route path="/dashboard/owner/*" element={<Navigate to="/gardens" replace />} />
