@@ -99,7 +99,7 @@ export default function Navbar() {
                         <LayoutDashboard className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-700">Dashboard</span>
                       </Link>
-                      <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                      <Link to="/dashboard/profile"onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                         <User className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-700">Hồ sơ cá nhân</span>
                       </Link>

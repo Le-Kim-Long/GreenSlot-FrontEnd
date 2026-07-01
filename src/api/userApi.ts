@@ -39,5 +39,5 @@ export const userApi = {
     apiClient.put<UserAdminDTO>(`/admin/users/${id}/authorities`, { roles }).then(r => r.data),
 
   updateProfile: (data: UserProfileUpdateDTO) =>
-    apiClient.put('/users/profile', data).then(r => r.data),
+    apiClient.patch('/users/profile', data).then(r => r.data),
 };
