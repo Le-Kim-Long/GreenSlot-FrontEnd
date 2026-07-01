@@ -6,18 +6,21 @@ export const managerApi = {
   getLocation: (id: number) => apiClient.get(`/manager/locations/${id}`).then(r => r.data),
   createLocation: (data: any) => apiClient.post('/manager/locations', data).then(r => r.data),
   updateLocation: (id: number, data: any) => apiClient.put(`/manager/locations/${id}`, data).then(r => r.data),
+  deleteLocation: (id: number) => apiClient.delete(`/manager/locations/${id}`).then(r => r.data),
 
   // Pillars
   getPillars: () => apiClient.get('/manager/pillars').then(r => r.data),
   getPillar: (id: number) => apiClient.get(`/manager/pillars/${id}`).then(r => r.data),
   createPillar: (data: any) => apiClient.post('/manager/pillars', data).then(r => r.data),
   updatePillar: (id: number, data: any) => apiClient.put(`/manager/pillars/${id}`, data).then(r => r.data),
+  deletePillar: (id: number) => apiClient.delete(`/manager/pillars/${id}`).then(r => r.data),
 
   // Slots
   getSlots: () => apiClient.get('/manager/slots').then(r => r.data),
   getSlot: (id: number) => apiClient.get(`/manager/slots/${id}`).then(r => r.data),
   createSlot: (data: any) => apiClient.post('/manager/slots', data).then(r => r.data),
   updateSlot: (id: number, data: any) => apiClient.put(`/manager/slots/${id}`, data).then(r => r.data),
+  deleteSlot: (id: number) => apiClient.delete(`/manager/slots/${id}`).then(r => r.data),
 
   // Service Categories
   getServiceCategories: () => apiClient.get('/manager/service-categories').then(r => r.data),

@@ -85,7 +85,7 @@ export default function Navbar() {
                 <div className="relative">
                   <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-green-50 transition-colors">
                     <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-700 font-semibold text-sm">{user.name.charAt(0)}</span>
+                      <span className="text-green-700 font-semibold text-sm">{user.name?.charAt(0)}</span>
                     </div>
                     <div className="text-left">
                       <p className="text-sm font-medium text-gray-900 leading-tight">{user.name}</p>
