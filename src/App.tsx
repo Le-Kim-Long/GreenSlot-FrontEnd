@@ -33,6 +33,7 @@ import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import ProfilePage from './pages/profile/ProfilePage';
+import PaymentResultPage from './pages/payment/PaymentResultPage';
 
 import PaymentResultPage from './pages/payment/PaymentResultPage';
 

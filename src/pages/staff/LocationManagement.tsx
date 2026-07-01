@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Plus, Edit2, X, Search, Phone, Ruler } from 'lucide-react';
+import { MapPin, Plus, Edit2, X, Search, Phone, Ruler, Trash2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
@@ -25,6 +25,8 @@ export default function LocationManagement() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<Location | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -66,6 +68,20 @@ export default function LocationManagement() {
       setError('Lưu thất bại');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      await managerApi.deleteLocation(confirmDelete.id);
+      setConfirmDelete(null);
+      fetchData();
+    } catch {
+      setError('Xóa thất bại. Cơ sở có thể đang được sử dụng.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -113,11 +129,36 @@ export default function LocationManagement() {
                 <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{loc.contactPhone}</span>
                 <span className="flex items-center gap-1"><Ruler className="w-3.5 h-3.5" />{loc.area} m²</span>
               </div>
-              <button onClick={() => openEdit(loc)} className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1">
-                <Edit2 className="w-3.5 h-3.5" /> Chỉnh sửa
-              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => openEdit(loc)} className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1">
+                  <Edit2 className="w-3.5 h-3.5" /> Chỉnh sửa
+                </button>
+                <button onClick={() => setConfirmDelete(loc)} className="text-sm text-red-500 hover:text-red-600 font-medium flex items-center gap-1">
+                  <Trash2 className="w-3.5 h-3.5" /> Xóa
+                </button>
+              </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-center mb-2">Xóa cơ sở?</h3>
+            <p className="text-sm text-gray-500 text-center mb-6">
+              Bạn có chắc muốn xóa <span className="font-semibold text-gray-900">"{confirmDelete.name}"</span>? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl transition-colors">
+                {deleting ? 'Đang xóa...' : 'Xóa'}
+              </button>
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 btn-secondary">Hủy</button>
+            </div>
+          </div>
         </div>
       )}
 
