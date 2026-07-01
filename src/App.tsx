@@ -35,8 +35,6 @@ import UserManagementPage from './pages/admin/UserManagementPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import PaymentResultPage from './pages/payment/PaymentResultPage';
 
-import PaymentResultPage from './pages/payment/PaymentResultPage';
-
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[];
