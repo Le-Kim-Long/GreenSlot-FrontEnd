@@ -35,6 +35,8 @@ import UserManagementPage from './pages/admin/UserManagementPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import PaymentResultPage from './pages/payment/PaymentResultPage';
 
+import PaymentResultPage from './pages/payment/PaymentResultPage';
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRole[];
@@ -72,6 +74,7 @@ function AppRoutes() {
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/payment-result" element={<PaymentResultPage />} />
+
       {/* Profile – accessible by all authenticated users */}
       <Route path="/dashboard/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
