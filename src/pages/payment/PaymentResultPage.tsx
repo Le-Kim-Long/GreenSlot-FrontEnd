@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, Receipt, ArrowLeft, Home } from 'lucide-react';
+import { bookingApi } from '../../api/bookingApi';
 
 export default function PaymentResultPage() {
   const [searchParams] = useSearchParams();
@@ -14,6 +16,15 @@ export default function PaymentResultPage() {
   const success =
     responseCode === '00' &&
     (transactionStatus === '00' || transactionStatus === null);
+
+  useEffect(() => {
+    if (responseCode) {
+      const query = window.location.search;
+      bookingApi.notifyVnPayResult(query).catch(err => {
+        console.error('Failed to notify VNPay result to backend:', err);
+      });
+    }
+  }, [responseCode]);
 
   const formatAmount = () => {
     if (!amount) return '--';

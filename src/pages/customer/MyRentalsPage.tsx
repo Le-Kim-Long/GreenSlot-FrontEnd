@@ -175,7 +175,7 @@ export default function MyRentalsPage() {
                         <Clock className="w-3.5 h-3.5" /> Gia hạn
                       </button>
                     )}
-                    {rental.status === 'PENDING' && (
+                    {(rental.status === 'PENDING' || rental.paymentStatus === 'PENDING') && rental.status !== 'CANCELLED' && (
                       <>
                         <button onClick={() => handlePay(rental)} disabled={payingId === rental.id}
                           className="btn-primary text-xs flex items-center gap-1 h-fit">
