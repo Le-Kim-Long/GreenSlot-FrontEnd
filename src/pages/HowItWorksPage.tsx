@@ -37,20 +37,20 @@ export default function HowItWorksPage() {
       <Navbar />
 
       <main className="flex-grow">
-        <section className="bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600 py-20 text-white text-center relative overflow-hidden">
+        <section className="relative py-20 overflow-hidden text-center text-white bg-gradient-to-br from-emerald-600 via-green-600 to-teal-600">
           <div className="absolute inset-0">
-            <div className="absolute top-20 left-10 w-72 h-72 bg-yellow-300/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-10 right-20 w-96 h-96 bg-cyan-300/10 rounded-full blur-3xl" />
+            <div className="absolute rounded-full top-20 left-10 w-72 h-72 bg-yellow-300/10 blur-3xl" />
+            <div className="absolute rounded-full bottom-10 right-20 w-96 h-96 bg-cyan-300/10 blur-3xl" />
           </div>
-          <div className="relative max-w-4xl mx-auto px-4">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">Trải Nghiệm Nông Nghiệp Số</h1>
-            <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto">
+          <div className="relative max-w-4xl px-4 mx-auto">
+            <h1 className="mb-6 text-4xl font-bold md:text-5xl">Trải Nghiệm Nông Nghiệp Số</h1>
+            <p className="max-w-2xl mx-auto mb-8 text-lg md:text-xl text-white/80">
               Trở thành nông gia đô thị chưa bao giờ dễ dàng đến thế. Cùng GreenSlot bắt đầu hành trình xanh của bạn chỉ với 4 bước đơn giản.
             </p>
           </div>
         </section>
 
-        <section className="py-24 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="max-w-5xl px-4 py-24 mx-auto sm:px-6 lg:px-8">
           <div className="relative">
             <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-green-100 -translate-x-1/2" />
 
@@ -58,29 +58,20 @@ export default function HowItWorksPage() {
               {steps.map((step, idx) => (
                 <div key={idx} className={`relative flex flex-col md:flex-row items-center ${idx % 2 !== 0 ? 'md:flex-row-reverse' : ''}`}>
                   <div className={`w-full md:w-1/2 flex ${idx % 2 === 0 ? 'md:justify-end md:pr-16' : 'md:justify-start md:pl-16'}`}>
-                    <div className="bg-white p-8 rounded-3xl border border-green-100 hover:shadow-xl hover:shadow-green-200/50 hover:border-green-300 transition-all w-full group">
+                    <div className="w-full p-8 transition-all bg-white border border-green-100 rounded-3xl hover:shadow-xl hover:shadow-green-200/50 hover:border-green-300 group">
                       <div className={`w-16 h-16 ${step.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
                         {step.icon}
                       </div>
-                      <h3 className="text-2xl font-bold text-gray-900 mb-4">{step.title}</h3>
-                      <p className="text-gray-500 leading-relaxed">{step.desc}</p>
+                      <h3 className="mb-4 text-2xl font-bold text-gray-900">{step.title}</h3>
+                      <p className="leading-relaxed text-gray-500">{step.desc}</p>
                     </div>
                   </div>
-                  <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-white rounded-full border-4 border-green-500 items-center justify-center z-10 shadow-lg shadow-green-200">
+                  <div className="absolute z-10 items-center justify-center hidden w-12 h-12 -translate-x-1/2 -translate-y-1/2 bg-white border-4 border-green-500 rounded-full shadow-lg md:flex left-1/2 top-1/2 shadow-green-200">
                     <ArrowDown className="w-5 h-5 text-green-500" />
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        <section className="py-20 bg-[#e6f5ec] text-center">
-          <div className="max-w-3xl mx-auto px-4">
-            <h2 className="text-3xl font-bold text-white mb-6">Sẵn sàng để bắt đầu?</h2>
-            <Link to="/register" className="inline-flex items-center gap-2 bg-green-500 text-white font-bold px-8 py-4 rounded-xl hover:bg-green-400 transition-colors shadow-lg shadow-green-500/25">
-              Đăng ký tài khoản miễn phí
-            </Link>
           </div>
         </section>
       </main>

@@ -8,15 +8,18 @@ import clsx from 'clsx';
 interface ServiceCategory {
   id: number;
   name: string;
+  categoryName?: string;
   description?: string;
 }
 
 interface ServiceType {
   id: number;
   name: string;
+  serviceName?: string;
   description?: string;
   price?: number;
   serviceCategoryId?: number;
+  categoryId?: number;
 }
 
 export default function ServiceManagement() {
@@ -25,6 +28,7 @@ export default function ServiceManagement() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'categories' | 'types'>('categories');
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
 
   // Form state
   const [showForm, setShowForm] = useState(false);
@@ -32,7 +36,7 @@ export default function ServiceManagement() {
   const [editingCat, setEditingCat] = useState<ServiceCategory | null>(null);
   const [editingType, setEditingType] = useState<ServiceType | null>(null);
   const [catForm, setCatForm] = useState({ name: '', description: '' });
-  const [typeForm, setTypeForm] = useState({ name: '', description: '', price: 0, serviceCategoryId: 0 });
+  const [typeForm, setTypeForm] = useState({ name: '', description: '', price: 0, serviceCategoryId: categories[0]?.id || 0 });
 
   const fetchData = async () => {
     try {
@@ -62,13 +66,20 @@ export default function ServiceManagement() {
 
   const openCreateType = () => {
     setEditingType(null);
+    setFormError('');
     setTypeForm({ name: '', description: '', price: 0, serviceCategoryId: categories[0]?.id || 0 });
     setShowForm(true);
   };
 
   const openEditType = (t: ServiceType) => {
     setEditingType(t);
-    setTypeForm({ name: t.name, description: t.description || '', price: t.price || 0, serviceCategoryId: t.serviceCategoryId || 0 });
+    setFormError('');
+    setTypeForm({
+      name: t.name || t.serviceName || '',
+      description: t.description || '',
+      price: t.price || 0,
+      serviceCategoryId: t.serviceCategoryId || t.categoryId || categories[0]?.id || 0,
+    });
     setShowForm(true);
   };
 
@@ -76,6 +87,7 @@ export default function ServiceManagement() {
     setShowForm(false);
     setEditingCat(null);
     setEditingType(null);
+    setFormError('');
   };
 
   const handleSubmitCat = async () => {
@@ -97,7 +109,11 @@ export default function ServiceManagement() {
   };
 
   const handleSubmitType = async () => {
-    if (!typeForm.name) return;
+    if (!typeForm.name?.trim() || !typeForm.serviceCategoryId || typeForm.serviceCategoryId === 0) {
+      setFormError('Vui lòng nhập tên dịch vụ và chọn danh mục.');
+      return;
+    }
+
     setSaving(true);
     try {
       if (editingType) {
@@ -108,13 +124,13 @@ export default function ServiceManagement() {
       closeForm();
       fetchData();
     } catch {
-      setError('Lưu thất bại');
+      setError('Lưu thất bại. Vui lòng kiểm tra dữ liệu và thử lại.');
     } finally {
       setSaving(false);
     }
   };
 
-  const getCatName = (id?: number) => categories.find(c => c.id === id)?.name || '';
+  const getCatName = (id?: number) => categories.find(c => c.id === id)?.name || categories.find(c => c.id === id)?.categoryName || '';
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Dịch vụ">
@@ -154,7 +170,7 @@ export default function ServiceManagement() {
                     <Edit2 className="w-4 h-4" />
                   </button>
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1">{c.name}</h3>
+                <h3 className="font-bold text-gray-900 mb-1">{c.name || c.categoryName}</h3>
                 {c.description && <p className="text-sm text-gray-500">{c.description}</p>}
                 <p className="text-xs text-gray-400 mt-2">{types.filter(t => t.serviceCategoryId === c.id).length} loại dịch vụ</p>
               </div>
@@ -182,7 +198,7 @@ export default function ServiceManagement() {
                 {types.map(t => (
                   <tr key={t.id} className="hover:bg-gray-50">
                     <td className="py-3">
-                      <div className="font-semibold text-gray-900">{t.name}</div>
+                      <div className="font-semibold text-gray-900">{t.name || t.serviceName}</div>
                       {t.description && <div className="text-xs text-gray-400 mt-0.5">{t.description}</div>}
                     </td>
                     <td className="py-3 text-gray-600">{getCatName(t.serviceCategoryId)}</td>
@@ -242,10 +258,16 @@ export default function ServiceManagement() {
                 <input className="input" value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} placeholder="VD: Tưới cây tự động" />
               </div>
               <div>
-                <label className="label">Danh mục</label>
+                <label className="label">Danh mục *</label>
                 <select className="input" value={typeForm.serviceCategoryId} onChange={e => setTypeForm(f => ({ ...f, serviceCategoryId: Number(e.target.value) }))}>
-                  <option value={0}>Không chọn</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {categories.length > 0 ? (
+                    <>
+                      <option value={0} disabled>Chọn danh mục</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.name || c.categoryName}</option>)}
+                    </>
+                  ) : (
+                    <option value={0} disabled>Chưa có danh mục</option>
+                  )}
                 </select>
               </div>
               <div>
@@ -256,6 +278,7 @@ export default function ServiceManagement() {
                 <label className="label">Mô tả</label>
                 <textarea className="input" rows={3} value={typeForm.description} onChange={e => setTypeForm(f => ({ ...f, description: e.target.value }))} placeholder="Mô tả dịch vụ" />
               </div>
+              {formError && <div className="text-sm text-red-600 mb-2">{formError}</div>}
               <div className="flex gap-3 pt-2">
                 <button onClick={handleSubmitType} disabled={saving} className="btn-primary flex-1 py-2.5">
                   {saving ? 'Đang lưu...' : editingType ? 'Cập nhật' : 'Tạo mới'}

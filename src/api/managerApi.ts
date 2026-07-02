@@ -1,4 +1,26 @@
 import apiClient from './axiosConfig';
+import type { ServiceCategory, ServiceType } from '../types/api';
+
+function mapServiceCategory(item: any): ServiceCategory {
+  return {
+    id: item.id,
+    name: item.name ?? item.categoryName ?? '',
+    categoryName: item.categoryName ?? item.name ?? '',
+    description: item.description ?? '',
+  };
+}
+
+function mapServiceType(item: any): ServiceType {
+  return {
+    id: item.id,
+    name: item.name ?? item.serviceName ?? '',
+    serviceName: item.serviceName ?? item.name ?? '',
+    description: item.description ?? '',
+    price: Number(item.price ?? 0),
+    serviceCategoryId: item.serviceCategoryId ?? item.categoryId,
+    categoryId: item.categoryId ?? item.serviceCategoryId,
+  };
+}
 
 export const managerApi = {
   // Locations
@@ -23,16 +45,30 @@ export const managerApi = {
   deleteSlot: (id: number) => apiClient.delete(`/manager/slots/${id}`).then(r => r.data),
 
   // Service Categories
-  getServiceCategories: () => apiClient.get('/manager/service-categories').then(r => r.data),
-  getServiceCategory: (id: number) => apiClient.get(`/manager/service-categories/${id}`).then(r => r.data),
-  createServiceCategory: (data: any) => apiClient.post('/manager/service-categories', data).then(r => r.data),
-  updateServiceCategory: (id: number, data: any) => apiClient.put(`/manager/service-categories/${id}`, data).then(r => r.data),
+  getServiceCategories: () => apiClient.get('/manager/service-categories').then(r => (r.data || []).map(mapServiceCategory)),
+  getServiceCategory: (id: number) => apiClient.get(`/manager/service-categories/${id}`).then(r => mapServiceCategory(r.data)),
+  createServiceCategory: (data: { name: string; description?: string }) =>
+    apiClient.post('/manager/service-categories', { categoryName: data.name, description: data.description }).then(r => mapServiceCategory(r.data)),
+  updateServiceCategory: (id: number, data: { name: string; description?: string }) =>
+    apiClient.put(`/manager/service-categories/${id}`, { categoryName: data.name, description: data.description }).then(r => mapServiceCategory(r.data)),
 
   // Service Types
-  getServiceTypes: () => apiClient.get('/manager/service-types').then(r => r.data),
-  getServiceType: (id: number) => apiClient.get(`/manager/service-types/${id}`).then(r => r.data),
-  createServiceType: (data: any) => apiClient.post('/manager/service-types', data).then(r => r.data),
-  updateServiceType: (id: number, data: any) => apiClient.put(`/manager/service-types/${id}`, data).then(r => r.data),
+  getServiceTypes: () => apiClient.get('/manager/service-types').then(r => (r.data || []).map(mapServiceType)),
+  getServiceType: (id: number) => apiClient.get(`/manager/service-types/${id}`).then(r => mapServiceType(r.data)),
+  createServiceType: (data: { name?: string; serviceName?: string; description?: string; price: number; serviceCategoryId?: number; categoryId?: number }) =>
+    apiClient.post('/manager/service-types', {
+      serviceName: data.name ?? data.serviceName,
+      description: data.description,
+      price: data.price,
+      categoryId: data.serviceCategoryId ?? data.categoryId,
+    }).then(r => mapServiceType(r.data)),
+  updateServiceType: (id: number, data: { name?: string; serviceName?: string; description?: string; price: number; serviceCategoryId?: number; categoryId?: number }) =>
+    apiClient.put(`/manager/service-types/${id}`, {
+      serviceName: data.name ?? data.serviceName,
+      description: data.description,
+      price: data.price,
+      categoryId: data.serviceCategoryId ?? data.categoryId,
+    }).then(r => mapServiceType(r.data)),
 
   // Active Rentals
   getActiveRentals: () => apiClient.get('/manager/active-rentals').then(r => r.data),

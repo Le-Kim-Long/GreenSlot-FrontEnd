@@ -166,15 +166,18 @@ export interface ActiveRental {
 export interface ServiceCategory {
   id: number;
   name: string;
+  categoryName?: string;
   description?: string;
 }
 
 export interface ServiceType {
   id: number;
   name: string;
+  serviceName?: string;
   description?: string;
   price: number;
   serviceCategoryId?: number;
+  categoryId?: number;
 }
 
 export interface SensorReading {
