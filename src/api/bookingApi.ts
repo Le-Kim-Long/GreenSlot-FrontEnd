@@ -27,6 +27,12 @@ export const bookingApi = {
 
   extendBooking: (data: ExtensionRequest): Promise<BookingResponse> =>
     apiClient.post<BookingResponse>('/bookings/extend', data).then(r => r.data),
+
+  getPaymentUrl: (rentalId: number): Promise<BookingResponse> =>
+    apiClient.get<BookingResponse>(`/bookings/${rentalId}/pay`).then(r => r.data),
+
+  cancelBooking: (rentalId: number): Promise<void> =>
+    apiClient.patch(`/bookings/${rentalId}/cancel`).then(() => undefined),
 };
 
 export type { BookingHistory, BookingRequest, BookingResponse, ExtensionRequest };

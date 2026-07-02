@@ -38,6 +38,10 @@ export default function MyRentalsPage() {
   const [extendMonths, setExtendMonths] = useState(1);
   const [extending, setExtending] = useState(false);
   const [extendError, setExtendError] = useState('');
+  const [payingId, setPayingId] = useState<number | null>(null);
+  const [cancelModal, setCancelModal] = useState<BookingHistory | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState('');
 
   const fetchHistory = () => {
     setLoading(true);
@@ -78,6 +82,38 @@ export default function MyRentalsPage() {
       setExtendError(msg || 'Gia hạn thất bại. Vui lòng thử lại.');
     } finally {
       setExtending(false);
+    }
+  };
+
+  const handlePay = async (rental: BookingHistory) => {
+    setPayingId(rental.id);
+    setError('');
+    try {
+      const result = await bookingApi.getPaymentUrl(rental.id);
+      if (result.paymentUrl) {
+        window.location.href = result.paymentUrl;
+      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || 'Không thể lấy link thanh toán. Vui lòng thử lại.');
+    } finally {
+      setPayingId(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!cancelModal) return;
+    setCancelling(true);
+    setCancelError('');
+    try {
+      await bookingApi.cancelBooking(cancelModal.id);
+      setCancelModal(null);
+      fetchHistory();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setCancelError(msg || 'Hủy đặt chỗ thất bại. Vui lòng thử lại.');
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -132,12 +168,29 @@ export default function MyRentalsPage() {
                     </div>
                     <div className="font-bold text-green-600 mt-1">{rental.totalPrice.toLocaleString('vi-VN')}đ</div>
                   </div>
-                  {rental.status === 'ACTIVE' && (
-                    <button onClick={() => { setExtendModal(rental); setExtendMonths(1); }}
-                      className="btn-outline-green text-xs flex items-center gap-1 h-fit">
-                      <Clock className="w-3.5 h-3.5" /> Gia hạn
-                    </button>
-                  )}
+                  <div className="flex flex-row sm:flex-col gap-2 h-fit">
+                    {rental.status === 'ACTIVE' && (
+                      <button onClick={() => { setExtendModal(rental); setExtendMonths(1); }}
+                        className="btn-outline-green text-xs flex items-center gap-1 h-fit">
+                        <Clock className="w-3.5 h-3.5" /> Gia hạn
+                      </button>
+                    )}
+                    {rental.status === 'PENDING' && (
+                      <>
+                        <button onClick={() => handlePay(rental)} disabled={payingId === rental.id}
+                          className="btn-primary text-xs flex items-center gap-1 h-fit">
+                          {payingId === rental.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <CreditCard className="w-3.5 h-3.5" />}
+                          Thanh toán
+                        </button>
+                        <button onClick={() => setCancelModal(rental)}
+                          className="btn-outline-red text-xs flex items-center gap-1 h-fit">
+                          <X className="w-3.5 h-3.5" /> Hủy
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -159,6 +212,29 @@ export default function MyRentalsPage() {
             <button onClick={handleExtend} disabled={extending} className="btn-primary w-full">
               {extending ? 'Đang xử lý...' : 'Xác nhận & Thanh toán VNPay'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {cancelModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <div className="flex justify-between mb-5">
+              <h2 className="text-xl font-bold">Hủy đặt chỗ</h2>
+              <button onClick={() => setCancelModal(null)}><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Bạn có chắc muốn hủy đặt chỗ ô vườn <span className="font-semibold">{cancelModal.slotNumber}</span>? Hành động này không thể hoàn tác.
+            </p>
+            {cancelError && <div className="text-red-600 text-sm mb-3">{cancelError}</div>}
+            <div className="flex gap-3">
+              <button onClick={() => setCancelModal(null)} disabled={cancelling} className="btn-secondary flex-1">
+                Đóng
+              </button>
+              <button onClick={handleCancel} disabled={cancelling} className="btn-outline-red flex-1">
+                {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
+              </button>
+            </div>
           </div>
         </div>
       )}
