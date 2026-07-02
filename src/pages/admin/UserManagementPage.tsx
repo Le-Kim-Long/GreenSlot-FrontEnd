@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, ChevronLeft, ChevronRight, Shield, Loader2 } from 'lucide-react';
+import { Users, Search, ChevronLeft, ChevronRight, Shield, Loader2, Phone, MapPin } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { adminApi } from '../../api/adminApi';
 import type { UserAdmin } from '../../types/api';
@@ -106,6 +106,8 @@ export default function UserManagementPage() {
             <thead>
               <tr className="text-left text-xs text-gray-500 uppercase border-b">
                 <th className="px-4 py-3">Người dùng</th>
+                <th className="px-4 py-3">SĐT</th>
+                <th className="px-4 py-3">Địa chỉ</th>
                 <th className="px-4 py-3">Vai trò</th>
                 <th className="px-4 py-3">Trạng thái</th>
                 <th className="px-4 py-3 text-right">Hành động</th>
@@ -117,6 +119,20 @@ export default function UserManagementPage() {
                   <td className="px-4 py-3">
                     <div className="font-semibold">{u.fullName || u.username}</div>
                     <div className="text-xs text-gray-500">{u.email}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.phone ? (
+                      <div className="flex items-center gap-1 text-sm text-gray-700"><Phone className="w-3.5 h-3.5 text-gray-400" />{u.phone}</div>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.address ? (
+                      <div className="flex items-center gap-1 text-sm text-gray-700"><MapPin className="w-3.5 h-3.5 text-gray-400" />{u.address}</div>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">

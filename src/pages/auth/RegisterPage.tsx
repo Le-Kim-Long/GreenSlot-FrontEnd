@@ -49,11 +49,11 @@ export default function RegisterPage() {
     setLoading(true);
     const ok = await register(form.username.trim(), form.name, form.email, form.password, form.phone);
     setLoading(false);
-    if (ok) {
+    if (ok === true) {
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } else {
-      setError('Không thể tạo tài khoản. Tên đăng nhập hoặc email có thể đã được sử dụng.');
+      setError(ok);
     }
   };
 

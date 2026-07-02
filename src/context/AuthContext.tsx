@@ -1,28 +1,30 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 import type { User, UserRole } from '../types';
 import { authApi } from '../api/authApi';
 import { mapBackendRolesToFrontend } from '../utils/roleMap';
+
+function loadStoredUser(): User | null {
+  try {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    if (token && storedUser) return JSON.parse(storedUser);
+  } catch { /* ignore */ }
+  return null;
+}
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (username: string, name: string, email: string, password: string, phone?: string) => Promise<boolean>;
+  register: (username: string, name: string, email: string, password: string, phone?: string) => Promise<string | true>;
+  updateUser: (updates: Partial<User>) => void;
   isAuthenticated: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (token && storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
+  const [user, setUser] = useState<User | null>(loadStoredUser);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
@@ -56,7 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
-  const register = async (username: string, name: string, email: string, password: string, phone?: string): Promise<boolean> => {
+  const updateUser = (updates: Partial<User>) => {
+    setUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...updates };
+      localStorage.setItem('user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const register = async (username: string, name: string, email: string, password: string, phone?: string): Promise<string | true> => {
     try {
       await authApi.register({
         username,
@@ -66,14 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: phone || undefined,
       });
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration failed', error);
-      return false;
+      const msg = error?.response?.data?.message || error?.response?.data;
+      return typeof msg === 'string' ? msg : 'Đăng ký thất bại. Vui lòng thử lại.';
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, logout, register, updateUser, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

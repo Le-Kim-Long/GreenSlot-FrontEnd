@@ -33,6 +33,9 @@ import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
+import AuditLogsPage from './pages/admin/AuditLogsPage';
+import ProfilePage from './pages/profile/ProfilePage';
+import PaymentResultPage from './pages/payment/PaymentResultPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -70,6 +73,10 @@ function AppRoutes() {
       <Route path="/services" element={<ServicesPage />} />
       <Route path="/pricing" element={<PricingPage />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
+      <Route path="/payment-result" element={<PaymentResultPage />} />
+
+      {/* Profile – accessible by all authenticated users */}
+      <Route path="/dashboard/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
       {/* Customer */}
       <Route path="/dashboard/customer" element={<ProtectedRoute allowedRoles={['customer']}><CustomerDashboard /></ProtectedRoute>} />
@@ -95,6 +102,7 @@ function AppRoutes() {
       {/* Admin */}
       <Route path="/dashboard/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagementPage /></ProtectedRoute>} />
+      <Route path="/dashboard/admin/audit" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogsPage /></ProtectedRoute>} />
 
       {/* Legacy owner routes → redirect */}
       <Route path="/dashboard/owner/*" element={<Navigate to="/gardens" replace />} />

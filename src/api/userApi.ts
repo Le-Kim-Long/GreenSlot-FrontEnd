@@ -22,6 +22,12 @@ export interface PageUserAdminDTO {
   empty: boolean;
 }
 
+export interface UserProfileUpdateDTO {
+  fullName: string;
+  phone: string;
+  address: string;
+}
+
 export const userApi = {
   getUsers: (page = 0, size = 20) =>
     apiClient.get<PageUserAdminDTO>(`/admin/users`, { params: { page, size } }).then(r => r.data),
@@ -31,4 +37,7 @@ export const userApi = {
 
   updateUserRoles: (id: number, roles: string[]) =>
     apiClient.put<UserAdminDTO>(`/admin/users/${id}/authorities`, { roles }).then(r => r.data),
+
+  updateProfile: (data: UserProfileUpdateDTO) =>
+    apiClient.patch('/users/profile', data).then(r => r.data),
 };
