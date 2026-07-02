@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Leaf, Wifi, Wrench, TrendingUp, CreditCard, Bell, Thermometer, Droplets, Sun, Activity, CheckCircle, Loader2 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
 import { iotApi } from '../../api/iotApi';
 import type { SensorTypeInfo } from '../../types/api';
-import clsx from 'clsx';
 
 const customerNav = [
   { label: 'Tổng quan', path: '/dashboard/customer', icon: <TrendingUp className="w-full h-full" /> },
@@ -22,12 +21,14 @@ const staffNav = [
 ];
 
 const SENSOR_ICONS: Record<string, JSX.Element> = {
-  SOIL_MOISTURE: <Droplets className="w-6 h-6" />,
-  PH: <Activity className="w-6 h-6" />,
-  TEMPERATURE: <Thermometer className="w-6 h-6" />,
-  HUMIDITY: <Droplets className="w-6 h-6" />,
-  LIGHT_INTENSITY: <Sun className="w-6 h-6" />,
+  SOIL_MOISTURE: <Droplets className="w-5 h-5" />,
+  PH: <Activity className="w-5 h-5" />,
+  TEMPERATURE: <Thermometer className="w-5 h-5" />,
+  HUMIDITY: <Droplets className="w-5 h-5" />,
+  LIGHT_INTENSITY: <Sun className="w-5 h-5" />,
 };
+
+const CHART_COLORS = ['#16a34a', '#2563eb', '#dc2626', '#ca8a04', '#9333ea', '#0d9488'];
 
 export default function IoTMonitoringPage() {
   const isStaffView = window.location.pathname.includes('garden-staff');
@@ -38,7 +39,6 @@ export default function IoTMonitoringPage() {
   const [deviceId] = useState('arduino-greenhouse-01');
   const [latestData, setLatestData] = useState<Record<string, number>>({});
   const [chartData, setChartData] = useState<Record<string, unknown>[]>([]);
-  const [chartMetric, setChartMetric] = useState('');
   const [loading, setLoading] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
 
@@ -50,12 +50,6 @@ export default function IoTMonitoringPage() {
     }
     iotApi.getTypes().then(setSensorTypes).catch(() => setSensorTypes([]));
   }, [isStaffView]);
-
-  useEffect(() => {
-    if (sensorTypes.length && !chartMetric) {
-      setChartMetric(sensorTypes[0].name);
-    }
-  }, [sensorTypes, chartMetric]);
 
   useEffect(() => {
     const fetchIoT = async () => {
@@ -128,25 +122,39 @@ export default function IoTMonitoringPage() {
         })}
       </div>
 
-      {chartMetric && chartData.length > 0 && (
-        <div className="card mb-6">
-          <div className="flex flex-wrap gap-2 mb-4">
-            {sensorTypes.map(st => (
-              <button key={st.name} onClick={() => setChartMetric(st.name)}
-                className={clsx('text-xs px-3 py-1.5 rounded-full border', chartMetric === st.name ? 'bg-green-600 text-white' : 'bg-white')}>
-                {st.description}
-              </button>
-            ))}
-          </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Area type="monotone" dataKey={chartMetric} stroke="#16a34a" fill="#16a34a22" />
-            </AreaChart>
-          </ResponsiveContainer>
+      {/* Cập nhật hiển thị thành nhiều LineChart riêng biệt */}
+      {chartData.length > 0 && sensorTypes.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+          {sensorTypes.map((st, index) => (
+            <div key={st.name} className="card p-4">
+              <div className="flex items-center gap-2 mb-4 text-gray-700 font-semibold">
+                <div style={{ color: CHART_COLORS[index % CHART_COLORS.length] }}>
+                  {SENSOR_ICONS[st.name] || <Activity className="w-5 h-5" />}
+                </div>
+                <span>{st.description || st.name} ({st.unit})</span>
+              </div>
+              
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="time" tick={{ fontSize: 10 }} tickMargin={8} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey={st.name} 
+                    name={st.description || st.name} 
+                    stroke={CHART_COLORS[index % CHART_COLORS.length]} 
+                    strokeWidth={2}
+                    dot={{ r: 2 }}
+                    activeDot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          ))}
         </div>
       )}
 
