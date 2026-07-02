@@ -19,6 +19,7 @@ import MyRentalsPage from './pages/customer/MyRentalsPage';
 import IoTMonitoringPage from './pages/customer/IoTMonitoringPage';
 import CareServicesPage from './pages/customer/CareServicesPage';
 import PaymentHistoryPage from './pages/customer/PaymentHistoryPage';
+import CustomerNotificationsPage from './pages/customer/CustomerNotificationsPage';
 
 import StaffDashboard from './pages/staff/StaffDashboard';
 import LocationManagement from './pages/staff/LocationManagement';
@@ -76,6 +77,7 @@ function AppRoutes() {
       <Route path="/dashboard/customer/monitoring" element={<ProtectedRoute allowedRoles={['customer']}><IoTMonitoringPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/care" element={<ProtectedRoute allowedRoles={['customer']}><CareServicesPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/payments" element={<ProtectedRoute allowedRoles={['customer']}><PaymentHistoryPage /></ProtectedRoute>} />
+      <Route path="/dashboard/customer/notifications" element={<ProtectedRoute allowedRoles={['customer']}><CustomerNotificationsPage /></ProtectedRoute>} />
 
       {/* Staff / Manager */}
       <Route path="/dashboard/staff" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffDashboard /></ProtectedRoute>} />
