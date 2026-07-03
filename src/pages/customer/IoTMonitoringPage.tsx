@@ -52,8 +52,8 @@ export default function IoTMonitoringPage() {
   }, [isStaffView]);
 
   useEffect(() => {
-    const fetchIoT = async () => {
-      setLoading(true);
+    const fetchIoT = async (silent = false) => {
+      if (!silent) setLoading(true);
       try {
         const latest = await iotApi.getLatest(deviceId);
         const history = await iotApi.getHistory(deviceId, undefined, 100);
@@ -65,20 +65,20 @@ export default function IoTMonitoringPage() {
 
         const timeMap: Record<string, Record<string, unknown>> = {};
         history.forEach(r => {
-          const time = new Date(r.recordedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+          const time = new Date(r.recordedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
           if (!timeMap[time]) timeMap[time] = { time, timestamp: new Date(r.recordedAt).getTime() };
           timeMap[time][r.sensorType] = r.value;
         });
-        setChartData(Object.values(timeMap).sort((a, b) => (a.timestamp as number) - (b.timestamp as number)).slice(-12));
+        setChartData(Object.values(timeMap).sort((a, b) => (a.timestamp as number) - (b.timestamp as number)).slice(-20));
       } catch {
         setAccessDenied(!isStaffView);
       } finally {
-        setLoading(false);
+        if (!silent) setLoading(false);
       }
     };
 
-    fetchIoT();
-    const interval = setInterval(fetchIoT, 15000);
+    fetchIoT(false);
+    const interval = setInterval(() => fetchIoT(true), 5000);
     return () => clearInterval(interval);
   }, [deviceId, isStaffView]);
 
