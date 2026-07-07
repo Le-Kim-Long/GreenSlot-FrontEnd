@@ -18,7 +18,7 @@ export const taskApi = {
     apiClient.get('/tasks/my-tasks').then(r => r.data),
 
   updateTaskStatus: (taskId: number, data: TaskStatusUpdate): Promise<GardeningTask> =>
-    apiClient.put(`/tasks/${taskId}/status`, data).then(r => r.data),
+    apiClient.patch(`/tasks/${taskId}/status`, data).then(r => r.data),
 
   reportIssue: (taskId: number, data: IssueReport): Promise<GardeningTask> =>
     apiClient.post(`/tasks/${taskId}/report-issue`, data).then(r => r.data),
