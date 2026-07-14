@@ -59,7 +59,11 @@ export default function PillarManagement() {
   };
 
   const handleSubmit = async () => {
-    if (!form.pillarCode || !form.locationId) return;
+    if (!form.pillarCode?.trim() || !form.locationId || form.locationId === 0) {
+      setError('Vui lòng nhập đầy đủ Mã trụ và chọn Cơ sở.');
+      return;
+    }
+    setError('');
     setSaving(true);
     try {
       if (editing) {

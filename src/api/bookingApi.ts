@@ -33,9 +33,6 @@ export const bookingApi = {
 
   cancelBooking: (rentalId: number): Promise<void> =>
     apiClient.patch(`/bookings/${rentalId}/cancel`).then(() => undefined),
-
-  notifyVnPayResult: (queryString: string): Promise<{ RspCode: string; Message: string }> =>
-    apiClient.get(`/payments/vnpay-ipn${queryString}`).then(r => r.data),
 };
 
 export type { BookingHistory, BookingRequest, BookingResponse, ExtensionRequest };

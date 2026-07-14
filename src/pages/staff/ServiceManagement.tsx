@@ -101,8 +101,9 @@ export default function ServiceManagement() {
       }
       closeForm();
       fetchData();
-    } catch {
-      setError('Lưu thất bại');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Lưu thất bại';
+      setError(msg);
     } finally {
       setSaving(false);
     }
@@ -110,21 +111,31 @@ export default function ServiceManagement() {
 
   const handleSubmitType = async () => {
     if (!typeForm.name?.trim() || !typeForm.serviceCategoryId || typeForm.serviceCategoryId === 0) {
-      setFormError('Vui lòng nhập tên dịch vụ và chọn danh mục.');
+      setFormError('Vui lòng nhập đầy đủ tên dịch vụ và chọn danh mục.');
       return;
     }
-
+    if (isNaN(typeForm.price) || typeForm.price < 1000 || typeForm.price % 1000 !== 0) {
+      setFormError('Giá dịch vụ không hợp lệ: Tối thiểu 1.000 VNĐ và phải là bội số của 1.000 (không chấp nhận số lẻ hoặc số âm).');
+      return;
+    }
     setSaving(true);
+    setFormError('');
     try {
       if (editingType) {
-        await managerApi.updateServiceType(editingType.id, typeForm);
+        await managerApi.updateServiceType(editingType.id, {
+          name: typeForm.name,
+          description: typeForm.description,
+          price: typeForm.price,
+          serviceCategoryId: typeForm.serviceCategoryId,
+        });
       } else {
         await managerApi.createServiceType(typeForm);
       }
       closeForm();
       fetchData();
-    } catch {
-      setError('Lưu thất bại. Vui lòng kiểm tra dữ liệu và thử lại.');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Lưu thất bại';
+      setFormError(msg);
     } finally {
       setSaving(false);
     }
@@ -271,8 +282,19 @@ export default function ServiceManagement() {
                 </select>
               </div>
               <div>
-                <label className="label">Giá (VNĐ)</label>
-                <input type="number" className="input" value={typeForm.price} onChange={e => setTypeForm(f => ({ ...f, price: Number(e.target.value) }))} />
+                <label className="label flex justify-between items-center">
+                  <span>Giá (VNĐ) *</span>
+                  <span className="text-xs font-normal text-gray-400">Tối thiểu 1.000đ, bội số 1.000đ</span>
+                </label>
+                <input 
+                  type="number" 
+                  min={1000} 
+                  step={1000} 
+                  className="input" 
+                  value={typeForm.price || ''} 
+                  onChange={e => setTypeForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }))} 
+                  placeholder="VD: 50000 (50 nghìn VNĐ)"
+                />
               </div>
               <div>
                 <label className="label">Mô tả</label>

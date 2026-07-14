@@ -40,6 +40,14 @@ export default function GardenDetailPage() {
   const handleBook = () => {
     if (!isAuthenticated) { navigate('/login'); return; }
     if (!startDate) { setBookingError('Vui lòng chọn ngày bắt đầu'); return; }
+    const chosenDate = new Date(startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (isNaN(chosenDate.getTime()) || chosenDate < today) {
+      setBookingError('Ngày bắt đầu không hợp lệ: Không được chọn ngày trong quá khứ.');
+      return;
+    }
+    setBookingError('');
     setShowBookingModal(true);
   };
 

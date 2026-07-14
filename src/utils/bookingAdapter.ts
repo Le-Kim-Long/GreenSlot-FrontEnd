@@ -8,7 +8,13 @@ function formatDate(iso: string | undefined): string {
 export function mapRentalHistory(dto: RentalHistoryDTO): BookingHistory {
   const paidTx = dto.transactions?.find(t => t.status === 'SUCCESS' || t.status === 'PAID');
   const latestTx = dto.transactions?.[0];
-  const totalPrice = dto.transactions?.reduce((sum, t) => sum + (Number(t.amount) || 0), 0) ?? 0;
+  
+  // Chỉ cộng tổng các giao dịch ĐÃ THANH TOÁN THÀNH CÔNG (SUCCESS/PAID).
+  // Nếu hợp đồng mới tạo chưa có giao dịch SUCCESS (ví dụ: PENDING booking), dùng số tiền của giao dịch ban đầu.
+  const paidTransactions = dto.transactions?.filter(t => t.status === 'SUCCESS' || t.status === 'PAID') ?? [];
+  const totalPrice = paidTransactions.length > 0
+    ? paidTransactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
+    : (Number(latestTx?.amount) || 0);
 
   return {
     id: dto.rentalId,

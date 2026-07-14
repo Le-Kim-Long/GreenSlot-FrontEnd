@@ -61,7 +61,15 @@ export default function SlotManagement() {
   };
 
   const handleSubmit = async () => {
-    if (!form.slotNumber || !form.pillarId) return;
+    if (!form.slotNumber?.trim() || !form.pillarId || form.pillarId === 0) {
+      setError('Vui lòng nhập đầy đủ Mã ô vườn và chọn Trụ.');
+      return;
+    }
+    if (isNaN(form.price) || form.price < 1000 || form.price % 1000 !== 0) {
+      setError('Giá thuê không hợp lệ: Tối thiểu 1.000 VNĐ và phải là bội số của 1.000 (không chấp nhận số lẻ hoặc số âm).');
+      return;
+    }
+    setError('');
     setSaving(true);
     try {
       if (editing) {
@@ -198,8 +206,19 @@ export default function SlotManagement() {
                 </select>
               </div>
               <div>
-                <label className="label">Giá thuê (VNĐ)</label>
-                <input type="number" className="input" value={form.price} onChange={e => setForm(f => ({ ...f, price: Number(e.target.value) }))} />
+                <label className="label flex justify-between items-center">
+                  <span>Giá thuê (VNĐ) *</span>
+                  <span className="text-xs font-normal text-gray-400">Tối thiểu 1.000đ, bội số 1.000đ</span>
+                </label>
+                <input 
+                  type="number" 
+                  min={1000} 
+                  step={1000} 
+                  className="input" 
+                  value={form.price || ''} 
+                  onChange={e => setForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }))} 
+                  placeholder="VD: 150000 (150 nghìn VNĐ)"
+                />
               </div>
               <div>
                 <label className="label">Trạng thái</label>

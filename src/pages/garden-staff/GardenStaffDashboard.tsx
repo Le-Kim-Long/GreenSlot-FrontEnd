@@ -80,25 +80,42 @@ export default function GardenStaffDashboard() {
 function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () => void }) {
   const [busy, setBusy] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showComplete, setShowComplete] = useState(false);
+  const [evidenceUrl, setEvidenceUrl] = useState('');
+  const [actionError, setActionError] = useState('');
   const [issue, setIssue] = useState({ issueTitle: '', description: '' });
 
-  const updateStatus = async (status: string, evidenceImageUrl?: string) => {
+  const updateStatus = async (status: string, imgUrl?: string) => {
+    if (status === 'COMPLETED' && (!imgUrl || !imgUrl.trim())) {
+      setActionError('Bắt buộc phải cung cấp URL hình ảnh bằng chứng (evidenceImageUrl) trước khi hoàn thành công việc.');
+      return;
+    }
+    setActionError('');
     setBusy(true);
     try {
-      await taskApi.updateTaskStatus(task.id, { status, evidenceImageUrl });
+      await taskApi.updateTaskStatus(task.id, { status, evidenceImageUrl: imgUrl });
+      setShowComplete(false);
       onUpdated();
+    } catch {
+      setActionError('Cập nhật trạng thái công việc thất bại.');
     } finally {
       setBusy(false);
     }
   };
 
   const submitReport = async () => {
-    if (!issue.issueTitle || !issue.description) return;
+    if (!issue.issueTitle?.trim() || !issue.description?.trim()) {
+      setActionError('Vui lòng nhập đầy đủ Tiêu đề và Mô tả chi tiết sự cố.');
+      return;
+    }
+    setActionError('');
     setBusy(true);
     try {
       await taskApi.reportIssue(task.id, issue);
       setShowReport(false);
       onUpdated();
+    } catch {
+      setActionError('Gửi báo cáo sự cố thất bại.');
     } finally {
       setBusy(false);
     }
@@ -106,24 +123,47 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
 
   return (
     <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+      {actionError && <div className="w-full bg-red-50 text-red-600 rounded-lg p-2 text-xs mb-2 font-medium">{actionError}</div>}
       {task.status === 'PENDING' && (
         <button disabled={busy} onClick={() => updateStatus('IN_PROGRESS')} className="btn-primary text-xs py-1.5 px-3">
           Bắt đầu làm
         </button>
       )}
       {task.status === 'IN_PROGRESS' && (
-        <button disabled={busy} onClick={() => updateStatus('COMPLETED', 'https://placeholder.evidence/photo.jpg')} className="btn-primary text-xs py-1.5 px-3">
-          <CheckCircle className="w-3 h-3 inline mr-1" /> Hoàn thành
+        <button disabled={busy} onClick={() => { setShowComplete(!showComplete); setShowReport(false); setActionError(''); }} className="btn-primary text-xs py-1.5 px-3">
+          <CheckCircle className="w-3 h-3 inline mr-1" /> Hoàn thành công việc
         </button>
       )}
-      <button disabled={busy} onClick={() => setShowReport(!showReport)} className="btn-secondary text-xs py-1.5 px-3">
+      <button disabled={busy} onClick={() => { setShowReport(!showReport); setShowComplete(false); setActionError(''); }} className="btn-secondary text-xs py-1.5 px-3">
         <AlertTriangle className="w-3 h-3 inline mr-1" /> Báo sự cố
       </button>
+      
+      {showComplete && (
+        <div className="w-full mt-2 p-3 bg-green-50 rounded-xl border border-green-200 space-y-2">
+          <label className="block text-xs font-bold text-gray-700">URL hình ảnh bằng chứng công việc (Bắt buộc) *</label>
+          <input 
+            className="input text-sm bg-white" 
+            placeholder="https://example.com/evidence-photo.jpg" 
+            value={evidenceUrl} 
+            onChange={e => setEvidenceUrl(e.target.value)} 
+          />
+          <div className="flex gap-2">
+            <button onClick={() => updateStatus('COMPLETED', evidenceUrl)} disabled={busy} className="btn-primary text-xs py-1.5 px-3 flex-1">
+              Xác nhận hoàn thành
+            </button>
+            <button onClick={() => setShowComplete(false)} className="btn-secondary text-xs py-1.5 px-3">Hủy</button>
+          </div>
+        </div>
+      )}
+
       {showReport && (
-        <div className="w-full mt-2 space-y-2">
-          <input className="input text-sm" placeholder="Tiêu đề sự cố" value={issue.issueTitle} onChange={e => setIssue(p => ({ ...p, issueTitle: e.target.value }))} />
-          <textarea className="input text-sm resize-none" rows={2} placeholder="Mô tả" value={issue.description} onChange={e => setIssue(p => ({ ...p, description: e.target.value }))} />
-          <button onClick={submitReport} disabled={busy} className="btn-primary text-xs">Gửi báo cáo</button>
+        <div className="w-full mt-2 p-3 bg-orange-50 rounded-xl border border-orange-200 space-y-2">
+          <input className="input text-sm bg-white" placeholder="Tiêu đề sự cố *" value={issue.issueTitle} onChange={e => setIssue(p => ({ ...p, issueTitle: e.target.value }))} />
+          <textarea className="input text-sm resize-none bg-white" rows={2} placeholder="Mô tả chi tiết sự cố *" value={issue.description} onChange={e => setIssue(p => ({ ...p, description: e.target.value }))} />
+          <div className="flex gap-2">
+            <button onClick={submitReport} disabled={busy} className="btn-primary text-xs py-1.5 px-3 flex-1">Gửi báo cáo</button>
+            <button onClick={() => setShowReport(false)} className="btn-secondary text-xs py-1.5 px-3">Hủy</button>
+          </div>
         </div>
       )}
     </div>

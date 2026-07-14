@@ -54,7 +54,15 @@ export default function LocationManagement() {
   };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.address) return;
+    if (!form.name?.trim() || !form.address?.trim()) {
+      setError('Vui lòng nhập đầy đủ Tên cơ sở và Địa chỉ.');
+      return;
+    }
+    if (form.area < 0) {
+      setError('Diện tích cơ sở không được là số âm.');
+      return;
+    }
+    setError('');
     setSaving(true);
     try {
       if (editing) {

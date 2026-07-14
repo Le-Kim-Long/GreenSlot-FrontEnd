@@ -65,7 +65,14 @@ export default function CareServicesPage() {
   }, [searchParams]);
 
   const handleSubmit = async () => {
-    if (!form.slotId || !form.serviceTypeId) return;
+    if (!form.slotId || form.slotId <= 0) {
+      setError('Vui lòng chọn hoặc nhập chính xác Slot ID hợp lệ.');
+      return;
+    }
+    if (!form.serviceTypeId || form.serviceTypeId <= 0) {
+      setError('Vui lòng chọn hoặc nhập Mã dịch vụ hợp lệ.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
