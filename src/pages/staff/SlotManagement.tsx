@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Grid3X3, Plus, Edit2, X, Search, DollarSign, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Grid3X3, Plus, Edit2, X, Search, DollarSign, Trash2, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
@@ -30,6 +30,7 @@ export default function SlotManagement() {
   const [editing, setEditing] = useState<Slot | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false); // 👉 State loading lấy chi tiết
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<Slot | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -50,14 +51,36 @@ export default function SlotManagement() {
 
   const openCreate = () => {
     setEditing(null);
+    setError('');
     setForm({ ...emptyForm, pillarId: pillars[0]?.id || 0 });
     setShowForm(true);
   };
 
-  const openEdit = (s: Slot) => {
-    setEditing(s);
-    setForm({ slotNumber: s.slotNumber, status: s.status, price: s.price, pillarId: s.pillarId });
+  // 👉 Cập nhật openEdit thành async để gọi API getSlot
+  const openEdit = async (s: Slot) => {
+    setError('');
+    setEditing(s); // Set tạm để Modal hiện đúng tiêu đề
+    setForm(emptyForm); // Reset form
     setShowForm(true);
+    setLoadingDetail(true);
+
+    try {
+      // 💥 Kéo dữ liệu mới nhất của ô vườn từ server
+      const freshSlot = await managerApi.getSlot(s.id);
+      
+      setEditing(freshSlot);
+      setForm({ 
+        slotNumber: freshSlot.slotNumber, 
+        status: freshSlot.status, 
+        price: freshSlot.price, 
+        pillarId: freshSlot.pillarId 
+      });
+    } catch (err) {
+      setError('Không thể tải thông tin chi tiết mới nhất từ máy chủ.');
+      setShowForm(false); // Đóng modal nếu lỗi
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -193,49 +216,58 @@ export default function SlotManagement() {
               <h2 className="text-xl font-bold">{editing ? 'Sửa ô vườn' : 'Thêm ô vườn mới'}</h2>
               <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="label">Mã ô vườn *</label>
-                <input className="input" value={form.slotNumber} onChange={e => setForm(f => ({ ...f, slotNumber: e.target.value }))} placeholder="VD: S-Q1-01-A" />
+            
+            {/* 👉 UI Loading cho trạng thái tải chi tiết */}
+            {loadingDetail ? (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                <p className="text-sm">Đang tải chi tiết ô vườn...</p>
               </div>
-              <div>
-                <label className="label">Trụ *</label>
-                <select className="input" value={form.pillarId} onChange={e => setForm(f => ({ ...f, pillarId: Number(e.target.value) }))}>
-                  <option value={0} disabled>Chọn trụ</option>
-                  {pillars.map(p => <option key={p.id} value={p.id}>{p.pillarCode}</option>)}
-                </select>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="label">Mã ô vườn *</label>
+                  <input className="input" value={form.slotNumber} onChange={e => setForm(f => ({ ...f, slotNumber: e.target.value }))} placeholder="VD: S-Q1-01-A" />
+                </div>
+                <div>
+                  <label className="label">Trụ *</label>
+                  <select className="input" value={form.pillarId} onChange={e => setForm(f => ({ ...f, pillarId: Number(e.target.value) }))}>
+                    <option value={0} disabled>Chọn trụ</option>
+                    {pillars.map(p => <option key={p.id} value={p.id}>{p.pillarCode}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label flex justify-between items-center">
+                    <span>Giá thuê (VNĐ) *</span>
+                    <span className="text-xs font-normal text-gray-400">Tối thiểu 1.000đ, bội số 1.000đ</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    min={1000} 
+                    step={1000} 
+                    className="input" 
+                    value={form.price || ''} 
+                    onChange={e => setForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }))} 
+                    placeholder="VD: 150000 (150 nghìn VNĐ)"
+                  />
+                </div>
+                <div>
+                  <label className="label">Trạng thái</label>
+                  <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                    <option value="AVAILABLE">Trống</option>
+                    <option value="RENTED">Đang thuê</option>
+                    <option value="MAINTENANCE">Bảo trì</option>
+                    <option value="INACTIVE">Ngưng</option>
+                  </select>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1 py-2.5">
+                    {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}
+                  </button>
+                  <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Hủy</button>
+                </div>
               </div>
-              <div>
-                <label className="label flex justify-between items-center">
-                  <span>Giá thuê (VNĐ) *</span>
-                  <span className="text-xs font-normal text-gray-400">Tối thiểu 1.000đ, bội số 1.000đ</span>
-                </label>
-                <input 
-                  type="number" 
-                  min={1000} 
-                  step={1000} 
-                  className="input" 
-                  value={form.price || ''} 
-                  onChange={e => setForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }))} 
-                  placeholder="VD: 150000 (150 nghìn VNĐ)"
-                />
-              </div>
-              <div>
-                <label className="label">Trạng thái</label>
-                <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                  <option value="AVAILABLE">Trống</option>
-                  <option value="RENTED">Đang thuê</option>
-                  <option value="MAINTENANCE">Bảo trì</option>
-                  <option value="INACTIVE">Ngưng</option>
-                </select>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1 py-2.5">
-                  {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}
-                </button>
-                <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Hủy</button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Columns3, Plus, Edit2, X, Search, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Columns3, Plus, Edit2, X, Search, Trash2, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
@@ -28,6 +28,7 @@ export default function PillarManagement() {
   const [editing, setEditing] = useState<Pillar | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false); // 👉 State phục vụ loading gọi API Detail
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<Pillar | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -48,14 +49,36 @@ export default function PillarManagement() {
 
   const openCreate = () => {
     setEditing(null);
+    setError('');
     setForm({ ...emptyForm, locationId: locations[0]?.id || 0 });
     setShowForm(true);
   };
 
-  const openEdit = (p: Pillar) => {
-    setEditing(p);
-    setForm({ pillarCode: p.pillarCode, status: p.status, locationId: p.locationId });
+  // 👉 Cập nhật hàm openEdit thành async để gọi API chi tiết từ Server
+  const openEdit = async (p: Pillar) => {
+    setError('');
+    setEditing(p); // Set tạm thời để Modal hiển thị tiêu đề "Sửa trụ vườn"
+    setForm(emptyForm); // Reset form về rỗng trong lúc chờ tải
     setShowForm(true);
+    setLoadingDetail(true);
+
+    try {
+      // 💥 Gọi API lấy chi tiết thực thể theo ID mới nhất từ server
+      const freshPillar = await managerApi.getPillar(p.id);
+      
+      // Khởi tạo dữ liệu form từ API detail trả về
+      setEditing(freshPillar);
+      setForm({ 
+        pillarCode: freshPillar.pillarCode, 
+        status: freshPillar.status, 
+        locationId: freshPillar.locationId 
+      });
+    } catch (err) {
+      setError('Không thể tải thông tin chi tiết mới nhất từ máy chủ.');
+      setShowForm(false); // Đóng form nếu lỗi dữ liệu không tồn tại
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -145,8 +168,8 @@ export default function PillarManagement() {
                   </td>
                   <td className="py-3 text-gray-600">{getLocationName(p.locationId)}</td>
                   <td className="py-3">
-                    <span className={clsx('text-xs px-2 py-1 rounded-full font-medium', p.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600')}>
-                      {p.status === 'ACTIVE' ? 'Hoạt động' : p.status}
+                    <span className={clsx('text-xs px-2 py-1 rounded-full font-medium', p.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : p.status === 'MAINTENANCE' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600')}>
+                      {p.status === 'ACTIVE' ? 'Hoạt động' : p.status === 'MAINTENANCE' ? 'Bảo trì' : p.status}
                     </span>
                   </td>
                   <td className="py-3">
@@ -193,32 +216,41 @@ export default function PillarManagement() {
               <h2 className="text-xl font-bold">{editing ? 'Sửa trụ vườn' : 'Thêm trụ mới'}</h2>
               <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="label">Mã trụ *</label>
-                <input className="input" value={form.pillarCode} onChange={e => setForm(f => ({ ...f, pillarCode: e.target.value }))} placeholder="VD: P-Q1-01" />
+            
+            {/* 👉 Tách UI: Nếu đang tải chi tiết thì hiện Spinner Loading, ngược lại mới hiện Form điền */}
+            {loadingDetail ? (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                <p className="text-sm">Đang tải dữ liệu thực thể từ Server...</p>
               </div>
-              <div>
-                <label className="label">Cơ sở *</label>
-                <select className="input" value={form.locationId} onChange={e => setForm(f => ({ ...f, locationId: Number(e.target.value) }))}>
-                  <option value={0} disabled>Chọn cơ sở</option>
-                  {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                </select>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="label">Mã trụ *</label>
+                  <input className="input" value={form.pillarCode} onChange={e => setForm(f => ({ ...f, pillarCode: e.target.value }))} placeholder="VD: P-Q1-01" />
+                </div>
+                <div>
+                  <label className="label">Cơ sở *</label>
+                  <select className="input" value={form.locationId} onChange={e => setForm(f => ({ ...f, locationId: Number(e.target.value) }))}>
+                    <option value={0} disabled>Chọn cơ sở</option>
+                    {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Trạng thái</label>
+                  <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                    <option value="ACTIVE">Hoạt động</option>
+                    <option value="MAINTENANCE">Bảo trì</option>
+                  </select>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1 py-2.5">
+                    {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}
+                  </button>
+                  <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Hủy</button>
+                </div>
               </div>
-              <div>
-                <label className="label">Trạng thái</label>
-                <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                  <option value="ACTIVE">Hoạt động</option>
-                  <option value="INACTIVE">Ngưng</option>
-                </select>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1 py-2.5">
-                  {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}
-                </button>
-                <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Hủy</button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

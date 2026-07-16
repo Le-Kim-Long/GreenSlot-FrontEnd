@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, X, Tag, Layers } from 'lucide-react';
+import { Plus, Edit2, X, Tag, Layers, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
@@ -33,10 +33,11 @@ export default function ServiceManagement() {
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false); // 👉 State loading cho lúc lấy chi tiết
   const [editingCat, setEditingCat] = useState<ServiceCategory | null>(null);
   const [editingType, setEditingType] = useState<ServiceType | null>(null);
   const [catForm, setCatForm] = useState({ name: '', description: '' });
-  const [typeForm, setTypeForm] = useState({ name: '', description: '', price: 0, serviceCategoryId: categories[0]?.id || 0 });
+  const [typeForm, setTypeForm] = useState({ name: '', description: '', price: 0, serviceCategoryId: 0 });
 
   const fetchData = async () => {
     try {
@@ -58,10 +59,27 @@ export default function ServiceManagement() {
     setShowForm(true);
   };
 
-  const openEditCat = (c: ServiceCategory) => {
+  // 👉 Lấy chi tiết Danh mục (Category) từ Server
+  const openEditCat = async (c: ServiceCategory) => {
+    setError('');
     setEditingCat(c);
-    setCatForm({ name: c.name, description: c.description || '' });
+    setCatForm({ name: '', description: '' });
     setShowForm(true);
+    setLoadingDetail(true);
+
+    try {
+      const freshCat = await managerApi.getServiceCategory(c.id);
+      setEditingCat(freshCat);
+      setCatForm({ 
+        name: freshCat.name || freshCat.categoryName || '', 
+        description: freshCat.description || '' 
+      });
+    } catch (err) {
+      setError('Không thể tải thông tin chi tiết danh mục từ máy chủ.');
+      setShowForm(false);
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const openCreateType = () => {
@@ -71,16 +89,29 @@ export default function ServiceManagement() {
     setShowForm(true);
   };
 
-  const openEditType = (t: ServiceType) => {
-    setEditingType(t);
+  // 👉 Lấy chi tiết Loại dịch vụ (Type) từ Server
+  const openEditType = async (t: ServiceType) => {
     setFormError('');
-    setTypeForm({
-      name: t.name || t.serviceName || '',
-      description: t.description || '',
-      price: t.price || 0,
-      serviceCategoryId: t.serviceCategoryId || t.categoryId || categories[0]?.id || 0,
-    });
+    setEditingType(t);
+    setTypeForm({ name: '', description: '', price: 0, serviceCategoryId: 0 });
     setShowForm(true);
+    setLoadingDetail(true);
+
+    try {
+      const freshType = await managerApi.getServiceType(t.id);
+      setEditingType(freshType);
+      setTypeForm({
+        name: freshType.name || freshType.serviceName || '',
+        description: freshType.description || '',
+        price: freshType.price || 0,
+        serviceCategoryId: freshType.serviceCategoryId || freshType.categoryId || categories[0]?.id || 0,
+      });
+    } catch (err) {
+      setFormError('Không thể tải thông tin chi tiết dịch vụ từ máy chủ.');
+      setShowForm(false);
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const closeForm = () => {
@@ -227,7 +258,7 @@ export default function ServiceManagement() {
         )
       )}
 
-      {/* Category form */}
+      {/* Category form Modal */}
       {showForm && activeTab === 'categories' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
@@ -235,27 +266,35 @@ export default function ServiceManagement() {
               <h2 className="text-xl font-bold">{editingCat ? 'Sửa danh mục' : 'Thêm danh mục'}</h2>
               <button onClick={closeForm} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="label">Tên danh mục *</label>
-                <input className="input" value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} placeholder="VD: Chăm sóc cây" />
+            
+            {loadingDetail ? (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                <p className="text-sm">Đang tải chi tiết danh mục...</p>
               </div>
-              <div>
-                <label className="label">Mô tả</label>
-                <textarea className="input" rows={3} value={catForm.description} onChange={e => setCatForm(f => ({ ...f, description: e.target.value }))} placeholder="Mô tả danh mục" />
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="label">Tên danh mục *</label>
+                  <input className="input" value={catForm.name} onChange={e => setCatForm(f => ({ ...f, name: e.target.value }))} placeholder="VD: Chăm sóc cây" />
+                </div>
+                <div>
+                  <label className="label">Mô tả</label>
+                  <textarea className="input" rows={3} value={catForm.description} onChange={e => setCatForm(f => ({ ...f, description: e.target.value }))} placeholder="Mô tả danh mục" />
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={handleSubmitCat} disabled={saving} className="btn-primary flex-1 py-2.5">
+                    {saving ? 'Đang lưu...' : editingCat ? 'Cập nhật' : 'Tạo mới'}
+                  </button>
+                  <button onClick={closeForm} className="btn-secondary px-4">Hủy</button>
+                </div>
               </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={handleSubmitCat} disabled={saving} className="btn-primary flex-1 py-2.5">
-                  {saving ? 'Đang lưu...' : editingCat ? 'Cập nhật' : 'Tạo mới'}
-                </button>
-                <button onClick={closeForm} className="btn-secondary px-4">Hủy</button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Type form */}
+      {/* Type form Modal */}
       {showForm && activeTab === 'types' && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
@@ -263,51 +302,59 @@ export default function ServiceManagement() {
               <h2 className="text-xl font-bold">{editingType ? 'Sửa loại DV' : 'Thêm loại DV'}</h2>
               <button onClick={closeForm} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="label">Tên *</label>
-                <input className="input" value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} placeholder="VD: Tưới cây tự động" />
+            
+            {loadingDetail ? (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                <p className="text-sm">Đang tải chi tiết dịch vụ...</p>
               </div>
-              <div>
-                <label className="label">Danh mục *</label>
-                <select className="input" value={typeForm.serviceCategoryId} onChange={e => setTypeForm(f => ({ ...f, serviceCategoryId: Number(e.target.value) }))}>
-                  {categories.length > 0 ? (
-                    <>
-                      <option value={0} disabled>Chọn danh mục</option>
-                      {categories.map(c => <option key={c.id} value={c.id}>{c.name || c.categoryName}</option>)}
-                    </>
-                  ) : (
-                    <option value={0} disabled>Chưa có danh mục</option>
-                  )}
-                </select>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="label">Tên *</label>
+                  <input className="input" value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} placeholder="VD: Tưới cây tự động" />
+                </div>
+                <div>
+                  <label className="label">Danh mục *</label>
+                  <select className="input" value={typeForm.serviceCategoryId} onChange={e => setTypeForm(f => ({ ...f, serviceCategoryId: Number(e.target.value) }))}>
+                    {categories.length > 0 ? (
+                      <>
+                        <option value={0} disabled>Chọn danh mục</option>
+                        {categories.map(c => <option key={c.id} value={c.id}>{c.name || c.categoryName}</option>)}
+                      </>
+                    ) : (
+                      <option value={0} disabled>Chưa có danh mục</option>
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <label className="label flex justify-between items-center">
+                    <span>Giá (VNĐ) *</span>
+                    <span className="text-xs font-normal text-gray-400">Tối thiểu 1.000đ, bội số 1.000đ</span>
+                  </label>
+                  <input 
+                    type="number" 
+                    min={1000} 
+                    step={1000} 
+                    className="input" 
+                    value={typeForm.price || ''} 
+                    onChange={e => setTypeForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }))} 
+                    placeholder="VD: 50000 (50 nghìn VNĐ)"
+                  />
+                </div>
+                <div>
+                  <label className="label">Mô tả</label>
+                  <textarea className="input" rows={3} value={typeForm.description} onChange={e => setTypeForm(f => ({ ...f, description: e.target.value }))} placeholder="Mô tả dịch vụ" />
+                </div>
+                {formError && <div className="text-sm text-red-600 mb-2">{formError}</div>}
+                <div className="flex gap-3 pt-2">
+                  <button onClick={handleSubmitType} disabled={saving} className="btn-primary flex-1 py-2.5">
+                    {saving ? 'Đang lưu...' : editingType ? 'Cập nhật' : 'Tạo mới'}
+                  </button>
+                  <button onClick={closeForm} className="btn-secondary px-4">Hủy</button>
+                </div>
               </div>
-              <div>
-                <label className="label flex justify-between items-center">
-                  <span>Giá (VNĐ) *</span>
-                  <span className="text-xs font-normal text-gray-400">Tối thiểu 1.000đ, bội số 1.000đ</span>
-                </label>
-                <input 
-                  type="number" 
-                  min={1000} 
-                  step={1000} 
-                  className="input" 
-                  value={typeForm.price || ''} 
-                  onChange={e => setTypeForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }))} 
-                  placeholder="VD: 50000 (50 nghìn VNĐ)"
-                />
-              </div>
-              <div>
-                <label className="label">Mô tả</label>
-                <textarea className="input" rows={3} value={typeForm.description} onChange={e => setTypeForm(f => ({ ...f, description: e.target.value }))} placeholder="Mô tả dịch vụ" />
-              </div>
-              {formError && <div className="text-sm text-red-600 mb-2">{formError}</div>}
-              <div className="flex gap-3 pt-2">
-                <button onClick={handleSubmitType} disabled={saving} className="btn-primary flex-1 py-2.5">
-                  {saving ? 'Đang lưu...' : editingType ? 'Cập nhật' : 'Tạo mới'}
-                </button>
-                <button onClick={closeForm} className="btn-secondary px-4">Hủy</button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

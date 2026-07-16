@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { MapPin, Plus, Edit2, X, Search, Phone, Ruler, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Plus, Edit2, X, Search, Phone, Ruler, Trash2, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
@@ -24,6 +24,7 @@ export default function LocationManagement() {
   const [editing, setEditing] = useState<Location | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false); // 👉 State loading cho lúc lấy chi tiết
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<Location | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -43,14 +44,37 @@ export default function LocationManagement() {
 
   const openCreate = () => {
     setEditing(null);
+    setError('');
     setForm(emptyForm);
     setShowForm(true);
   };
 
-  const openEdit = (loc: Location) => {
-    setEditing(loc);
-    setForm({ name: loc.name, address: loc.address, contactPhone: loc.contactPhone, status: loc.status, area: loc.area });
+  // 👉 Cập nhật openEdit thành async để lấy data chi tiết từ Server
+  const openEdit = async (loc: Location) => {
+    setError('');
+    setEditing(loc); // Đặt tạm thời để tiêu đề Modal hiện chữ "Sửa cơ sở"
+    setForm(emptyForm); // Reset dữ liệu form trong lúc chờ
     setShowForm(true);
+    setLoadingDetail(true);
+
+    try {
+      // 💥 Gọi API detail lấy dữ liệu mới nhất
+      const freshLoc = await managerApi.getLocation(loc.id);
+      
+      setEditing(freshLoc);
+      setForm({ 
+        name: freshLoc.name, 
+        address: freshLoc.address, 
+        contactPhone: freshLoc.contactPhone, 
+        status: freshLoc.status, 
+        area: freshLoc.area 
+      });
+    } catch (err) {
+      setError('Không thể tải thông tin chi tiết mới nhất từ máy chủ.');
+      setShowForm(false); // Tắt form nếu lỗi không lấy được dữ liệu
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -177,39 +201,48 @@ export default function LocationManagement() {
               <h2 className="text-xl font-bold">{editing ? 'Sửa cơ sở' : 'Thêm cơ sở mới'}</h2>
               <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="label">Tên cơ sở *</label>
-                <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="VD: Cơ sở Quận 1" />
+            
+            {/* 👉 Tách UI: Spinner loading vs Form điền liệu */}
+            {loadingDetail ? (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+                <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+                <p className="text-sm">Đang tải chi tiết cơ sở...</p>
               </div>
-              <div>
-                <label className="label">Địa chỉ *</label>
-                <input className="input" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Nhập địa chỉ" />
-              </div>
-              <div>
-                <label className="label">Số điện thoại</label>
-                <input className="input" value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="0901234567" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+            ) : (
+              <div className="space-y-4">
                 <div>
-                  <label className="label">Diện tích (m²)</label>
-                  <input type="number" className="input" value={form.area} onChange={e => setForm(f => ({ ...f, area: Number(e.target.value) }))} />
+                  <label className="label">Tên cơ sở *</label>
+                  <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="VD: Cơ sở Quận 1" />
                 </div>
                 <div>
-                  <label className="label">Trạng thái</label>
-                  <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                    <option value="ACTIVE">Hoạt động</option>
-                    <option value="INACTIVE">Ngưng</option>
-                  </select>
+                  <label className="label">Địa chỉ *</label>
+                  <input className="input" value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Nhập địa chỉ" />
+                </div>
+                <div>
+                  <label className="label">Số điện thoại</label>
+                  <input className="input" value={form.contactPhone} onChange={e => setForm(f => ({ ...f, contactPhone: e.target.value }))} placeholder="0901234567" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="label">Diện tích (m²)</label>
+                    <input type="number" className="input" value={form.area} onChange={e => setForm(f => ({ ...f, area: Number(e.target.value) }))} />
+                  </div>
+                  <div>
+                    <label className="label">Trạng thái</label>
+                    <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                      <option value="ACTIVE">Hoạt động</option>
+                      <option value="INACTIVE">Ngưng</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1 py-2.5">
+                    {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}
+                  </button>
+                  <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Hủy</button>
                 </div>
               </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1 py-2.5">
-                  {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}
-                </button>
-                <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Hủy</button>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       )}

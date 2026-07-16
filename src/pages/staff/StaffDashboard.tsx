@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Columns3, Grid3X3, Wrench, DollarSign, TrendingUp, Calendar, ArrowRight } from 'lucide-react';
+import { MapPin, Columns3, Grid3X3, Wrench, DollarSign, TrendingUp, Calendar, ArrowRight, ClipboardList } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
+import { taskApi } from '../../api/taskApi';
 
 interface Stats {
   locations: number;
@@ -16,17 +17,18 @@ interface Stats {
   serviceTypes: number;
   activeRentals: number;
   totalRevenue: number;
+  totalTasks: number;
 }
 
 export default function StaffDashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<Stats>({ locations: 0, pillars: 0, slots: 0, availableSlots: 0, serviceCategories: 0, serviceTypes: 0, activeRentals: 0, totalRevenue: 0 });
+  const [stats, setStats] = useState<Stats>({ locations: 0, pillars: 0, slots: 0, availableSlots: 0, serviceCategories: 0, serviceTypes: 0, activeRentals: 0, totalRevenue: 0, totalTasks: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [locations, pillars, slots, categories, types, rentals, revenue] = await Promise.all([
+        const [locations, pillars, slots, categories, types, rentals, revenue, tasks] = await Promise.all([
           managerApi.getLocations().catch(() => []),
           managerApi.getPillars().catch(() => []),
           managerApi.getSlots().catch(() => []),
@@ -34,6 +36,7 @@ export default function StaffDashboard() {
           managerApi.getServiceTypes().catch(() => []),
           managerApi.getActiveRentals().catch(() => []),
           managerApi.getRevenue('2024-01-01', new Date().toISOString().split('T')[0]).catch(() => ({ totalRevenue: 0 })),
+          Promise.resolve([]),
         ]);
         setStats({
           locations: locations.length,
@@ -44,6 +47,7 @@ export default function StaffDashboard() {
           serviceTypes: types.length,
           activeRentals: rentals.length,
           totalRevenue: revenue.totalRevenue || 0,
+          totalTasks: tasks.length || 0,
         });
       } catch { /* ignore */ }
       setLoading(false);
@@ -57,6 +61,7 @@ export default function StaffDashboard() {
     { label: 'Ô vườn', value: `${stats.availableSlots}/${stats.slots}`, icon: <Grid3X3 className="w-6 h-6" />, bg: 'bg-blue-50 text-blue-600', link: '/dashboard/staff/slots', sublabel: 'trống/tổng' },
     { label: 'Đang thuê', value: stats.activeRentals, icon: <Calendar className="w-6 h-6" />, bg: 'bg-orange-50 text-orange-600', link: '/dashboard/staff/rentals' },
     { label: 'Loại dịch vụ', value: stats.serviceTypes, icon: <Wrench className="w-6 h-6" />, bg: 'bg-cyan-50 text-cyan-600', link: '/dashboard/staff/services' },
+    { label: 'Công việc', value: stats.totalTasks, icon: <ClipboardList className="w-6 h-6" />, bg: 'bg-yellow-50 text-yellow-600', link: '/dashboard/staff/tasks' },
     { label: 'Doanh thu', value: `${(stats.totalRevenue / 1000000).toFixed(1)}tr`, icon: <DollarSign className="w-6 h-6" />, bg: 'bg-emerald-50 text-emerald-600', link: '/dashboard/staff/revenue' },
   ];
 
