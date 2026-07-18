@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, X, Tag, Layers, Loader2 } from 'lucide-react';
+import { Plus, Edit2, X, Tag, Layers, Loader2, Trash2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
@@ -38,6 +38,9 @@ export default function ServiceManagement() {
   const [editingType, setEditingType] = useState<ServiceType | null>(null);
   const [catForm, setCatForm] = useState({ name: '', description: '' });
   const [typeForm, setTypeForm] = useState({ name: '', description: '', price: 0, serviceCategoryId: 0 });
+  const [confirmDeleteCat, setConfirmDeleteCat] = useState<ServiceCategory | null>(null);
+  const [confirmDeleteType, setConfirmDeleteType] = useState<ServiceType | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -172,6 +175,34 @@ export default function ServiceManagement() {
     }
   };
 
+  const handleDeleteCat = async () => {
+    if (!confirmDeleteCat) return;
+    setDeleting(true);
+    try {
+      await managerApi.deleteServiceCategory(confirmDeleteCat.id);
+      setConfirmDeleteCat(null);
+      fetchData();
+    } catch {
+      setError('Xóa thất bại. Danh mục có thể đang được sử dụng.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteType = async () => {
+    if (!confirmDeleteType) return;
+    setDeleting(true);
+    try {
+      await managerApi.deleteServiceType(confirmDeleteType.id);
+      setConfirmDeleteType(null);
+      fetchData();
+    } catch {
+      setError('Xóa thất bại. Loại dịch vụ có thể đang được sử dụng.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const getCatName = (id?: number) => categories.find(c => c.id === id)?.name || categories.find(c => c.id === id)?.categoryName || '';
 
   return (
@@ -208,9 +239,14 @@ export default function ServiceManagement() {
                   <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
                     <Layers className="w-5 h-5 text-orange-600" />
                   </div>
-                  <button onClick={() => openEditCat(c)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600">
-                    <Edit2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEditCat(c)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600">
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setConfirmDeleteCat(c)} className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-1">{c.name || c.categoryName}</h3>
                 {c.description && <p className="text-sm text-gray-500">{c.description}</p>}
@@ -246,9 +282,14 @@ export default function ServiceManagement() {
                     <td className="py-3 text-gray-600">{getCatName(t.serviceCategoryId)}</td>
                     <td className="py-3 font-semibold text-green-600">{t.price?.toLocaleString('vi-VN')}đ</td>
                     <td className="py-3">
-                      <button onClick={() => openEditType(t)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => openEditType(t)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setConfirmDeleteType(t)} className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -256,6 +297,46 @@ export default function ServiceManagement() {
             </table>
           </div>
         )
+      )}
+
+      {confirmDeleteCat && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-center mb-2">Xóa danh mục?</h3>
+            <p className="text-sm text-gray-500 text-center mb-6">
+              Bạn có chắc muốn xóa danh mục <span className="font-semibold text-gray-900">"{confirmDeleteCat.name || confirmDeleteCat.categoryName}"</span>? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={handleDeleteCat} disabled={deleting} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl transition-colors">
+                {deleting ? 'Đang xóa...' : 'Xóa'}
+              </button>
+              <button onClick={() => setConfirmDeleteCat(null)} className="flex-1 btn-secondary">Hủy</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteType && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-center mb-2">Xóa loại dịch vụ?</h3>
+            <p className="text-sm text-gray-500 text-center mb-6">
+              Bạn có chắc muốn xóa <span className="font-semibold text-gray-900">"{confirmDeleteType.name || confirmDeleteType.serviceName}"</span>? Hành động này không thể hoàn tác.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={handleDeleteType} disabled={deleting} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl transition-colors">
+                {deleting ? 'Đang xóa...' : 'Xóa'}
+              </button>
+              <button onClick={() => setConfirmDeleteType(null)} className="flex-1 btn-secondary">Hủy</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Category form Modal */}

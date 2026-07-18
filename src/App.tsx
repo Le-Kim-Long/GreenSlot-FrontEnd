@@ -29,6 +29,7 @@ import ServiceManagement from './pages/staff/ServiceManagement';
 import ActiveRentals from './pages/staff/ActiveRentals';
 import RevenueAnalytics from './pages/staff/RevenueAnalytics';
 import TaskManagement from './pages/staff/TaskManagement';
+import StaffListPage from './pages/staff/StaffListPage';
 
 import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
 
@@ -97,6 +98,7 @@ function AppRoutes() {
       <Route path="/dashboard/staff/rentals" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><ActiveRentals /></ProtectedRoute>} />
       <Route path="/dashboard/staff/revenue" element={<ProtectedRoute allowedRoles={['manager']}><RevenueAnalytics /></ProtectedRoute>} />
       <Route path="/dashboard/staff/tasks" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><TaskManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/staffs" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffListPage /></ProtectedRoute>} />
 
       {/* Garden Staff */}
       <Route path="/dashboard/garden-staff" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffDashboard /></ProtectedRoute>} />

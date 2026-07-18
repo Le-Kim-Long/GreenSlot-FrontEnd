@@ -1,5 +1,5 @@
 import apiClient from './axiosConfig';
-import type { ServiceCategory, ServiceType } from '../types/api';
+import type { ServiceCategory, ServiceType, UserAdmin } from '../types/api';
 
 function mapServiceCategory(item: any): ServiceCategory {
   return {
@@ -51,6 +51,7 @@ export const managerApi = {
     apiClient.post('/manager/service-categories', { categoryName: data.name, description: data.description }).then(r => mapServiceCategory(r.data)),
   updateServiceCategory: (id: number, data: { name: string; description?: string }) =>
     apiClient.put(`/manager/service-categories/${id}`, { categoryName: data.name, description: data.description }).then(r => mapServiceCategory(r.data)),
+  deleteServiceCategory: (id: number) => apiClient.delete(`/manager/service-categories/${id}`).then(r => r.data),
 
   // Service Types
   getServiceTypes: () => apiClient.get('/manager/service-types').then(r => (r.data || []).map(mapServiceType)),
@@ -69,6 +70,7 @@ export const managerApi = {
       price: data.price,
       categoryId: data.serviceCategoryId ?? data.categoryId,
     }).then(r => mapServiceType(r.data)),
+  deleteServiceType: (id: number) => apiClient.delete(`/manager/service-types/${id}`).then(r => r.data),
 
   // Active Rentals
   getActiveRentals: () => apiClient.get('/manager/active-rentals').then(r => r.data),
@@ -76,4 +78,8 @@ export const managerApi = {
   // Revenue Analytics
   getRevenue: (startDate: string, endDate: string) =>
     apiClient.get(`/manager/analytics/revenue?startDate=${startDate}&endDate=${endDate}`).then(r => r.data),
+
+  // Garden Staffs (isolated by location)
+  getStaffs: (locationId: number): Promise<UserAdmin[]> =>
+    apiClient.get<UserAdmin[]>('/manager/staffs', { params: { locationId } }).then(r => r.data),
 };
