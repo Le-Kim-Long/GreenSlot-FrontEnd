@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ClipboardList, Wifi, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { ClipboardList, Wifi, CheckCircle, AlertTriangle, Loader2, ShieldAlert } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { taskApi } from '../../api/taskApi';
 import type { GardeningTask } from '../../types/api';
@@ -8,7 +8,7 @@ import clsx from 'clsx';
 const navItems = [
   { label: 'Công việc', path: '/dashboard/garden-staff', icon: <ClipboardList className="w-full h-full" /> },
   { label: 'Giám sát IoT', path: '/dashboard/garden-staff/monitoring', icon: <Wifi className="w-full h-full" /> },
-];
+  { label: 'Cảnh báo IoT', path: '/dashboard/garden-staff/alerts', icon: <ShieldAlert className="w-full h-full" /> }];
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
   PENDING: { label: 'Chờ xử lý', cls: 'badge-yellow' },

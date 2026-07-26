@@ -20,6 +20,7 @@ import IoTMonitoringPage from './pages/customer/IoTMonitoringPage';
 import CareServicesPage from './pages/customer/CareServicesPage';
 import PaymentHistoryPage from './pages/customer/PaymentHistoryPage';
 import CustomerNotificationsPage from './pages/customer/CustomerNotificationsPage';
+import TreePlantingRequestPage from './pages/customer/CustomerTreePlanting';
 
 import StaffDashboard from './pages/staff/StaffDashboard';
 import LocationManagement from './pages/staff/LocationManagement';
@@ -30,8 +31,13 @@ import ActiveRentals from './pages/staff/ActiveRentals';
 import RevenueAnalytics from './pages/staff/RevenueAnalytics';
 import TaskManagement from './pages/staff/TaskManagement';
 import StaffListPage from './pages/staff/StaffListPage';
+import EquipmentManagement from './pages/staff/EquipmentManagement';
+import TreeManagement from './pages/staff/TreeManagement';
+import StaffScheduleManagement from './pages/staff/StaffScheduleManagement';
+import TreePlantingManagement from './pages/staff/TreePlantingManagement';
 
 import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
+import GardenStaffAlerts from './pages/garden-staff/GardenStaffAlert';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
@@ -88,6 +94,7 @@ function AppRoutes() {
       <Route path="/dashboard/customer/care" element={<ProtectedRoute allowedRoles={['customer']}><CareServicesPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/payments" element={<ProtectedRoute allowedRoles={['customer']}><PaymentHistoryPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/notifications" element={<ProtectedRoute allowedRoles={['customer']}><CustomerNotificationsPage /></ProtectedRoute>} />
+      <Route path="/dashboard/customer/tree-planting" element={<ProtectedRoute allowedRoles={['customer']}><TreePlantingRequestPage /></ProtectedRoute>} />
 
       {/* Staff / Manager */}
       <Route path="/dashboard/staff" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffDashboard /></ProtectedRoute>} />
@@ -99,9 +106,14 @@ function AppRoutes() {
       <Route path="/dashboard/staff/revenue" element={<ProtectedRoute allowedRoles={['manager']}><RevenueAnalytics /></ProtectedRoute>} />
       <Route path="/dashboard/staff/tasks" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><TaskManagement /></ProtectedRoute>} />
       <Route path="/dashboard/staff/staffs" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffListPage /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/equipment" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><EquipmentManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/trees" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><TreeManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/schedules" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffScheduleManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/tree-planting" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><TreePlantingManagement /></ProtectedRoute>} />
 
       {/* Garden Staff */}
       <Route path="/dashboard/garden-staff" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffDashboard /></ProtectedRoute>} />
+      <Route path="/dashboard/garden-staff/alerts" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffAlerts /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/monitoring" element={<ProtectedRoute allowedRoles={['garden_staff']}><IoTMonitoringPage /></ProtectedRoute>} />
 
       {/* Admin */}

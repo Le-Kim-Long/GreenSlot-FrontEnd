@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User as UserIcon, Mail, Phone, MapPin, Save, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { User as UserIcon, Mail, Phone, MapPin, Save, Loader2, ArrowLeft, CheckCircle, Camera, Upload } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import { userApi } from '../../api/userApi';
 import { getDashboardPath } from '../../utils/roleMap';
 import type { UserRole } from '../../types';
+
+// 👉 IMPORT TRỰC TIẾP HÀM UPLOAD CỦA FIREBASE GIỐNG HỆT BÊN TREE
+import { uploadTreeImage } from '../../utils/firebaseUpload';
 
 const customerNav = [
   { label: 'Tổng quan', path: '/dashboard/customer', icon: <ArrowLeft className="w-full h-full" /> },
@@ -42,9 +45,68 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState(user?.address || '');
 
+  // Lấy ảnh avatar từ Auth context
+  const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
+    user?.avatar || (user as any)?.publicUrl || (user as any)?.avatarUrl || (user as any)?.imageUrl
+  );
+
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 💥 ĐÃ SỬA: CHUYỂN SANG DÙNG FIREBASE SDK TRỰC TIẾP GIỐNG BÊN TREE
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Vui lòng chỉ chọn định dạng hình ảnh (JPG, PNG, WEBP...).');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Dung lượng ảnh tối đa không được vượt quá 5MB.');
+      return;
+    }
+
+    setError('');
+    setUploadingAvatar(true);
+
+    try {
+      // 1. Tải ảnh trực tiếp lên Firebase Cloud Storage bằng Front-end SDK (đảm bảo link chuẩn 100% không bao giờ lỗi)
+      const firebaseUrl = await uploadTreeImage(file);
+
+      // 2. Cập nhật state màn hình ngay lập tức
+      setAvatarUrl(firebaseUrl);
+
+      // 3. Cập nhật vào AuthContext để Header / Menu đổi ảnh theo
+      updateUser({ avatar: firebaseUrl, avatarUrl: firebaseUrl, imageUrl: firebaseUrl } as any);
+
+      // 4. Tự động gọi API cập nhật thông tin User trên Backend Database
+      await userApi.updateProfile({
+        fullName: fullName.trim() || user?.name || '',
+        phone: phone.trim() || user?.phone || '',
+        address: address.trim() || user?.address || '',
+        avatar: firebaseUrl,
+        avatarUrl: firebaseUrl,
+        imageUrl: firebaseUrl,
+      } as any);
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: unknown) {
+      console.error('Lỗi upload avatar:', err);
+      setError('Tải ảnh đại diện thất bại. Vui lòng thử lại!');
+    } finally {
+      setUploadingAvatar(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,8 +132,11 @@ export default function ProfilePage() {
         fullName: fullName.trim(),
         phone: phone.trim(),
         address: address.trim(),
-      });
-      updateUser({ name: fullName.trim(), phone: phone.trim(), address: address.trim() });
+        avatar: avatarUrl,
+        avatarUrl: avatarUrl,
+        imageUrl: avatarUrl,
+      } as any);
+      updateUser({ name: fullName.trim(), phone: phone.trim(), address: address.trim(), avatar: avatarUrl } as any);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {
@@ -93,22 +158,88 @@ export default function ProfilePage() {
           </button>
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Thông tin cá nhân</h2>
-            <p className="text-gray-500 text-sm mt-0.5">Cập nhật họ tên, số điện thoại và địa chỉ</p>
+            <p className="text-gray-500 text-sm mt-0.5">Cập nhật ảnh đại diện, họ tên, số điện thoại và địa chỉ</p>
           </div>
         </div>
 
+        {error && (
+          <div className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm font-medium">{error}</div>
+        )}
+
+        {success && (
+          <div className="bg-green-50 text-green-600 rounded-lg px-4 py-3 mb-4 text-sm flex items-center gap-2 font-medium">
+            <CheckCircle className="w-4 h-4 shrink-0" />
+            Cập nhật thông tin thành công!
+          </div>
+        )}
+
         {/* Avatar & basic info */}
         <div className="card mb-6">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-green-700 font-bold text-2xl">{user?.name?.charAt(0)?.toUpperCase()}</span>
+          <div className="flex flex-col sm:flex-row items-center gap-5">
+            <div className="relative group">
+              <div
+                onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
+                className="w-20 h-20 rounded-full overflow-hidden bg-green-100 border-2 border-green-500/20 flex items-center justify-center cursor-pointer relative shadow-sm transition-all group-hover:border-green-500"
+                title="Bấm để thay đổi ảnh đại diện"
+              >
+                {uploadingAvatar ? (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+                    <Loader2 className="w-6 h-6 animate-spin text-white" />
+                  </div>
+                ) : null}
+
+                {/* 👉 ĐÃ SỬA: THÊM onError ĐỂ NẾU LINK CŨ BỊ LỖI THÌ TỰ HIỆN CHỮ CÁI ĐẦU TÊN USER */}
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Nếu tải link ảnh thất bại (gãy link), ẩn thẻ img để hiện chữ cái mặc định bên dưới
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : null}
+
+                {/* Chữ cái mặc định hiển thị nếu không có avatar hoặc avatar bị lỗi */}
+                <span className="text-green-700 font-bold text-3xl absolute inset-0 flex items-center justify-center -z-10 bg-green-100">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </span>
+
+                <div className="absolute inset-0 bg-black/40 text-white opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity text-[10px] font-medium z-20">
+                  <Camera className="w-4 h-4 mb-0.5" />
+                  <span>Sửa ảnh</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
+                disabled={uploadingAvatar}
+                className="absolute bottom-0 right-0 p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-md border-2 border-white transition-transform active:scale-95 disabled:opacity-50 z-20"
+                title="Tải ảnh lên từ máy"
+              >
+                <Upload className="w-3.5 h-3.5" />
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarChange}
+                className="hidden"
+              />
             </div>
-            <div>
+
+            <div className="text-center sm:text-left">
               <h3 className="text-lg font-bold text-gray-900">{user?.name}</h3>
-              <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-0.5">
+              <div className="flex items-center justify-center sm:justify-start gap-1.5 text-sm text-gray-500 mt-0.5">
                 <Mail className="w-3.5 h-3.5" />
                 {user?.email}
               </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Định dạng hỗ trợ: JPG, PNG, WEBP. Dung lượng tối đa: 5MB.
+              </p>
             </div>
           </div>
         </div>
@@ -116,17 +247,6 @@ export default function ProfilePage() {
         {/* Edit form */}
         <form onSubmit={handleSubmit} className="card">
           <h3 className="text-lg font-bold text-gray-900 mb-5">Chỉnh sửa thông tin</h3>
-
-          {error && (
-            <div className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>
-          )}
-
-          {success && (
-            <div className="bg-green-50 text-green-600 rounded-lg px-4 py-3 mb-4 text-sm flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
-              Cập nhật thông tin thành công!
-            </div>
-          )}
 
           <div className="space-y-4">
             <div>

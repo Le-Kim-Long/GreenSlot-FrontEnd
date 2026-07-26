@@ -11,6 +11,9 @@ export default function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
+  // 👉 Lấy trực tiếp link avatar từ Auth context (hỗ trợ nhiều tên biến fallback)
+  const avatarUrl = user?.avatar || (user as any)?.publicUrl || (user as any)?.avatarUrl || (user as any)?.imageUrl;
+
   const unreadCount = 0;
 
   const dashboardPath = user ? resolveDashboardPath(user.role) : '/login';
@@ -84,22 +87,41 @@ export default function Navbar() {
                 {/* User menu */}
                 <div className="relative">
                   <button onClick={() => setUserMenuOpen(!userMenuOpen)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-green-50 transition-colors">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-700 font-semibold text-sm">{user.name?.charAt(0)}</span>
+                    
+                    {/* 💥 ĐÃ SỬA: KHU VỰC HIỂN THỊ AVATAR TRÊN NAVBAR */}
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden relative border border-green-200/60 shadow-sm">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt={user.name || 'Avatar'}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Nếu link ảnh bị lỗi gãy link, tự động ẩn thẻ img để hiện lại chữ cái mặc định bên dưới
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ) : null}
+
+                      {/* Chữ cái fallback hiển thị khi chưa có ảnh hoặc tải ảnh thất bại */}
+                      <span className="text-green-700 font-semibold text-sm absolute inset-0 flex items-center justify-center -z-10 bg-green-100">
+                        {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                      </span>
                     </div>
+
                     <div className="text-left">
                       <p className="text-sm font-medium text-gray-900 leading-tight">{user.name}</p>
                       <p className="text-xs text-gray-500">{roleLabels[user.role]}</p>
                     </div>
                     <ChevronDown className="w-4 h-4 text-gray-500" />
                   </button>
+
                   {userMenuOpen && (
                     <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden z-50">
                       <Link to={dashboardPath} onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                         <LayoutDashboard className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-700">Dashboard</span>
                       </Link>
-                      <Link to="/dashboard/profile"onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
+                      <Link to="/dashboard/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
                         <User className="w-4 h-4 text-gray-500" />
                         <span className="text-sm text-gray-700">Hồ sơ cá nhân</span>
                       </Link>

@@ -23,6 +23,9 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
 
+  // 👉 Lấy trực tiếp link avatar từ Auth context (hỗ trợ nhiều tên biến fallback)
+  const avatarUrl = user?.avatar || (user as any)?.publicUrl || (user as any)?.avatarUrl || (user as any)?.imageUrl;
+
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -73,9 +76,27 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
         {/* User info */}
         <div className="px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-green-700 font-bold">{user?.name.charAt(0)}</span>
+            
+            {/* 💥 ĐÃ SỬA: KHU VỰC HIỂN THỊ AVATAR TRONG SIDEBAR */}
+            <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden relative border border-green-200/60 shadow-sm">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={user?.name || 'Avatar'}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Nếu link ảnh bị lỗi gãy link, tự động ẩn thẻ img để hiện lại chữ cái mặc định bên dưới
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : null}
+              
+              {/* Chữ cái fallback hiển thị khi chưa có ảnh hoặc tải ảnh thất bại */}
+              <span className="text-green-700 font-bold absolute inset-0 flex items-center justify-center -z-10 bg-green-100">
+                {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+              </span>
             </div>
+
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
               <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', user ? roleColors[user.role] : '')}>
