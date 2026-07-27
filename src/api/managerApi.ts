@@ -82,4 +82,12 @@ export const managerApi = {
   // Garden Staffs (isolated by location)
   getStaffs: (locationId: number): Promise<UserAdmin[]> =>
     apiClient.get<UserAdmin[]>('/manager/staffs', { params: { locationId } }).then(r => r.data),
+
+  // Revenue by Location
+  getRevenueByLocation: (startDate: string, endDate: string) =>
+    apiClient.get('/manager/analytics/revenue-by-location', { params: { startDate, endDate } }).then(r => r.data),
+
+  // Transaction Declarations
+  getTransactionDeclarations: (startDate: string, endDate: string) =>
+    apiClient.get('/manager/transactions/declarations', { params: { startDate, endDate } }).then(r => r.data),
 };

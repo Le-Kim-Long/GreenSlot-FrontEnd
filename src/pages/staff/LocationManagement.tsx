@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Plus, Edit2, X, Search, Phone, Ruler, Trash2, Loader2 } from 'lucide-react';
+import { MapPin, Plus, Edit2, X, Search, Phone, Ruler, Trash2, Loader2, LayoutDashboard, Calendar, DollarSign, AlertTriangle } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
+import { dashboardApi, DashboardMetrics } from '../../api/dashboardApi';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
 
@@ -28,6 +29,19 @@ export default function LocationManagement() {
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<Location | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Dashboard theo cơ sở
+  const [dashboardLoc, setDashboardLoc] = useState<Location | null>(null);
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
+  const now = new Date();
+  const [revStartDate, setRevStartDate] = useState(() => {
+    const d = new Date(now.getFullYear(), now.getMonth(), 1);
+    return d.toISOString().split('T')[0];
+  });
+  const [revEndDate, setRevEndDate] = useState(() => now.toISOString().split('T')[0]);
+  const [revenue, setRevenue] = useState<{ totalRevenue: number } | null>(null);
+  const [loadingRevenue, setLoadingRevenue] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -117,6 +131,34 @@ export default function LocationManagement() {
     }
   };
 
+  const openDashboard = async (loc: Location) => {
+    setDashboardLoc(loc);
+    setMetrics(null);
+    setRevenue(null);
+    setLoadingMetrics(true);
+    try {
+      const data = await dashboardApi.getLocationMetrics(loc.id);
+      setMetrics(data);
+    } catch {
+      setError('Không thể tải dashboard của cơ sở này.');
+    } finally {
+      setLoadingMetrics(false);
+    }
+    fetchRevenue(loc.id, revStartDate, revEndDate);
+  };
+
+  const fetchRevenue = async (locationId: number, start: string, end: string) => {
+    setLoadingRevenue(true);
+    try {
+      const data = await dashboardApi.getLocationRevenue(locationId, start, end);
+      setRevenue(data);
+    } catch {
+      setRevenue(null);
+    } finally {
+      setLoadingRevenue(false);
+    }
+  };
+
   const filtered = locations.filter(l =>
     l.name.toLowerCase().includes(search.toLowerCase()) ||
     l.address.toLowerCase().includes(search.toLowerCase())
@@ -162,6 +204,9 @@ export default function LocationManagement() {
                 <span className="flex items-center gap-1"><Ruler className="w-3.5 h-3.5" />{loc.area} m²</span>
               </div>
               <div className="flex items-center gap-3">
+                <button onClick={() => openDashboard(loc)} className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                  <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
+                </button>
                 <button onClick={() => openEdit(loc)} className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1">
                   <Edit2 className="w-3.5 h-3.5" /> Chỉnh sửa
                 </button>
@@ -242,6 +287,107 @@ export default function LocationManagement() {
                   <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Hủy</button>
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {dashboardLoc && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <LayoutDashboard className="w-5 h-5 text-blue-600" /> Dashboard cơ sở: {dashboardLoc.name}
+              </h2>
+              <button onClick={() => setDashboardLoc(null)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+            </div>
+
+            {loadingMetrics ? (
+              <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <p className="text-sm">Đang tải số liệu vận hành...</p>
+              </div>
+            ) : metrics ? (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="card">
+                    <div className="text-2xl font-black text-gray-900">{metrics.activeRentals}</div>
+                    <div className="text-sm text-gray-500">Ô đang thuê</div>
+                  </div>
+                  <div className="card">
+                    <div className="text-2xl font-black text-amber-600">{metrics.pendingAlerts}</div>
+                    <div className="text-sm text-gray-500">Cảnh báo chờ xử lý</div>
+                  </div>
+                </div>
+
+                {/* Doanh thu theo khoảng ngày */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-bold text-gray-900 text-sm flex items-center gap-1.5"><DollarSign className="w-4 h-4 text-green-600" /> Doanh thu cơ sở</h3>
+                    <div className="flex items-center gap-2 text-xs">
+                      <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                      <input type="date" className="input py-1 text-xs" value={revStartDate} onChange={e => { setRevStartDate(e.target.value); fetchRevenue(dashboardLoc.id, e.target.value, revEndDate); }} />
+                      <span className="text-gray-400">—</span>
+                      <input type="date" className="input py-1 text-xs" value={revEndDate} onChange={e => { setRevEndDate(e.target.value); fetchRevenue(dashboardLoc.id, revStartDate, e.target.value); }} />
+                    </div>
+                  </div>
+                  <div className="card">
+                    {loadingRevenue ? (
+                      <div className="text-center py-4 text-gray-400 text-sm">Đang tải...</div>
+                    ) : (
+                      <div className="text-2xl font-black text-green-600">{(revenue?.totalRevenue ?? 0).toLocaleString('vi-VN')}đ</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Danh sách ô đang thuê */}
+                <div>
+                  <h3 className="font-bold text-gray-900 text-sm mb-2">Ô đang thuê tại cơ sở</h3>
+                  {metrics.activeRentalsList.length === 0 ? (
+                    <div className="text-center py-6 text-gray-400 text-sm">Không có ô nào đang thuê.</div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
+                            <th className="pb-2 font-medium">Khách hàng</th>
+                            <th className="pb-2 font-medium">Ô / Trụ</th>
+                            <th className="pb-2 font-medium">Trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {metrics.activeRentalsList.map(r => (
+                            <tr key={r.rentalId}>
+                              <td className="py-2 text-gray-800">{r.fullName || r.username}</td>
+                              <td className="py-2 text-gray-600">{r.slotNumber} · {r.pillarCode}</td>
+                              <td className="py-2 text-gray-600">{r.status}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Cảnh báo đang chờ xử lý */}
+                <div>
+                  <h3 className="font-bold text-gray-900 text-sm mb-2 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4 text-amber-500" /> Cảnh báo chờ xử lý</h3>
+                  {metrics.recentAlerts.length === 0 ? (
+                    <div className="text-center py-6 text-gray-400 text-sm">Không có cảnh báo nào.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {metrics.recentAlerts.map(a => (
+                        <div key={a.id} className="bg-amber-50 border border-amber-100 rounded-xl p-3 text-sm">
+                          <div className="font-medium text-amber-800">#{a.id} · {a.alertType} — {a.description}</div>
+                          <div className="text-xs text-amber-600 mt-0.5">Trụ {a.pillarCode} · Ô {a.slotNumber} · {a.sensorType}: {a.actualValue} (ngưỡng {a.thresholdValue})</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-400 text-sm">Không thể tải dữ liệu dashboard.</div>
             )}
           </div>
         </div>
