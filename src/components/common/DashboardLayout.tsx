@@ -1,9 +1,11 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Leaf, Menu, X, LogOut, Bell, ChevronRight, UserCog } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 import { roleLabel } from '../../utils/roleMap';
+// 👉 IMPORT THÊM API ĐỂ TỰ ĐỘNG ĐỒNG BỘ TRONG DASHBOARD
+import { imageApi, UploadedImage } from '../../api/userApi';
 
 interface NavItem {
   label: string;
@@ -17,14 +19,63 @@ interface DashboardLayoutProps {
   title: string;
 }
 
+// 💥 HÀM DỊCH LINK GCS SANG FIREBASE WEB
+const formatFirebaseUrl = (url?: string): string => {
+  if (!url) return '';
+  if (url.startsWith('https://storage.googleapis.com/')) {
+    const withoutDomain = url.replace('https://storage.googleapis.com/', '');
+    const firstSlashIndex = withoutDomain.indexOf('/');
+    if (firstSlashIndex !== -1) {
+      const bucket = withoutDomain.substring(0, firstSlashIndex);
+      const path = withoutDomain.substring(firstSlashIndex + 1);
+      return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media`;
+    }
+  }
+  return url;
+};
+
 export default function DashboardLayout({ children, navItems, title }: DashboardLayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
 
-  // 👉 Lấy trực tiếp link avatar từ Auth context (hỗ trợ nhiều tên biến fallback)
-  const avatarUrl = user?.avatar || (user as any)?.publicUrl || (user as any)?.avatarUrl || (user as any)?.imageUrl;
+  // 👉 ÉP SANG LINK ĐỌC ĐƯỢC NGAY TẠI SIDEBAR
+  const avatarUrl = formatFirebaseUrl(
+    user?.avatar || (user as any)?.publicUrl || (user as any)?.avatarUrl || (user as any)?.imageUrl
+  );
+
+  // 💥 CHỐT CHẶN: TỰ ĐỘNG LẤY ẢNH AVATAR MỚI NHẤT NGAY KHI VỪA VÀO BẤT KỲ TRANG DASHBOARD NÀO
+  useEffect(() => {
+    if (user) {
+      const syncAvatar = async () => {
+        try {
+          const uploads: UploadedImage[] = await imageApi.getMyUploads();
+          if (Array.isArray(uploads) && uploads.length > 0) {
+            const avatarImages = uploads.filter(
+              img => String(img?.uploadType || '').trim().toUpperCase() === 'AVATAR'
+            );
+            if (avatarImages.length > 0) {
+              const latestAvatar = avatarImages.sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+              if (latestAvatar?.publicUrl) {
+                const readableUrl = formatFirebaseUrl(latestAvatar.publicUrl);
+                if (readableUrl !== avatarUrl) {
+                  updateUser({
+                    avatar: readableUrl,
+                    avatarUrl: readableUrl,
+                    imageUrl: readableUrl,
+                  } as any);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Lỗi đồng bộ avatar trên Dashboard:', err);
+        }
+      };
+      syncAvatar();
+    }
+  }, [user?.email]);
 
   const handleLogout = () => {
     logout();
@@ -77,7 +128,7 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
         <div className="px-5 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             
-            {/* 💥 ĐÃ SỬA: KHU VỰC HIỂN THỊ AVATAR TRONG SIDEBAR */}
+            {/* KHU VỰC HIỂN THỊ AVATAR TRONG SIDEBAR */}
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden relative border border-green-200/60 shadow-sm">
               {avatarUrl ? (
                 <img
@@ -85,13 +136,11 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
                   alt={user?.name || 'Avatar'}
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // Nếu link ảnh bị lỗi gãy link, tự động ẩn thẻ img để hiện lại chữ cái mặc định bên dưới
                     e.currentTarget.style.display = 'none';
                   }}
                 />
               ) : null}
               
-              {/* Chữ cái fallback hiển thị khi chưa có ảnh hoặc tải ảnh thất bại */}
               <span className="text-green-700 font-bold absolute inset-0 flex items-center justify-center -z-10 bg-green-100">
                 {user?.name?.charAt(0)?.toUpperCase() || 'U'}
               </span>

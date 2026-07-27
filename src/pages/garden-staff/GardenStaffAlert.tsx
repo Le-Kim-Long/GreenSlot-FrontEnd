@@ -13,7 +13,7 @@ const navItems = [
 export default function GardenStaffAlerts() {
   const [alertId, setAlertId] = useState<number | ''>('');
   
-  // 👉 Chỉ giữ lại các trạng thái mà backend hỗ trợ thực tế (ví dụ: RESOLVED, FAILED, IN_PROGRESS)
+  // 👉 Áp dụng các trạng thái hợp lệ từ EAlertStatus, loại bỏ PENDING để tránh xung đột với EAlertProcessingStatus ở backend
   const [status, setStatus] = useState<'RESOLVED' | 'IN_PROGRESS' | 'FAILED'>('RESOLVED');
   const [comment, setComment] = useState('');
   const [evidenceImageUrl, setEvidenceImageUrl] = useState('');
@@ -140,7 +140,7 @@ export default function GardenStaffAlerts() {
             />
           </div>
 
-          {/* Trạng thái xử lý (Đã loại bỏ PENDING để tránh lỗi Enum) */}
+          {/* Trạng thái xử lý (3 lựa chọn chuẩn hóa theo backend) */}
           <div>
             <label className="block font-bold text-gray-800 mb-2 text-xs uppercase tracking-wider flex items-center gap-1.5">
               <Activity className="w-4 h-4 text-green-600" /> Trạng thái xử lý (Status)
