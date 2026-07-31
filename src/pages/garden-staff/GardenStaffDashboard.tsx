@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ClipboardList, Wifi, CheckCircle, AlertTriangle, Loader2, ShieldAlert } from 'lucide-react';
+import { ClipboardList, Wifi, CheckCircle, AlertTriangle, Loader2, ShieldAlert, Upload } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { taskApi } from '../../api/taskApi';
 import type { GardeningTask } from '../../types/api';
@@ -8,7 +8,8 @@ import clsx from 'clsx';
 const navItems = [
   { label: 'Công việc', path: '/dashboard/garden-staff', icon: <ClipboardList className="w-full h-full" /> },
   { label: 'Giám sát IoT', path: '/dashboard/garden-staff/monitoring', icon: <Wifi className="w-full h-full" /> },
-  { label: 'Cảnh báo IoT', path: '/dashboard/garden-staff/alerts', icon: <ShieldAlert className="w-full h-full" /> }];
+  { label: 'Cảnh báo IoT', path: '/dashboard/garden-staff/alerts', icon: <ShieldAlert className="w-full h-full" /> }
+];
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
   PENDING: { label: 'Chờ xử lý', cls: 'badge-yellow' },
@@ -81,23 +82,43 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
   const [busy, setBusy] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
-  const [evidenceUrl, setEvidenceUrl] = useState('');
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [actionError, setActionError] = useState('');
   const [issue, setIssue] = useState({ issueTitle: '', description: '' });
 
-  const updateStatus = async (status: string, imgUrl?: string) => {
-    if (status === 'COMPLETED' && (!imgUrl || !imgUrl.trim())) {
-      setActionError('Bắt buộc phải cung cấp URL hình ảnh bằng chứng (evidenceImageUrl) trước khi hoàn thành công việc.');
-      return;
-    }
+  const updateStatus = async (status: string) => {
     setActionError('');
     setBusy(true);
     try {
-      await taskApi.updateTaskStatus(task.id, { status, evidenceImageUrl: imgUrl });
+      await taskApi.updateTaskStatus(task.id, { status });
       setShowComplete(false);
       onUpdated();
     } catch {
       setActionError('Cập nhật trạng thái công việc thất bại.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCompleteWithUpload = async () => {
+    if (!evidenceFile) {
+      setActionError('Bắt buộc phải chọn hình ảnh bằng chứng trước khi hoàn thành công việc.');
+      return;
+    }
+    
+    setActionError('');
+    setBusy(true);
+    
+    try {
+      const imgUrl = await taskApi.uploadEvidenceImage(evidenceFile); 
+      await taskApi.updateTaskStatus(task.id, { status: 'COMPLETED', evidenceImageUrl: imgUrl });
+      
+      setShowComplete(false);
+      setEvidenceFile(null);
+      onUpdated();
+    } catch (error) {
+      console.error(error);
+      setActionError('Lỗi khi tải ảnh lên hoặc cập nhật trạng thái công việc.');
     } finally {
       setBusy(false);
     }
@@ -124,34 +145,57 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
   return (
     <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
       {actionError && <div className="w-full bg-red-50 text-red-600 rounded-lg p-2 text-xs mb-2 font-medium">{actionError}</div>}
+      
       {task.status === 'PENDING' && (
         <button disabled={busy} onClick={() => updateStatus('IN_PROGRESS')} className="btn-primary text-xs py-1.5 px-3">
           Bắt đầu làm
         </button>
       )}
+      
       {task.status === 'IN_PROGRESS' && (
-        <button disabled={busy} onClick={() => { setShowComplete(!showComplete); setShowReport(false); setActionError(''); }} className="btn-primary text-xs py-1.5 px-3">
+        <button disabled={busy} onClick={() => { setShowComplete(!showComplete); setShowReport(false); setActionError(''); setEvidenceFile(null); }} className="btn-primary text-xs py-1.5 px-3">
           <CheckCircle className="w-3 h-3 inline mr-1" /> Hoàn thành công việc
         </button>
       )}
+      
       <button disabled={busy} onClick={() => { setShowReport(!showReport); setShowComplete(false); setActionError(''); }} className="btn-secondary text-xs py-1.5 px-3">
         <AlertTriangle className="w-3 h-3 inline mr-1" /> Báo sự cố
       </button>
       
       {showComplete && (
-        <div className="w-full mt-2 p-3 bg-green-50 rounded-xl border border-green-200 space-y-2">
-          <label className="block text-xs font-bold text-gray-700">URL hình ảnh bằng chứng công việc (Bắt buộc) *</label>
-          <input 
-            className="input text-sm bg-white" 
-            placeholder="https://example.com/evidence-photo.jpg" 
-            value={evidenceUrl} 
-            onChange={e => setEvidenceUrl(e.target.value)} 
-          />
-          <div className="flex gap-2">
-            <button onClick={() => updateStatus('COMPLETED', evidenceUrl)} disabled={busy} className="btn-primary text-xs py-1.5 px-3 flex-1">
-              Xác nhận hoàn thành
+        <div className="w-full mt-2 p-3 bg-green-50 rounded-xl border border-green-200 space-y-3">
+          <label className="block text-xs font-bold text-gray-700">Tải lên hình ảnh bằng chứng (Bắt buộc) *</label>
+          
+          <div className="flex items-center gap-3">
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={e => {
+                if (e.target.files && e.target.files.length > 0) {
+                  setEvidenceFile(e.target.files[0]);
+                }
+              }}
+              className="block w-full text-sm text-gray-500
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-xs file:font-semibold
+                file:bg-green-100 file:text-green-700
+                hover:file:bg-green-200 cursor-pointer"
+            />
+          </div>
+          
+          {evidenceFile && (
+             <div className="text-xs text-gray-600 truncate">
+               Đã chọn: {evidenceFile.name}
+             </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            <button onClick={handleCompleteWithUpload} disabled={busy || !evidenceFile} className="btn-primary text-xs py-1.5 px-3 flex-1 disabled:opacity-50">
+              {busy ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : <Upload className="w-3 h-3 inline mr-1" />}
+              {busy ? 'Đang tải lên...' : 'Xác nhận hoàn thành'}
             </button>
-            <button onClick={() => setShowComplete(false)} className="btn-secondary text-xs py-1.5 px-3">Hủy</button>
+            <button onClick={() => setShowComplete(false)} disabled={busy} className="btn-secondary text-xs py-1.5 px-3">Hủy</button>
           </div>
         </div>
       )}
@@ -162,7 +206,7 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
           <textarea className="input text-sm resize-none bg-white" rows={2} placeholder="Mô tả chi tiết sự cố *" value={issue.description} onChange={e => setIssue(p => ({ ...p, description: e.target.value }))} />
           <div className="flex gap-2">
             <button onClick={submitReport} disabled={busy} className="btn-primary text-xs py-1.5 px-3 flex-1">Gửi báo cáo</button>
-            <button onClick={() => setShowReport(false)} className="btn-secondary text-xs py-1.5 px-3">Hủy</button>
+            <button onClick={() => setShowReport(false)} disabled={busy} className="btn-secondary text-xs py-1.5 px-3">Hủy</button>
           </div>
         </div>
       )}

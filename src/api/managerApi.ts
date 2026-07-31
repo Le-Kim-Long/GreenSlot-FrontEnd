@@ -41,6 +41,24 @@ export interface TransactionDeclarationItem {
   description: string;
 }
 
+export interface LocationItem {
+  id: number;
+  name: string;
+  address?: string;
+  contactPhone?: string;
+  status?: string;
+}
+
+export interface GardenStaff {
+  id: number;
+  fullName: string;
+  email?: string;
+  username?: string;
+  phone?: string;
+  imageUrl?: string;
+  address?: string;
+}
+
 // 👉 1. Interface cho Dashboard Metrics theo từng Location
 export interface LocationDashboardMetrics {
   locationId: number;
@@ -185,4 +203,9 @@ export const managerApi = {
   // Garden Staffs
   getStaffs: (locationId: number): Promise<UserAdmin[]> =>
     apiClient.get<UserAdmin[]>('/manager/staffs', { params: { locationId } }).then(r => r.data),
+  // 2. API lấy danh sách nhân viên vườn theo locationId (GET /api/users/staffs?locationId=...)
+  getGardenStaffsByLocation: (locationId?: number): Promise<GardenStaff[]> => 
+    apiClient.get('/users/staffs', {
+      params: locationId ? { locationId } : undefined
+    }).then(r => r.data || []),
 };
