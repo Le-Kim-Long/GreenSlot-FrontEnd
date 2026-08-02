@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { staffScheduleApi, StaffSchedule } from '../../api/StaffScheduleApi';
+import { staffScheduleApi, StaffSchedule } from '../../api/staffScheduleApi';
 import { Calendar, Plus, Edit2, Trash2, X, Search, Filter, Clock, MapPin, User, CheckCircle2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav';

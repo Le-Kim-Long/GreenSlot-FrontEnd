@@ -1,14 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User as UserIcon, Mail, Phone, MapPin, Save, Loader2, ArrowLeft, CheckCircle, Camera, Upload } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
-import { userApi } from '../../api/userApi';
+import { userApi, imageApi, UploadedImage } from '../../api/userApi';
 import { getDashboardPath } from '../../utils/roleMap';
 import type { UserRole } from '../../types';
-
-// 👉 IMPORT TRỰC TIẾP HÀM UPLOAD CỦA FIREBASE GIỐNG HỆT BÊN TREE
-import { uploadTreeImage } from '../../utils/firebaseUpload';
 
 const customerNav = [
   { label: 'Tổng quan', path: '/dashboard/customer', icon: <ArrowLeft className="w-full h-full" /> },
@@ -37,6 +34,22 @@ function getNavForRole(role?: UserRole) {
   }
 }
 
+// 💥 HÀM THẦN THÁNH: Chuyển đổi link GCS (bị Google Cloud khóa) sang link Firebase Web (đọc thoải mái)
+const formatFirebaseUrl = (url?: string): string => {
+  if (!url) return '';
+  if (url.startsWith('https://storage.googleapis.com/')) {
+    const withoutDomain = url.replace('https://storage.googleapis.com/', '');
+    const firstSlashIndex = withoutDomain.indexOf('/');
+    if (firstSlashIndex !== -1) {
+      const bucket = withoutDomain.substring(0, firstSlashIndex);
+      const path = withoutDomain.substring(firstSlashIndex + 1);
+      // Biến đổi sang cấu trúc chuẩn của Firebase Storage Web URL
+      return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media`;
+    }
+  }
+  return url;
+};
+
 export default function ProfilePage() {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -45,9 +58,9 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState(user?.address || '');
 
-  // Lấy ảnh avatar từ Auth context
+  // Quản lý link ảnh đại diện (đã qua chuyển đổi link)
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(
-    user?.avatar || (user as any)?.publicUrl || (user as any)?.avatarUrl || (user as any)?.imageUrl
+    formatFirebaseUrl(user?.avatar || (user as any)?.publicUrl || (user as any)?.avatarUrl || (user as any)?.imageUrl)
   );
 
   const [saving, setSaving] = useState(false);
@@ -57,7 +70,42 @@ export default function ProfilePage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 💥 ĐÃ SỬA: CHUYỂN SANG DÙNG FIREBASE SDK TRỰC TIẾP GIỐNG BÊN TREE
+  // Lấy ảnh mới nhất từ my-uploads và ép sang link đọc được
+  useEffect(() => {
+    const fetchLatestAvatar = async () => {
+      try {
+        const uploads: UploadedImage[] = await imageApi.getMyUploads();
+        if (Array.isArray(uploads) && uploads.length > 0) {
+          const avatarImages = uploads.filter(
+            img => String(img?.uploadType || '').trim().toUpperCase() === 'AVATAR'
+          );
+
+          if (avatarImages.length > 0) {
+            const latestAvatar = avatarImages.sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+
+            if (latestAvatar?.publicUrl) {
+              // 👉 CHUYỂN ĐỔI LINK TRƯỚC KHI HIỂN THỊ
+              const readableUrl = formatFirebaseUrl(latestAvatar.publicUrl);
+              console.log('✅ Link sau khi đã chuyển đổi để trình duyệt đọc được:', readableUrl);
+              
+              setAvatarUrl(readableUrl);
+              updateUser({
+                avatar: readableUrl,
+                avatarUrl: readableUrl,
+                imageUrl: readableUrl,
+              } as any);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Không thể tải danh sách ảnh của user:', err);
+      }
+    };
+
+    fetchLatestAvatar();
+  }, []);
+
+  // XỬ LÝ UPLOAD AVATAR THÔNG QUA API POST /api/images/upload/avatar
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -73,33 +121,27 @@ export default function ProfilePage() {
     }
 
     setError('');
+    
+    const localPreviewUrl = URL.createObjectURL(file);
+    setAvatarUrl(localPreviewUrl);
     setUploadingAvatar(true);
 
     try {
-      // 1. Tải ảnh trực tiếp lên Firebase Cloud Storage bằng Front-end SDK (đảm bảo link chuẩn 100% không bao giờ lỗi)
-      const firebaseUrl = await uploadTreeImage(file);
-
-      // 2. Cập nhật state màn hình ngay lập tức
-      setAvatarUrl(firebaseUrl);
-
-      // 3. Cập nhật vào AuthContext để Header / Menu đổi ảnh theo
-      updateUser({ avatar: firebaseUrl, avatarUrl: firebaseUrl, imageUrl: firebaseUrl } as any);
-
-      // 4. Tự động gọi API cập nhật thông tin User trên Backend Database
-      await userApi.updateProfile({
-        fullName: fullName.trim() || user?.name || '',
-        phone: phone.trim() || user?.phone || '',
-        address: address.trim() || user?.address || '',
-        avatar: firebaseUrl,
-        avatarUrl: firebaseUrl,
-        imageUrl: firebaseUrl,
-      } as any);
+      const serverPublicUrl = await imageApi.uploadAvatar(file);
+      
+      // 👉 Chuyển đổi link server trả về sang định dạng đọc được
+      const finalUrl = (typeof serverPublicUrl === 'string' && serverPublicUrl.startsWith('http')) 
+        ? formatFirebaseUrl(serverPublicUrl) 
+        : localPreviewUrl;
+      
+      setAvatarUrl(finalUrl);
+      updateUser({ avatar: finalUrl, avatarUrl: finalUrl, imageUrl: finalUrl } as any);
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {
-      console.error('Lỗi upload avatar:', err);
-      setError('Tải ảnh đại diện thất bại. Vui lòng thử lại!');
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || 'Tải ảnh thất bại. Vui lòng thử lại.');
     } finally {
       setUploadingAvatar(false);
       if (fileInputRef.current) {
@@ -132,11 +174,9 @@ export default function ProfilePage() {
         fullName: fullName.trim(),
         phone: phone.trim(),
         address: address.trim(),
-        avatar: avatarUrl,
-        avatarUrl: avatarUrl,
-        imageUrl: avatarUrl,
-      } as any);
-      updateUser({ name: fullName.trim(), phone: phone.trim(), address: address.trim(), avatar: avatarUrl } as any);
+      });
+      
+      updateUser({ name: fullName.trim(), phone: phone.trim(), address: address.trim() } as any);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {
@@ -177,7 +217,7 @@ export default function ProfilePage() {
         <div className="card mb-6">
           <div className="flex flex-col sm:flex-row items-center gap-5">
             <div className="relative group">
-              <div
+              <div 
                 onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
                 className="w-20 h-20 rounded-full overflow-hidden bg-green-100 border-2 border-green-500/20 flex items-center justify-center cursor-pointer relative shadow-sm transition-all group-hover:border-green-500"
                 title="Bấm để thay đổi ảnh đại diện"
@@ -188,20 +228,18 @@ export default function ProfilePage() {
                   </div>
                 ) : null}
 
-                {/* 👉 ĐÃ SỬA: THÊM onError ĐỂ NẾU LINK CŨ BỊ LỖI THÌ TỰ HIỆN CHỮ CÁI ĐẦU TÊN USER */}
                 {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Avatar"
-                    className="w-full h-full object-cover"
+                  <img 
+                    src={avatarUrl} 
+                    alt="Avatar" 
+                    className="w-full h-full object-cover" 
                     onError={(e) => {
-                      // Nếu tải link ảnh thất bại (gãy link), ẩn thẻ img để hiện chữ cái mặc định bên dưới
+                      console.error('⚠️ Vẫn lỗi load link ảnh:', avatarUrl);
                       e.currentTarget.style.display = 'none';
                     }}
                   />
                 ) : null}
 
-                {/* Chữ cái mặc định hiển thị nếu không có avatar hoặc avatar bị lỗi */}
                 <span className="text-green-700 font-bold text-3xl absolute inset-0 flex items-center justify-center -z-10 bg-green-100">
                   {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                 </span>

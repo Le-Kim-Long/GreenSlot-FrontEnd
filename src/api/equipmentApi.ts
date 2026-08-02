@@ -13,6 +13,17 @@ export interface Equipment {
   imageUrl?: string;
 }
 
+// Interface cho response trả về từ API Upload ảnh theo Swagger
+export interface EquipmentImageUploadResponse {
+  id?: number;
+  fileName?: string;
+  publicUrl: string;
+  contentType?: string;
+  fileSize?: number;
+  message?: string;
+  uploadType?: string;
+}
+
 export const equipmentApi = {
   getEquipments: (): Promise<Equipment[]> => 
     apiClient.get('/equipment').then(r => r.data),
@@ -28,4 +39,16 @@ export const equipmentApi = {
   
   deleteEquipment: (id: number): Promise<any> => 
     apiClient.delete(`/equipment/${id}`).then(r => r.data),
+
+  // 👉 HÀM MỚI: Upload ảnh trực tiếp qua Backend API (theo Swagger)
+  // Lưu ý: Đổi string URL '/equipment/upload-image' bên dưới cho đúng chính xác với path trên Swagger của bạn nếu cần
+  uploadImage: (file: File): Promise<EquipmentImageUploadResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/equipment/upload-image', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }).then(r => r.data);
+  },
 };

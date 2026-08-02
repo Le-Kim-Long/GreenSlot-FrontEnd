@@ -9,6 +9,7 @@ const navItems = [
   { label: 'Người dùng', path: '/dashboard/admin/users', icon: <Users className="w-full h-full" /> },
   { label: 'Audit logs', path: '/dashboard/admin/audit', icon: <ShieldCheck className="w-full h-full" /> },
   { label: 'Nội dung', path: '/dashboard/admin/content', icon: <ShieldCheck className="w-full h-full" /> },
+  { label: 'Camera IoT', path: '/dashboard/admin/cameras', icon: <ShieldCheck className="w-full h-full" /> },
 ];
 
 const actionColors: Record<string, string> = {

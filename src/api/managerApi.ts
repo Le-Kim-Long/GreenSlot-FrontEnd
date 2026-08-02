@@ -1,6 +1,103 @@
 import apiClient from './axiosConfig';
 import type { ServiceCategory, ServiceType, UserAdmin } from '../types/api';
 
+export interface TransactionItem {
+  id: number;
+  rentalId: number;
+  slotNumber: string;
+  customerUsername: string;
+  amount: number;
+  vnpTxnRef: string;
+  paymentDate: string;
+  status: string;
+}
+
+export interface RevenueAnalyticsResponse {
+  totalRevenue: number;
+  dailyBreakdown: { date: string; revenue: number }[];
+  transactions: TransactionItem[];
+}
+
+export interface RevenueByLocationItem {
+  locationId: number;
+  locationName: string;
+  totalRevenue: number;
+  transactionCount: number;
+}
+
+export interface TransactionDeclarationItem {
+  id: number;
+  rentalId: number;
+  slotNumber: string;
+  customerUsername: string;
+  customerName: string;
+  amount: number;
+  transactionCode: string;
+  paymentMethod: string;
+  paymentDate: string;
+  status: string;
+  locationName: string;
+  pillarCode: string;
+  description: string;
+}
+
+export interface LocationItem {
+  id: number;
+  name: string;
+  address?: string;
+  contactPhone?: string;
+  status?: string;
+}
+
+export interface GardenStaff {
+  id: number;
+  fullName: string;
+  email?: string;
+  username?: string;
+  phone?: string;
+  imageUrl?: string;
+  address?: string;
+}
+
+// 👉 1. Interface cho Dashboard Metrics theo từng Location
+export interface LocationDashboardMetrics {
+  locationId: number;
+  locationName: string;
+  totalSlots?: number | null;
+  availableSlots?: number | null;
+  activeRentals: number;
+  pendingAlerts: number;
+  totalRevenue?: number | null;
+  recentAlerts: {
+    id: number;
+    alertType: string;
+    description: string;
+    status: string;
+    thresholdValue: number;
+    actualValue: number;
+    sensorType: string;
+    pillarId: number;
+    pillarCode: string;
+    gardenSlotId: number;
+    slotNumber: string;
+    treeId: number;
+    treeName: string;
+    createdAt: string;
+    resolvedAt?: string | null;
+  }[];
+  activeRentalsList: {
+    rentalId: number;
+    username: string;
+    fullName: string;
+    slotNumber: string;
+    pillarCode: string;
+    locationName: string;
+    startTime: string;
+    endTime: string;
+    status: string;
+  }[];
+}
+
 function mapServiceCategory(item: any): ServiceCategory {
   return {
     id: item.id,
@@ -76,18 +173,39 @@ export const managerApi = {
   getActiveRentals: () => apiClient.get('/manager/active-rentals').then(r => r.data),
 
   // Revenue Analytics
-  getRevenue: (startDate: string, endDate: string) =>
-    apiClient.get(`/manager/analytics/revenue?startDate=${startDate}&endDate=${endDate}`).then(r => r.data),
-
-  // Garden Staffs (isolated by location)
-  getStaffs: (locationId: number): Promise<UserAdmin[]> =>
-    apiClient.get<UserAdmin[]>('/manager/staffs', { params: { locationId } }).then(r => r.data),
+  getRevenue: (startDate: string, endDate: string): Promise<RevenueAnalyticsResponse> =>
+    apiClient.get<RevenueAnalyticsResponse>('/manager/analytics/revenue', {
+      params: { startDate, endDate },
+    }).then(r => r.data),
 
   // Revenue by Location
-  getRevenueByLocation: (startDate: string, endDate: string) =>
-    apiClient.get('/manager/analytics/revenue-by-location', { params: { startDate, endDate } }).then(r => r.data),
+  getRevenueByLocation: (startDate: string, endDate: string): Promise<RevenueByLocationItem[]> =>
+    apiClient.get<RevenueByLocationItem[]>('/manager/analytics/revenue-by-location', {
+      params: { startDate, endDate },
+    }).then(r => r.data || []),
 
   // Transaction Declarations
-  getTransactionDeclarations: (startDate: string, endDate: string) =>
-    apiClient.get('/manager/transactions/declarations', { params: { startDate, endDate } }).then(r => r.data),
+  getTransactionDeclarations: (startDate: string, endDate: string): Promise<TransactionDeclarationItem[]> =>
+    apiClient.get<TransactionDeclarationItem[]>('/manager/transactions/declarations', {
+      params: { startDate, endDate },
+    }).then(r => r.data || []),
+
+  // 👉 2. API Mới: Lấy Metrics Dashboard theo Location ID
+  getLocationMetrics: (locationId: number): Promise<LocationDashboardMetrics> =>
+    apiClient.get<LocationDashboardMetrics>(`/dashboard/metrics/${locationId}`).then(r => r.data),
+
+  // 👉 3. API Mới: Lấy Doanh thu Metrics theo Location ID & khoảng thời gian
+  getLocationRevenueMetrics: (locationId: number, startDate: string, endDate: string): Promise<RevenueAnalyticsResponse> =>
+    apiClient.get<RevenueAnalyticsResponse>(`/dashboard/metrics/${locationId}/revenue`, {
+      params: { startDate, endDate },
+    }).then(r => r.data),
+
+  // Garden Staffs
+  getStaffs: (locationId: number): Promise<UserAdmin[]> =>
+    apiClient.get<UserAdmin[]>('/manager/staffs', { params: { locationId } }).then(r => r.data),
+  // 2. API lấy danh sách nhân viên vườn theo locationId (GET /api/users/staffs?locationId=...)
+  getGardenStaffsByLocation: (locationId?: number): Promise<GardenStaff[]> => 
+    apiClient.get('/users/staffs', {
+      params: locationId ? { locationId } : undefined
+    }).then(r => r.data || []),
 };
