@@ -39,6 +39,19 @@ export interface AlertDTO {
   resolvedAt: string | null;
 }
 
+// 1 lần xử lý cảnh báo (ai xử lý, kết quả, ghi chú, ảnh bằng chứng) — nhiều log có thể ứng với 1 alert
+// nếu alert được xử lý nhiều lần (VD: cập nhật "đang xử lý" rồi sau đó "đã hoàn thành")
+export interface AlertProcessingLogDTO {
+  id: number;
+  alertId: number;
+  processedById: number;
+  processedByName: string;
+  status: string; // PROCESSED | NOT_PROCESSED | FAILED
+  comment: string;
+  evidenceImageUrl: string | null;
+  processedAt: string;
+}
+
 export const alertApi = {
   // Gửi báo cáo khắc phục sự cố lên hệ thống
   processAlert: async (data: ProcessAlertPayload): Promise<any> => {
@@ -57,6 +70,24 @@ export const alertApi = {
   // Lấy danh sách cảnh báo đang chờ xử lý
   getPendingAlerts: async (): Promise<AlertDTO[]> => {
     const response = await apiClient.get('/alerts/pending');
+    return response.data;
+  },
+
+  // Lấy toàn bộ cảnh báo (mọi trạng thái) — dùng cho trang lịch sử
+  getAllAlerts: async (): Promise<AlertDTO[]> => {
+    const response = await apiClient.get('/alerts');
+    return response.data;
+  },
+
+  // Lọc cảnh báo theo 1 trạng thái cụ thể: PENDING | IN_PROGRESS | ESCALATED | RESOLVED | FAILED
+  getAlertsByStatus: async (status: string): Promise<AlertDTO[]> => {
+    const response = await apiClient.get(`/alerts/status/${status}`);
+    return response.data;
+  },
+
+  // Lấy lịch sử các lần xử lý của 1 alert cụ thể
+  getAlertProcessingLogs: async (alertId: number): Promise<AlertProcessingLogDTO[]> => {
+    const response = await apiClient.get(`/alerts/${alertId}/logs`);
     return response.data;
   },
 };

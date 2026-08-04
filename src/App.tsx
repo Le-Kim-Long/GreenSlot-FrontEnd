@@ -31,6 +31,7 @@ import ActiveRentals from './pages/manager/ActiveRentals';
 import RevenueAnalytics from './pages/manager/RevenueAnalytics';
 import AlertAnalytics from './pages/manager/AlertAnalytics';
 import AlertProcessing from './pages/manager/AlertProcessing';
+import AlertHistory from './pages/manager/AlertHistory';
 import TaskManagement from './pages/manager/TaskManagement';
 import StaffListPage from './pages/manager/StaffListPage';
 import EquipmentManagement from './pages/manager/EquipmentManagement';
@@ -110,6 +111,7 @@ function AppRoutes() {
       <Route path="/dashboard/staff/revenue" element={<ProtectedRoute allowedRoles={['manager']}><RevenueAnalytics /></ProtectedRoute>} />
       <Route path="/dashboard/staff/alert-analytics" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><AlertAnalytics /></ProtectedRoute>} />
       <Route path="/dashboard/staff/alert-processing" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><AlertProcessing /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/alert-history" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><AlertHistory /></ProtectedRoute>} />
       <Route path="/dashboard/staff/tasks" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><TaskManagement /></ProtectedRoute>} />
       <Route path="/dashboard/staff/staffs" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffListPage /></ProtectedRoute>} />
       <Route path="/dashboard/staff/equipment" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><EquipmentManagement /></ProtectedRoute>} />
