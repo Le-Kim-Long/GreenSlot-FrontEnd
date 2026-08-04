@@ -40,12 +40,11 @@ export const equipmentApi = {
   deleteEquipment: (id: number): Promise<any> => 
     apiClient.delete(`/equipment/${id}`).then(r => r.data),
 
-  // 👉 HÀM MỚI: Upload ảnh trực tiếp qua Backend API (theo Swagger)
-  // Lưu ý: Đổi string URL '/equipment/upload-image' bên dưới cho đúng chính xác với path trên Swagger của bạn nếu cần
+  // Upload ảnh thiết bị lên Firebase Storage qua ImageController (không phải EquipmentController)
   uploadImage: (file: File): Promise<EquipmentImageUploadResponse> => {
     const formData = new FormData();
     formData.append('file', file);
-    return apiClient.post('/equipment/upload-image', formData, {
+    return apiClient.post('/images/upload/equipment', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

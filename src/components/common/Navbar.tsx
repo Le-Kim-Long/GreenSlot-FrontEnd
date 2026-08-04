@@ -3,23 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Bell, Menu, X, Leaf, ChevronDown, LogOut, User, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getDashboardPath as resolveDashboardPath, roleLabel } from '../../utils/roleMap';
+import { formatFirebaseUrl } from '../../utils/firebaseUrl';
 // 👉 IMPORT THÊM API ĐỂ TỰ ĐỘNG ĐỒNG BỘ ẢNH KHI VỪA ĐĂNG NHẬP
 import { imageApi, UploadedImage } from '../../api/userApi';
-
-// 💥 HÀM DỊCH LINK GCS SANG FIREBASE WEB
-const formatFirebaseUrl = (url?: string): string => {
-  if (!url) return '';
-  if (url.startsWith('https://storage.googleapis.com/')) {
-    const withoutDomain = url.replace('https://storage.googleapis.com/', '');
-    const firstSlashIndex = withoutDomain.indexOf('/');
-    if (firstSlashIndex !== -1) {
-      const bucket = withoutDomain.substring(0, firstSlashIndex);
-      const path = withoutDomain.substring(firstSlashIndex + 1);
-      return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media`;
-    }
-  }
-  return url;
-};
 
 export default function Navbar() {
   const { user, logout, isAuthenticated, updateUser } = useAuth();

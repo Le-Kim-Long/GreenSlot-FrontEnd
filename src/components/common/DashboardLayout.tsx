@@ -4,6 +4,7 @@ import { Leaf, Menu, X, LogOut, Bell, ChevronRight, UserCog } from 'lucide-react
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 import { roleLabel } from '../../utils/roleMap';
+import { formatFirebaseUrl } from '../../utils/firebaseUrl';
 // 👉 IMPORT THÊM API ĐỂ TỰ ĐỘNG ĐỒNG BỘ TRONG DASHBOARD
 import { imageApi, UploadedImage } from '../../api/userApi';
 
@@ -18,21 +19,6 @@ interface DashboardLayoutProps {
   navItems: NavItem[];
   title: string;
 }
-
-// 💥 HÀM DỊCH LINK GCS SANG FIREBASE WEB
-const formatFirebaseUrl = (url?: string): string => {
-  if (!url) return '';
-  if (url.startsWith('https://storage.googleapis.com/')) {
-    const withoutDomain = url.replace('https://storage.googleapis.com/', '');
-    const firstSlashIndex = withoutDomain.indexOf('/');
-    if (firstSlashIndex !== -1) {
-      const bucket = withoutDomain.substring(0, firstSlashIndex);
-      const path = withoutDomain.substring(firstSlashIndex + 1);
-      return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media`;
-    }
-  }
-  return url;
-};
 
 export default function DashboardLayout({ children, navItems, title }: DashboardLayoutProps) {
   const { user, logout, updateUser } = useAuth();

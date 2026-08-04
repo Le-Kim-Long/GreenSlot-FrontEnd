@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav';
+import { formatFirebaseUrl } from '../../utils/firebaseUrl';
+import { uploadEquipmentImage } from '../../utils/firebaseUpload';
 import clsx from 'clsx';
 
 // 👉 Component CustomDropdown bo tròn rounded-xl
@@ -67,7 +69,7 @@ const emptyForm: Partial<Equipment> = {
   equipmentName: '',
   serialNumber: '',
   description: '',
-  status: 'ACTIVE',
+  status: 'AVAILABLE',
   pillarId: 1,
   purchaseDate: '',
   lastMaintenanceDate: '',
@@ -97,7 +99,9 @@ export default function EquipmentManagement() {
   // State quản lý loading khi upload ảnh lên Backend API
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  // 👉 Xử lý khi chọn file hình từ máy -> gọi API Backend upload
+  // 👉 Xử lý khi chọn file hình từ máy -> upload thẳng lên Firebase Storage (client-side)
+  // Lưu ý: không dùng equipmentApi.uploadImage() (backend) vì endpoint đó tạo file không public,
+  // link trả về luôn bị 403 Forbidden khi tải lại
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -113,16 +117,11 @@ export default function EquipmentManagement() {
 
     setIsUploadingImage(true);
     try {
-      // Gọi trực tiếp API upload hình mới
-      const response = await equipmentApi.uploadImage(file);
-      if (response && response.publicUrl) {
-        setFormData(prev => ({ ...prev, imageUrl: response.publicUrl }));
-      } else {
-        alert('Không nhận được URL ảnh từ máy chủ.');
-      }
+      const firebaseUrl = await uploadEquipmentImage(file);
+      setFormData(prev => ({ ...prev, imageUrl: firebaseUrl }));
     } catch (err) {
       console.error('Lỗi upload ảnh:', err);
-      alert('Tải ảnh lên máy chủ thất bại. Vui lòng thử lại!');
+      alert('Tải ảnh lên Firebase thất bại. Vui lòng thử lại!');
     } finally {
       setIsUploadingImage(false);
     }
@@ -159,7 +158,13 @@ export default function EquipmentManagement() {
     try {
       const freshData = await equipmentApi.getEquipment(item.id);
       setEditingItem(freshData);
-      setFormData(freshData);
+      // Backend trả về LocalDateTime đầy đủ (VD "2026-01-27T13:36:08.34"), nhưng input type="date"
+      // chỉ hiểu đúng "YYYY-MM-DD" — cắt bớt phần giờ để hiển thị đúng trên form
+      setFormData({
+        ...freshData,
+        purchaseDate: freshData.purchaseDate?.slice(0, 10),
+        lastMaintenanceDate: freshData.lastMaintenanceDate?.slice(0, 10),
+      });
     } catch (err) {
       setError('Không thể tải chi tiết thiết bị từ máy chủ.');
       setIsModalOpen(false);
@@ -180,12 +185,21 @@ export default function EquipmentManagement() {
       return;
     }
 
+    // Input type="date" trả về "YYYY-MM-DD", nhưng backend nhận LocalDateTime — cần thêm giờ (T00:00:00)
+    // hoặc bỏ hẳn field nếu rỗng, nếu không Jackson sẽ parse lỗi và trả về 400
+    const toLocalDateTime = (date?: string) => (date ? `${date}T00:00:00` : undefined);
+    const payload = {
+      ...formData,
+      purchaseDate: toLocalDateTime(formData.purchaseDate),
+      lastMaintenanceDate: toLocalDateTime(formData.lastMaintenanceDate),
+    };
+
     setIsSubmitting(true);
     try {
       if (editingItem) {
-        await equipmentApi.updateEquipment(editingItem.id, formData);
+        await equipmentApi.updateEquipment(editingItem.id, payload);
       } else {
-        await equipmentApi.createEquipment(formData);
+        await equipmentApi.createEquipment(payload);
       }
       alert(editingItem ? 'Cập nhật thiết bị thành công!' : 'Thêm thiết bị mới thành công!');
       handleCloseModal();
@@ -245,9 +259,10 @@ export default function EquipmentManagement() {
               onChange={(val: any) => setStatusFilter(String(val))}
               options={[
                 { value: "", label: "Tất cả trạng thái" },
-                { value: "ACTIVE", label: "Đang hoạt động" },
+                { value: "AVAILABLE", label: "Sẵn sàng" },
+                { value: "IN_USE", label: "Đang sử dụng" },
                 { value: "MAINTENANCE", label: "Đang bảo trì" },
-                { value: "INACTIVE", label: "Ngưng sử dụng" },
+                { value: "BROKEN", label: "Hỏng" },
               ]}
             />
           </div>
@@ -292,7 +307,7 @@ export default function EquipmentManagement() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center text-green-600 shrink-0 overflow-hidden font-bold text-xs">
                           {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.equipmentName} className="w-full h-full object-cover" />
+                            <img src={formatFirebaseUrl(item.imageUrl)} alt={item.equipmentName} className="w-full h-full object-cover" />
                           ) : (
                             <Wrench className="w-5 h-5" />
                           )}
@@ -326,14 +341,16 @@ export default function EquipmentManagement() {
                     </td>
                     <td className="p-4">
                       <span className={clsx('px-2.5 py-1 rounded-full text-xs font-semibold', {
-                        'bg-green-100 text-green-700': item.status === 'ACTIVE',
+                        'bg-green-100 text-green-700': item.status === 'AVAILABLE',
+                        'bg-blue-100 text-blue-700': item.status === 'IN_USE',
                         'bg-amber-100 text-amber-700': item.status === 'MAINTENANCE',
-                        'bg-gray-100 text-gray-500': item.status === 'INACTIVE',
+                        'bg-red-100 text-red-700': item.status === 'BROKEN',
                       })}>
-                        {item.status === 'ACTIVE' && 'Đang hoạt động'}
+                        {item.status === 'AVAILABLE' && 'Sẵn sàng'}
+                        {item.status === 'IN_USE' && 'Đang sử dụng'}
                         {item.status === 'MAINTENANCE' && 'Đang bảo trì'}
-                        {item.status === 'INACTIVE' && 'Ngưng sử dụng'}
-                        {!['ACTIVE', 'MAINTENANCE', 'INACTIVE'].includes(item.status) && item.status}
+                        {item.status === 'BROKEN' && 'Hỏng'}
+                        {!['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'BROKEN'].includes(item.status) && item.status}
                       </span>
                     </td>
                     <td className="p-4 text-right">
@@ -463,7 +480,7 @@ export default function EquipmentManagement() {
                             <Loader2 className="w-6 h-6 animate-spin text-green-600" />
                           ) : formData.imageUrl ? (
                             <>
-                              <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                              <img src={formatFirebaseUrl(formData.imageUrl)} alt="Preview" className="w-full h-full object-cover" />
                               <button
                                 type="button"
                                 onClick={() => setFormData({ ...formData, imageUrl: '' })}
@@ -532,12 +549,13 @@ export default function EquipmentManagement() {
                       <label className="block font-medium text-gray-700 mb-1">Trạng thái thiết bị</label>
                       <select
                         className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none bg-white"
-                        value={formData.status || 'ACTIVE'}
+                        value={formData.status || 'AVAILABLE'}
                         onChange={e => setFormData({...formData, status: e.target.value})}
                       >
-                        <option value="ACTIVE">Đang hoạt động (Active)</option>
+                        <option value="AVAILABLE">Sẵn sàng (Available)</option>
+                        <option value="IN_USE">Đang sử dụng (In use)</option>
                         <option value="MAINTENANCE">Đang bảo trì (Maintenance)</option>
-                        <option value="INACTIVE">Ngưng sử dụng (Inactive)</option>
+                        <option value="BROKEN">Hỏng (Broken)</option>
                       </select>
                     </div>
 

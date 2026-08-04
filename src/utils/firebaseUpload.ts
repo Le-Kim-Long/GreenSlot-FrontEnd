@@ -10,10 +10,19 @@ export const uploadTreeImage = async (file: File): Promise<string> => {
 
   // Bắt đầu upload
   const uploadTask = await uploadBytesResumable(storageRef, file);
-  
+
   // Trả về đường dẫn web chính thức sau khi tải xong
   const downloadURL = await getDownloadURL(uploadTask.ref);
   return downloadURL;
+};
+
+// Upload ảnh thiết bị trực tiếp từ trình duyệt lên Firebase Storage (né backend Java —
+// endpoint upload ảnh của BE hiện không cấp quyền đọc public nên link luôn bị 403)
+export const uploadEquipmentImage = async (file: File): Promise<string> => {
+  const fileName = `equipment/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+  const storageRef = ref(storage, fileName);
+  const uploadTask = await uploadBytesResumable(storageRef, file);
+  return getDownloadURL(uploadTask.ref);
 };
 
 // 💥 THÊM HÀM NÀY: Xóa ảnh khỏi kho Firebase Storage dựa vào link URL
