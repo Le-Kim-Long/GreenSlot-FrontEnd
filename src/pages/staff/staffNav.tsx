@@ -11,6 +11,8 @@ import {
   DollarSign,
   ClipboardList, // Thêm icon cho Task
   Users,
+  AlertTriangle,
+  ShieldAlert,
 } from 'lucide-react';
 
 export const staffNavItems = [
@@ -23,6 +25,8 @@ export const staffNavItems = [
   { label: 'Công việc', path: '/dashboard/staff/tasks', icon: <ClipboardList className="w-full h-full" /> }, // Đã thêm mục Quản lý Task
   { label: 'Nhân viên', path: '/dashboard/staff/staffs', icon: <Users className="w-full h-full" /> },
   { label: 'Doanh thu', path: '/dashboard/staff/revenue', icon: <DollarSign className="w-full h-full" /> },
+  { label: 'Thống kê Cảnh báo', path: '/dashboard/staff/alert-analytics', icon: <AlertTriangle className="w-full h-full" /> },
+  { label: 'Xử lý Cảnh báo', path: '/dashboard/staff/alert-processing', icon: <ShieldAlert className="w-full h-full" /> },
   { label: 'Thiết bị IoT', path: '/dashboard/staff/equipment', icon: <Cpu className="w-full h-full" /> },
   { label: 'Cây trồng', path: '/dashboard/staff/trees', icon: <Trees className="w-full h-full" /> },
   { label: 'Yêu cầu trồng cây', path: '/dashboard/staff/tree-planting', icon: <Sprout className="w-full h-full" /> },
