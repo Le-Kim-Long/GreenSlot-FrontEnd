@@ -49,6 +49,8 @@ export default function StaffDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        // GET /manager/analytics/revenue chỉ dành cho role manager (backend chặn location_manager) —
+        // chỉ gọi khi đúng role để tránh request chắc chắn lỗi 400
         const [locations, pillars, slots, categories, types, rentals, revenue, tasks] = await Promise.all([
           managerApi.getLocations().catch(() => []),
           managerApi.getPillars().catch(() => []),
@@ -56,7 +58,9 @@ export default function StaffDashboard() {
           managerApi.getServiceCategories().catch(() => []),
           managerApi.getServiceTypes().catch(() => []),
           managerApi.getActiveRentals().catch(() => []),
-          managerApi.getRevenue('2024-01-01', new Date().toISOString().split('T')[0]).catch(() => ({ totalRevenue: 0 })),
+          user?.role === 'manager'
+            ? managerApi.getRevenue('2024-01-01', new Date().toISOString().split('T')[0]).catch(() => ({ totalRevenue: 0 }))
+            : Promise.resolve({ totalRevenue: 0 }),
           Promise.resolve([]),
         ]);
         setStats({
