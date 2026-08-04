@@ -38,6 +38,7 @@ import TreePlantingManagement from './pages/staff/TreePlantingManagement';
 
 import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
 import GardenStaffAlerts from './pages/garden-staff/GardenStaffAlert';
+import PumpControl from './pages/garden-staff/PumpControl';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
@@ -117,6 +118,7 @@ function AppRoutes() {
       <Route path="/dashboard/garden-staff" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/alerts" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffAlerts /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/monitoring" element={<ProtectedRoute allowedRoles={['garden_staff']}><IoTMonitoringPage /></ProtectedRoute>} />
+      <Route path="/dashboard/garden-staff/pump-control" element={<ProtectedRoute allowedRoles={['garden_staff']}><PumpControl /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route path="/dashboard/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
