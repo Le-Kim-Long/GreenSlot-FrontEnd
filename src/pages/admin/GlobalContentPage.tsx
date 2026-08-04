@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FileText, Users, ShieldCheck, TrendingUp, Loader2, Plus, Pencil } from 'lucide-react';
+import { FileText, Users, ShieldCheck, TrendingUp, Loader2, Plus, Pencil, BadgeDollarSign } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { adminApi } from '../../api/adminApi';
 import type { GlobalContent } from '../../types/api';
@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Audit logs', path: '/dashboard/admin/audit', icon: <ShieldCheck className="w-full h-full" /> },
   { label: 'Nội dung', path: '/dashboard/admin/content', icon: <FileText className="w-full h-full" /> },
   { label: 'Camera IoT', path: '/dashboard/admin/cameras', icon: <ShieldCheck className="w-full h-full" /> },
+  { label: 'Giá trị khách hàng', path: '/dashboard/admin/customer-value', icon: <BadgeDollarSign className="w-full h-full" /> },
 ];
 
 const typeLabels: Record<GlobalContent['contentType'], string> = {

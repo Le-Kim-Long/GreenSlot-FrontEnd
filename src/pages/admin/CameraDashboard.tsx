@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Users, TrendingUp, RefreshCw, AlertCircle, Video, Camera as CameraIcon } from 'lucide-react';
+import { ShieldCheck, Users, TrendingUp, RefreshCw, AlertCircle, Video, Camera as CameraIcon, BadgeDollarSign } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { CameraDTO, getActiveCameras } from '../../api/cameraApi';
 
@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Audit logs', path: '/dashboard/admin/audit', icon: <ShieldCheck className="w-full h-full" /> },
   { label: 'Nội dung', path: '/dashboard/admin/content', icon: <ShieldCheck className="w-full h-full" /> },
   { label: 'Camera IoT', path: '/dashboard/admin/cameras', icon: <ShieldCheck className="w-full h-full" /> },
+  { label: 'Giá trị khách hàng', path: '/dashboard/admin/customer-value', icon: <BadgeDollarSign className="w-full h-full" /> },
 ];
 
 export default function CameraDashboard() {

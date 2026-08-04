@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, ChevronLeft, ChevronRight, Shield, Loader2, Phone, MapPin, ShieldCheck } from 'lucide-react';
+import { Users, Search, ChevronLeft, ChevronRight, Shield, Loader2, Phone, MapPin, ShieldCheck, BadgeDollarSign } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { adminApi } from '../../api/adminApi';
 import type { UserAdmin } from '../../types/api';
@@ -11,6 +11,7 @@ const navItems = [
   { label: 'Audit logs', path: '/dashboard/admin/audit', icon: <Shield className="w-full h-full" /> },
   { label: 'Nội dung', path: '/dashboard/admin/content', icon: <Shield className="w-full h-full" /> },
   { label: 'Camera IoT', path: '/dashboard/admin/cameras', icon: <ShieldCheck className="w-full h-full" /> },
+  { label: 'Giá trị khách hàng', path: '/dashboard/admin/customer-value', icon: <BadgeDollarSign className="w-full h-full" /> },
 ];
 
 const ALL_ROLES = [
