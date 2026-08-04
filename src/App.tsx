@@ -3,16 +3,16 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import type { UserRole } from './types';
 import { getDashboardPath } from './utils/roleMap';
 
-import LandingPage from './pages/LandingPage';
+import LandingPage from './pages/public/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
-import GardenListPage from './pages/gardens/GardenListPage';
-import GardenDetailPage from './pages/gardens/GardenDetailPage';
-import ServicesPage from './pages/ServicesPage';
-import PricingPage from './pages/PricingPage';
-import HowItWorksPage from './pages/HowItWorksPage';
+import GardenListPage from './pages/public/GardenListPage';
+import GardenDetailPage from './pages/public/GardenDetailPage';
+import ServicesPage from './pages/public/ServicesPage';
+import PricingPage from './pages/public/PricingPage';
+import HowItWorksPage from './pages/public/HowItWorksPage';
 
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import MyRentalsPage from './pages/customer/MyRentalsPage';
@@ -22,21 +22,21 @@ import PaymentHistoryPage from './pages/customer/PaymentHistoryPage';
 import CustomerNotificationsPage from './pages/customer/CustomerNotificationsPage';
 import TreePlantingRequestPage from './pages/customer/CustomerTreePlanting';
 
-import StaffDashboard from './pages/staff/StaffDashboard';
-import LocationManagement from './pages/staff/LocationManagement';
-import PillarManagement from './pages/staff/PillarManagement';
-import SlotManagement from './pages/staff/SlotManagement';
-import ServiceManagement from './pages/staff/ServiceManagement';
-import ActiveRentals from './pages/staff/ActiveRentals';
-import RevenueAnalytics from './pages/staff/RevenueAnalytics';
-import AlertAnalytics from './pages/staff/AlertAnalytics';
-import AlertProcessing from './pages/staff/AlertProcessing';
-import TaskManagement from './pages/staff/TaskManagement';
-import StaffListPage from './pages/staff/StaffListPage';
-import EquipmentManagement from './pages/staff/EquipmentManagement';
-import TreeManagement from './pages/staff/TreeManagement';
-import StaffScheduleManagement from './pages/staff/StaffScheduleManagement';
-import TreePlantingManagement from './pages/staff/TreePlantingManagement';
+import StaffDashboard from './pages/manager/StaffDashboard';
+import LocationManagement from './pages/manager/LocationManagement';
+import PillarManagement from './pages/manager/PillarManagement';
+import SlotManagement from './pages/manager/SlotManagement';
+import ServiceManagement from './pages/manager/ServiceManagement';
+import ActiveRentals from './pages/manager/ActiveRentals';
+import RevenueAnalytics from './pages/manager/RevenueAnalytics';
+import AlertAnalytics from './pages/manager/AlertAnalytics';
+import AlertProcessing from './pages/manager/AlertProcessing';
+import TaskManagement from './pages/manager/TaskManagement';
+import StaffListPage from './pages/manager/StaffListPage';
+import EquipmentManagement from './pages/manager/EquipmentManagement';
+import TreeManagement from './pages/manager/TreeManagement';
+import StaffScheduleManagement from './pages/manager/StaffScheduleManagement';
+import TreePlantingManagement from './pages/manager/TreePlantingManagement';
 
 import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
 import GardenStaffAlerts from './pages/garden-staff/GardenStaffAlert';
@@ -48,7 +48,7 @@ import GlobalContentPage from './pages/admin/GlobalContentPage';
 import CameraDashboard from './pages/admin/CameraDashboard';
 
 import ProfilePage from './pages/profile/ProfilePage';
-import PaymentResultPage from './pages/payment/PaymentResultPage';
+import PaymentResultPage from './pages/public/PaymentResultPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

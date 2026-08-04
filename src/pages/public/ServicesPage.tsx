@@ -1,5 +1,5 @@
-import Navbar from '../components/common/Navbar';
-import Footer from '../components/common/Footer';
+import Navbar from '../../components/common/Navbar';
+import Footer from '../../components/common/Footer';
 import { Droplets, Thermometer, Sun, BarChart3, ShieldCheck, Users, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

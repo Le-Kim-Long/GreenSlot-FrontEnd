@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Leaf, Wifi, Users, Star, ArrowRight, CheckCircle, Sprout, ShieldCheck, BarChart3, Droplets, Thermometer, Sun, MapPin, ChevronRight, Play, Zap, Heart, ArrowDown, Quote } from 'lucide-react';
-import Navbar from '../components/common/Navbar';
-import Footer from '../components/common/Footer';
-import { useScrollReveal, useCounter } from '../hooks/useScrollReveal';
+import Navbar from '../../components/common/Navbar';
+import Footer from '../../components/common/Footer';
+import { useScrollReveal, useCounter } from '../../hooks/useScrollReveal';
 import clsx from 'clsx';
 
 function RevealSection({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {

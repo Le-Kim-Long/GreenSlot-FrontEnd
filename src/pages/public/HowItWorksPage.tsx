@@ -1,5 +1,5 @@
-import Navbar from '../components/common/Navbar';
-import Footer from '../components/common/Footer';
+import Navbar from '../../components/common/Navbar';
+import Footer from '../../components/common/Footer';
 import { Search, Sprout, Smartphone, ShoppingBasket, ArrowDown } from 'lucide-react';
 
 export default function HowItWorksPage() {
