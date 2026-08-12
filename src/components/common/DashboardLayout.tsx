@@ -12,6 +12,7 @@ interface NavItem {
   label: string;
   path: string;
   icon: ReactNode;
+  roles?: string[];
 }
 
 interface DashboardLayoutProps {
@@ -148,7 +149,7 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
         <nav className="flex-1 px-3 py-4 overflow-y-auto">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 mb-2">Menu</p>
           <ul className="space-y-1">
-            {navItems.map(item => (
+            {navItems.filter(item => !item.roles || (user && item.roles.includes(user.role))).map(item => (
               <li key={item.path}>
                 <Link
                   to={item.path}
