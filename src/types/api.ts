@@ -136,25 +136,6 @@ export interface PageResponse<T> {
   size: number;
 }
 
-export interface AuditLog {
-  id: number;
-  action: string;
-  entityType: string;
-  entityId: number;
-  performedBy: string;
-  performedAt: string;
-  details?: string;
-  ipAddress?: string;
-}
-
-export interface GlobalContent {
-  id?: number;
-  title: string;
-  content: string;
-  contentType: 'ANNOUNCEMENT' | 'CONFIG';
-  active?: boolean;
-}
-
 export interface ActiveRental {
   rentalId: number;
   username: string;

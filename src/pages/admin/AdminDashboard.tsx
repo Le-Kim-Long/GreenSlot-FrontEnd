@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Users, TrendingUp, ShieldCheck, ArrowRight, Loader2, BadgeDollarSign } from 'lucide-react';
+import { Users, TrendingUp, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { adminApi } from '../../api/adminApi';
 import { useState, useEffect } from 'react';
@@ -7,10 +7,7 @@ import { useState, useEffect } from 'react';
 const navItems = [
   { label: 'Tổng quan', path: '/dashboard/admin', icon: <TrendingUp className="w-full h-full" /> },
   { label: 'Người dùng', path: '/dashboard/admin/users', icon: <Users className="w-full h-full" /> },
-  { label: 'Audit logs', path: '/dashboard/admin/audit', icon: <ShieldCheck className="w-full h-full" /> },
-  { label: 'Nội dung', path: '/dashboard/admin/content', icon: <ShieldCheck className="w-full h-full" /> },
   { label: 'Camera IoT', path: '/dashboard/admin/cameras', icon: <ShieldCheck className="w-full h-full" /> },
-  { label: 'Giá trị khách hàng', path: '/dashboard/admin/customer-value', icon: <BadgeDollarSign className="w-full h-full" /> },
 ];
 
 export default function AdminDashboard() {
@@ -28,7 +25,7 @@ export default function AdminDashboard() {
     <DashboardLayout navItems={navItems} title="Dashboard Admin">
       <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl p-6 text-white mb-6">
         <h2 className="text-xl font-bold mb-1">Bảng điều khiển GreenSlot</h2>
-        <p className="text-slate-300 text-sm">Quản trị người dùng, audit logs và nội dung hệ thống</p>
+        <p className="text-slate-300 text-sm">Quản trị người dùng và hệ thống</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">

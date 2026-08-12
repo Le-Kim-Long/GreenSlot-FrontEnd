@@ -1,7 +1,5 @@
 import apiClient from './axiosConfig';
 import type {
-  AuditLog,
-  GlobalContent,
   PageResponse,
   UserAdmin,
 } from '../types/api';
@@ -21,16 +19,4 @@ export const adminApi = {
 
   updateUserLocation: (id: number, locationId: number): Promise<UserAdmin> =>
     apiClient.put(`/admin/users/${id}/location/${locationId}`).then(r => r.data),
-
-  getAuditLogs: (startDate?: string, endDate?: string): Promise<AuditLog[]> =>
-    apiClient.get('/admin/audit-logs', { params: { startDate, endDate } }).then(r => r.data),
-
-  getGlobalContent: (): Promise<GlobalContent[]> =>
-    apiClient.get('/admin/global-content').then(r => r.data),
-
-  createGlobalContent: (data: GlobalContent): Promise<GlobalContent> =>
-    apiClient.post('/admin/global-content', data).then(r => r.data),
-
-  updateGlobalContent: (id: number, data: GlobalContent): Promise<GlobalContent> =>
-    apiClient.put(`/admin/global-content/${id}`, data).then(r => r.data),
 };

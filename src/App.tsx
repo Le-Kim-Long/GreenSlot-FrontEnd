@@ -23,13 +23,12 @@ import CustomerNotificationsPage from './pages/customer/CustomerNotificationsPag
 import TreePlantingRequestPage from './pages/customer/CustomerTreePlanting';
 
 import StaffDashboard from './pages/manager/StaffDashboard';
-import LocationManagement from './pages/manager/LocationManagement';
+import LocationsRoute from './pages/manager/LocationsRoute';
 import PillarManagement from './pages/manager/PillarManagement';
 import SlotManagement from './pages/manager/SlotManagement';
 import ServiceManagement from './pages/manager/ServiceManagement';
 import ActiveRentals from './pages/manager/ActiveRentals';
 import RevenueAnalytics from './pages/manager/RevenueAnalytics';
-import CustomerAnalytics from './pages/manager/CustomerAnalytics';
 import AlertAnalytics from './pages/manager/AlertAnalytics';
 import AlertProcessing from './pages/manager/AlertProcessing';
 import AlertHistory from './pages/manager/AlertHistory';
@@ -47,8 +46,6 @@ import MySchedule from './pages/garden-staff/MySchedule';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
-import AuditLogsPage from './pages/admin/AuditLogsPage';
-import GlobalContentPage from './pages/admin/GlobalContentPage';
 import CameraDashboard from './pages/admin/CameraDashboard';
 
 import ProfilePage from './pages/profile/ProfilePage';
@@ -106,13 +103,12 @@ function AppRoutes() {
 
       {/* Staff / Manager */}
       <Route path="/dashboard/staff" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffDashboard /></ProtectedRoute>} />
-      <Route path="/dashboard/staff/locations" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><LocationManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/locations" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><LocationsRoute /></ProtectedRoute>} />
       <Route path="/dashboard/staff/pillars" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><PillarManagement /></ProtectedRoute>} />
       <Route path="/dashboard/staff/slots" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><SlotManagement /></ProtectedRoute>} />
       <Route path="/dashboard/staff/services" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><ServiceManagement /></ProtectedRoute>} />
       <Route path="/dashboard/staff/rentals" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><ActiveRentals /></ProtectedRoute>} />
       <Route path="/dashboard/staff/revenue" element={<ProtectedRoute allowedRoles={['manager']}><RevenueAnalytics /></ProtectedRoute>} />
-      <Route path="/dashboard/staff/customer-analytics" element={<ProtectedRoute allowedRoles={['manager']}><CustomerAnalytics /></ProtectedRoute>} />
       <Route path="/dashboard/staff/alert-analytics" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><AlertAnalytics /></ProtectedRoute>} />
       <Route path="/dashboard/staff/alert-processing" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><AlertProcessing /></ProtectedRoute>} />
       <Route path="/dashboard/staff/alert-history" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><AlertHistory /></ProtectedRoute>} />
@@ -134,10 +130,7 @@ function AppRoutes() {
       {/* Admin */}
       <Route path="/dashboard/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagementPage /></ProtectedRoute>} />
-      <Route path="/dashboard/admin/audit" element={<ProtectedRoute allowedRoles={['admin']}><AuditLogsPage /></ProtectedRoute>} />
-      <Route path="/dashboard/admin/content" element={<ProtectedRoute allowedRoles={['admin']}><GlobalContentPage /></ProtectedRoute>} />
       <Route path="/dashboard/admin/cameras" element={<ProtectedRoute allowedRoles={['admin']}><CameraDashboard /></ProtectedRoute>} />
-      <Route path="/dashboard/admin/customer-value" element={<ProtectedRoute allowedRoles={['admin']}><CustomerAnalytics /></ProtectedRoute>} />
       {/* Legacy owner routes → redirect */}
       <Route path="/dashboard/owner/*" element={<Navigate to="/gardens" replace />} />
 
