@@ -47,4 +47,7 @@ export const taskApi = {
       },
     }).then(r => r.data.publicUrl); // Trả về trực tiếp chuỗi URL để dễ sử dụng
   },
+
+  reviewTask: (taskId: number, data: { action: 'APPROVE' | 'REJECT'; rejectionReason?: string }): Promise<GardeningTask> =>
+    apiClient.post(`/tasks/${taskId}/review`, data).then(r => r.data),
 };

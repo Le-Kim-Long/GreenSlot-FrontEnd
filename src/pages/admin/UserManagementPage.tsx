@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, ChevronLeft, ChevronRight, Shield, Loader2, Phone, MapPin, ShieldCheck, BadgeDollarSign } from 'lucide-react';
+import { Users, Search, ChevronLeft, ChevronRight, Shield, Loader2, MapPin, ShieldCheck, BadgeDollarSign } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { adminApi } from '../../api/adminApi';
 import type { UserAdmin } from '../../types/api';
@@ -34,6 +34,20 @@ export default function UserManagementPage() {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
+  const [locations, setLocations] = useState<{ id: number; name: string }[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    fullName: '',
+    phone: '',
+    roles: [] as string[],
+    locationId: null as number | null
+  });
+
   const fetchUsers = (p = page) => {
     setLoading(true);
     adminApi.getUsers(p, 20)
@@ -46,6 +60,12 @@ export default function UserManagementPage() {
       .finally(() => setLoading(false));
   };
 
+  useEffect(() => {
+    import('../../api/axiosConfig').then((m) => {
+      m.default.get('/locations').then(res => setLocations(res.data)).catch(console.error);
+    });
+  }, []);
+
   useEffect(() => { fetchUsers(page); }, [page]);
 
   const filtered = users.filter(u => {
@@ -57,21 +77,28 @@ export default function UserManagementPage() {
   const openEditRoles = (user: UserAdmin) => {
     setEditingUser(user);
     setSelectedRoles(user.roles ?? []);
+    setSelectedLocationId(user.locationId ?? null);
   };
 
   const toggleRole = (role: string) => {
     setSelectedRoles(prev => prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]);
   };
 
-  const saveRoles = async () => {
-    if (!editingUser || selectedRoles.length === 0) return;
+  const saveRolesAndLocation = async () => {
+    if (!editingUser) return;
     setSaving(true);
     try {
-      await adminApi.updateUserAuthorities(editingUser.id, selectedRoles);
+      if (selectedRoles.length > 0) {
+        await adminApi.updateUserAuthorities(editingUser.id, selectedRoles);
+      }
+      
+      if (selectedLocationId !== undefined) {
+         await adminApi.updateUserLocation(editingUser.id, selectedLocationId || 0);
+      }
       setEditingUser(null);
       fetchUsers(page);
     } catch {
-      setError('Cập nhật vai trò thất bại');
+      setError('Cập nhật thất bại');
     } finally {
       setSaving(false);
     }
@@ -86,11 +113,33 @@ export default function UserManagementPage() {
     }
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await adminApi.createUser(createForm);
+      setShowCreateModal(false);
+      setCreateForm({
+        username: '', email: '', password: '', fullName: '', phone: '', roles: [], locationId: null
+      });
+      fetchUsers(0);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Tạo người dùng thất bại');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <DashboardLayout navItems={navItems} title="Quản lý người dùng">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Người dùng hệ thống</h2>
-        <p className="text-gray-500 text-sm">{totalElements} tài khoản</p>
+      <div className="flex justify-between items-end mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Người dùng hệ thống</h2>
+          <p className="text-gray-500 text-sm">{totalElements} tài khoản</p>
+        </div>
+        <button onClick={() => setShowCreateModal(true)} className="btn-primary">
+          + Thêm người dùng
+        </button>
       </div>
 
       <div className="relative max-w-md mb-5">
@@ -108,8 +157,7 @@ export default function UserManagementPage() {
             <thead>
               <tr className="text-left text-xs text-gray-500 uppercase border-b">
                 <th className="px-4 py-3">Người dùng</th>
-                <th className="px-4 py-3">SĐT</th>
-                <th className="px-4 py-3">Địa chỉ</th>
+                <th className="px-4 py-3">Cơ sở (Location)</th>
                 <th className="px-4 py-3">Vai trò</th>
                 <th className="px-4 py-3">Trạng thái</th>
                 <th className="px-4 py-3 text-right">Hành động</th>
@@ -123,17 +171,13 @@ export default function UserManagementPage() {
                     <div className="text-xs text-gray-500">{u.email}</div>
                   </td>
                   <td className="px-4 py-3">
-                    {u.phone ? (
-                      <div className="flex items-center gap-1 text-sm text-gray-700"><Phone className="w-3.5 h-3.5 text-gray-400" />{u.phone}</div>
+                    {u.locationName ? (
+                      <div className="flex items-center gap-1 text-sm text-gray-700">
+                        <MapPin className="w-3.5 h-3.5 text-green-600" />
+                        {u.locationName}
+                      </div>
                     ) : (
-                      <span className="text-xs text-gray-400">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {u.address ? (
-                      <div className="flex items-center gap-1 text-sm text-gray-700"><MapPin className="w-3.5 h-3.5 text-gray-400" />{u.address}</div>
-                    ) : (
-                      <span className="text-xs text-gray-400">—</span>
+                      <span className="text-xs text-gray-400">Không có</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -147,7 +191,7 @@ export default function UserManagementPage() {
                     <span className={u.enabled ? 'badge-green' : 'badge-red'}>{u.enabled ? 'Hoạt động' : 'Khóa'}</span>
                   </td>
                   <td className="px-4 py-3 text-right space-x-2">
-                    <button onClick={() => openEditRoles(u)} className="text-xs text-green-600 hover:underline">Vai trò</button>
+                    <button onClick={() => openEditRoles(u)} className="text-xs text-green-600 hover:underline">Chỉnh sửa</button>
                     <button onClick={() => toggleStatus(u)} className="text-xs text-red-600 hover:underline">
                       {u.enabled ? 'Khóa' : 'Mở khóa'}
                     </button>
@@ -169,19 +213,116 @@ export default function UserManagementPage() {
       {editingUser && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <h3 className="font-bold text-lg mb-4">Vai trò: {editingUser.fullName}</h3>
-            <div className="space-y-2 mb-4">
-              {ALL_ROLES.map(role => (
-                <label key={role} className="flex items-center gap-2 text-sm cursor-pointer">
-                  <input type="checkbox" checked={selectedRoles.includes(role)} onChange={() => toggleRole(role)} />
-                  {roleLabel(role)}
-                </label>
-              ))}
+            <h3 className="font-bold text-lg mb-4">Phân quyền: {editingUser.fullName}</h3>
+            
+            <div className="mb-4">
+               <label className="block text-sm font-semibold mb-2">Vai trò</label>
+               <div className="space-y-2">
+                 {ALL_ROLES.map(role => (
+                   <label key={role} className="flex items-center gap-2 text-sm cursor-pointer">
+                     <input type="checkbox" checked={selectedRoles.includes(role)} onChange={() => toggleRole(role)} />
+                     {roleLabel(role)}
+                   </label>
+                 ))}
+               </div>
             </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-semibold mb-2">Cơ sở hoạt động (Location)</label>
+              <select 
+                className="input w-full"
+                value={selectedLocationId || ''}
+                onChange={e => setSelectedLocationId(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">-- Không phân công (All) --</option>
+                {locations.map(loc => (
+                  <option key={loc.id} value={loc.id}>{loc.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">Chỉ định vị trí nếu người dùng là Location Manager hoặc Garden Staff.</p>
+            </div>
+
             <div className="flex gap-2">
-              <button onClick={saveRoles} disabled={saving} className="btn-primary flex-1">Lưu</button>
+              <button onClick={saveRolesAndLocation} disabled={saving} className="btn-primary flex-1">Lưu</button>
               <button onClick={() => setEditingUser(null)} className="btn-secondary flex-1">Hủy</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <h3 className="font-bold text-lg mb-4">Thêm người dùng mới</h3>
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1">Tên đăng nhập <span className="text-red-500">*</span></label>
+                  <input required className="input w-full" value={createForm.username} onChange={e => setCreateForm(prev => ({...prev, username: e.target.value}))} />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1">Mật khẩu <span className="text-red-500">*</span></label>
+                  <input type="password" required minLength={6} className="input w-full" value={createForm.password} onChange={e => setCreateForm(prev => ({...prev, password: e.target.value}))} />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold mb-1">Email <span className="text-red-500">*</span></label>
+                <input type="email" required className="input w-full" value={createForm.email} onChange={e => setCreateForm(prev => ({...prev, email: e.target.value}))} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-1">Họ tên</label>
+                  <input className="input w-full" value={createForm.fullName} onChange={e => setCreateForm(prev => ({...prev, fullName: e.target.value}))} />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-1">Số điện thoại</label>
+                  <input className="input w-full" value={createForm.phone} onChange={e => setCreateForm(prev => ({...prev, phone: e.target.value}))} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">Vai trò <span className="text-red-500">*</span></label>
+                <div className="grid grid-cols-2 gap-2">
+                  {ALL_ROLES.map(role => (
+                    <label key={role} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        checked={createForm.roles.includes(role)} 
+                        onChange={() => {
+                          setCreateForm(prev => ({
+                            ...prev, 
+                            roles: prev.roles.includes(role) ? prev.roles.filter(r => r !== role) : [...prev.roles, role]
+                          }));
+                        }} 
+                      />
+                      {roleLabel(role)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">Cơ sở hoạt động (Location)</label>
+                <select 
+                  className="input w-full"
+                  value={createForm.locationId || ''}
+                  onChange={e => setCreateForm(prev => ({...prev, locationId: e.target.value ? Number(e.target.value) : null}))}
+                >
+                  <option value="">-- Không phân công (All) --</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Chỉ định vị trí nếu người dùng là Location Manager hoặc Garden Staff.</p>
+              </div>
+
+              <div className="flex gap-2 mt-6">
+                <button type="submit" disabled={saving || createForm.roles.length === 0} className="btn-primary flex-1">Tạo tài khoản</button>
+                <button type="button" onClick={() => setShowCreateModal(false)} className="btn-secondary flex-1">Hủy</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

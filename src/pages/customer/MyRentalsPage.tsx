@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, Wifi, Wrench, TrendingUp, CreditCard, Bell, Calendar, Clock, Loader2, X } from 'lucide-react';
+import { Leaf, Wifi, Wrench, TrendingUp, CreditCard, Bell, Calendar, Clock, Loader2, X, AlertTriangle } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
+import { managerApi } from '../../api/managerApi';
+import { taskApi } from '../../api/taskApi';
 import clsx from 'clsx';
 
 const navItems = [
@@ -43,6 +45,15 @@ export default function MyRentalsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState('');
 
+  // Báo cáo sự cố
+  const [reportModal, setReportModal] = useState<BookingHistory | null>(null);
+  const [serviceTypes, setServiceTypes] = useState<any[]>([]);
+  const [serviceTypeId, setServiceTypeId] = useState<number>(0);
+  const [reportDesc, setReportDesc] = useState('');
+  const [reporting, setReporting] = useState(false);
+  const [reportError, setReportError] = useState('');
+  const [reportSuccess, setReportSuccess] = useState('');
+
   const fetchHistory = () => {
     setLoading(true);
     bookingApi.getHistory()
@@ -51,7 +62,19 @@ export default function MyRentalsPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchHistory(); }, []);
+  const fetchServiceTypes = () => {
+    managerApi.getServiceTypes()
+      .then(data => {
+        setServiceTypes(data || []);
+        if (data && data.length > 0) setServiceTypeId(data[0].id);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => { 
+    fetchHistory(); 
+    fetchServiceTypes();
+  }, []);
 
   const filtered = tab === 'all' ? rentals : rentals.filter(r => r.status === tab);
 
@@ -117,6 +140,35 @@ export default function MyRentalsPage() {
     }
   };
 
+  const handleReportSubmit = async () => {
+    if (!reportModal) return;
+    if (!serviceTypeId) {
+      setReportError('Vui lòng chọn loại sự cố / dịch vụ');
+      return;
+    }
+    
+    setReporting(true);
+    setReportError('');
+    setReportSuccess('');
+    try {
+      await taskApi.requestService({
+        slotId: reportModal.slotId,
+        serviceTypeId,
+        description: reportDesc
+      });
+      setReportSuccess('Đã gửi báo cáo sự cố thành công!');
+      setTimeout(() => {
+        setReportModal(null);
+        setReportDesc('');
+      }, 1500);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setReportError(msg || 'Gửi báo cáo thất bại. Vui lòng thử lại.');
+    } finally {
+      setReporting(false);
+    }
+  };
+
   return (
     <DashboardLayout navItems={navItems} title="Vườn đang thuê">
       <div className="flex items-center justify-between mb-6">
@@ -170,10 +222,16 @@ export default function MyRentalsPage() {
                   </div>
                   <div className="flex flex-row sm:flex-col gap-2 h-fit">
                     {rental.status === 'ACTIVE' && (
-                      <button onClick={() => { setExtendModal(rental); setExtendMonths(1); }}
-                        className="btn-outline-green text-xs flex items-center gap-1 h-fit">
-                        <Clock className="w-3.5 h-3.5" /> Gia hạn
-                      </button>
+                      <>
+                        <button onClick={() => { setExtendModal(rental); setExtendMonths(1); }}
+                          className="btn-outline-green text-xs flex items-center gap-1 h-fit">
+                          <Clock className="w-3.5 h-3.5" /> Gia hạn
+                        </button>
+                        <button onClick={() => setReportModal(rental)}
+                          className="btn-outline-red text-xs flex items-center gap-1 h-fit mt-2 sm:mt-0">
+                          <AlertTriangle className="w-3.5 h-3.5" /> Báo cáo sự cố
+                        </button>
+                      </>
                     )}
                     {(rental.status === 'PENDING' || rental.paymentStatus === 'PENDING') && rental.status !== 'CANCELLED' && (
                       <>
@@ -233,6 +291,65 @@ export default function MyRentalsPage() {
               </button>
               <button onClick={handleCancel} disabled={cancelling} className="btn-outline-red flex-1">
                 {cancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Báo cáo sự cố */}
+      {reportModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <div className="flex justify-between mb-5">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-500" /> Báo cáo sự cố
+              </h2>
+              <button onClick={() => setReportModal(null)}><X className="w-5 h-5" /></button>
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              Ô vườn: <span className="font-semibold text-green-700">{reportModal.slotNumber}</span>
+            </p>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Loại sự cố / dịch vụ</label>
+              <select 
+                className="input" 
+                value={serviceTypeId} 
+                onChange={e => setServiceTypeId(Number(e.target.value))}
+              >
+                <option value={0} disabled>Chọn loại sự cố...</option>
+                {serviceTypes.map(st => (
+                  <option key={st.id} value={st.id}>{st.serviceName}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết</label>
+              <textarea 
+                className="input min-h-[100px]" 
+                placeholder="Mô tả sự cố bạn gặp phải (cây chết, cột hỏng, v.v.)..."
+                value={reportDesc}
+                onChange={e => setReportDesc(e.target.value)}
+              />
+            </div>
+
+            {reportError && <div className="text-red-600 text-sm mb-3">{reportError}</div>}
+            {reportSuccess && <div className="text-green-600 text-sm mb-3">{reportSuccess}</div>}
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setReportModal(null)} disabled={reporting} className="btn-secondary">
+                Đóng
+              </button>
+              <button 
+                onClick={handleReportSubmit} 
+                disabled={reporting || !serviceTypeId} 
+                className="btn-primary"
+              >
+                {reporting ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}
+                {reporting ? 'Đang gửi...' : 'Gửi báo cáo'}
               </button>
             </div>
           </div>

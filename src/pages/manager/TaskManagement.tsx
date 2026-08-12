@@ -17,6 +17,7 @@ interface Task {
   status: string;
   slotId: number;
   assigneeName?: string;
+  evidenceImageUrl?: string;
 }
 
 interface Slot {
@@ -45,8 +46,8 @@ export default function TaskManagement() {
   const [filteredStaffs, setFilteredStaffs] = useState<GardenStaff[]>([]);
   const [isLoadingStaffs, setIsLoadingStaffs] = useState(false);
 
-  // States quản lý Modal (Tách biệt Tạo mới và Giao việc)
-  const [modalType, setModalType] = useState<'CREATE' | 'ASSIGN' | 'NONE'>('NONE');
+  // States quản lý Modal (Tách biệt Tạo mới, Giao việc, Duyệt task)
+  const [modalType, setModalType] = useState<'CREATE' | 'ASSIGN' | 'REVIEW' | 'NONE'>('NONE');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,6 +59,7 @@ export default function TaskManagement() {
     targetSlotId: ''
   });
   const [assignForm, setAssignForm] = useState({ staffId: '' });
+  const [reviewForm, setReviewForm] = useState({ action: 'APPROVE' as 'APPROVE' | 'REJECT', rejectionReason: '' });
 
   // Tải dữ liệu ban đầu
   // Tải dữ liệu ban đầu
@@ -84,7 +86,8 @@ export default function TaskManagement() {
         type: t.taskType,              // API trả taskType -> UI cần type
         status: t.status,
         slotId: t.targetSlotId,        // API trả targetSlotId -> UI cần slotId
-        assigneeName: t.assignedStaffName // API trả assignedStaffName -> UI cần assigneeName
+        assigneeName: t.assignedStaffName, // API trả assignedStaffName -> UI cần assigneeName
+        evidenceImageUrl: t.evidenceImageUrl
       }));
 
       setTasks(formattedTasks); 
@@ -130,6 +133,12 @@ export default function TaskManagement() {
     setAssignForm({ staffId: '' });
     setFilteredStaffs([]);
     setModalType('ASSIGN');
+  };
+
+  const handleOpenReviewModal = (task: Task) => {
+    setSelectedTask(task);
+    setReviewForm({ action: 'APPROVE', rejectionReason: '' });
+    setModalType('REVIEW');
   };
 
   const handleCloseModal = () => {
@@ -196,6 +205,25 @@ export default function TaskManagement() {
     }
   };
 
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTask) return;
+    
+    setIsSubmitting(true);
+    try {
+      await taskApi.reviewTask(selectedTask.id, reviewForm);
+      alert('Đã lưu đánh giá công việc!');
+      handleCloseModal();
+      fetchData();
+    } catch (error: any) {
+      console.error('Lỗi duyệt task:', error);
+      const errorMsg = error.response?.data?.message || error.message;
+      alert(`Lỗi khi duyệt task: ${errorMsg}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const filteredTasks = tasks.filter(t => t.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
@@ -255,6 +283,8 @@ export default function TaskManagement() {
                       <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
                         task.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 
                         task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 
+                        task.status === 'PENDING_APPROVAL' ? 'bg-purple-100 text-purple-700' :
+                        task.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
                         'bg-green-100 text-green-700'
                       }`}>
                         {task.status || 'Chưa gán'}
@@ -280,6 +310,15 @@ export default function TaskManagement() {
                           className="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-green-50 hover:text-green-600 hover:border-green-200 text-gray-700 px-3 py-1.5 rounded-lg transition shadow-sm"
                         >
                           <UserPlus className="w-4 h-4" /> Gán nhân viên
+                        </button>
+                      )}
+                      
+                      {task.status === 'PENDING_APPROVAL' && (
+                        <button
+                          onClick={() => handleOpenReviewModal(task)}
+                          className="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 text-gray-700 px-3 py-1.5 rounded-lg transition shadow-sm ml-2"
+                        >
+                          <ClipboardList className="w-4 h-4" /> Duyệt
                         </button>
                       )}
                     </td>
@@ -401,6 +440,92 @@ export default function TaskManagement() {
                   <button type="button" onClick={handleCloseModal} disabled={isSubmitting} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium">Hủy</button>
                   <button type="submit" disabled={isSubmitting || !assignForm.staffId} className="px-5 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium disabled:opacity-50 flex items-center gap-1.5 shadow-sm shadow-green-600/20">
                     <UserCheck className="w-4 h-4" /> {isSubmitting ? 'Đang xử lý...' : 'Xác nhận giao'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================
+            MODAL 3: DUYỆT CÔNG VIỆC
+        ========================================= */}
+        {modalType === 'REVIEW' && selectedTask && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
+              <button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+              
+              <h2 className="text-xl font-bold mb-5 text-gray-900">Duyệt Công Việc</h2>
+              
+              <div className="bg-purple-50/60 border border-purple-100 p-4 rounded-xl mb-5">
+                <p className="font-semibold text-gray-900 text-base">{selectedTask.name}</p>
+                <div className="flex flex-wrap gap-2 mt-2 text-xs font-medium text-purple-700">
+                  <span className="bg-white px-2 py-1 rounded border border-purple-200">Loại: {selectedTask.type}</span>
+                  <span className="bg-white px-2 py-1 rounded border border-purple-200">Slot ID: #{selectedTask.slotId}</span>
+                  <span className="bg-white px-2 py-1 rounded border border-purple-200">Nhân viên: {selectedTask.assigneeName}</span>
+                </div>
+              </div>
+
+              {selectedTask.evidenceImageUrl && (
+                <div className="mb-5">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Ảnh Bằng Chứng</label>
+                  <img 
+                    src={selectedTask.evidenceImageUrl} 
+                    alt="Bằng chứng công việc" 
+                    className="w-full h-auto max-h-64 object-contain rounded-lg border border-gray-200 bg-gray-50"
+                  />
+                </div>
+              )}
+
+              <form onSubmit={handleReviewSubmit} className="space-y-4 text-sm">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Quyết định</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="reviewStatus" 
+                        value="APPROVE"
+                        checked={reviewForm.action === 'APPROVE'}
+                        onChange={() => setReviewForm({ ...reviewForm, action: 'APPROVE' })}
+                        className="w-4 h-4 text-green-600 focus:ring-green-500"
+                      />
+                      <span className="font-medium text-green-700">Duyệt (Hoàn thành)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input 
+                        type="radio" 
+                        name="reviewStatus" 
+                        value="REJECT"
+                        checked={reviewForm.action === 'REJECT'}
+                        onChange={() => setReviewForm({ ...reviewForm, action: 'REJECT' })}
+                        className="w-4 h-4 text-red-600 focus:ring-red-500"
+                      />
+                      <span className="font-medium text-red-700">Từ chối (Yêu cầu làm lại)</span>
+                    </label>
+                  </div>
+                </div>
+
+                {reviewForm.action === 'REJECT' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Lý do từ chối <span className="text-red-500">*</span></label>
+                    <textarea 
+                      required 
+                      className="w-full border border-red-300 rounded-xl shadow-sm focus:ring-2 focus:ring-red-500/20 focus:border-red-500 p-2.5 outline-none" 
+                      rows={3} 
+                      value={reviewForm.rejectionReason} 
+                      onChange={e => setReviewForm({...reviewForm, rejectionReason: e.target.value})} 
+                      placeholder="Nhập lý do nhân viên cần làm lại..." 
+                    />
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+                  <button type="button" onClick={handleCloseModal} disabled={isSubmitting} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium">Hủy</button>
+                  <button type="submit" disabled={isSubmitting} className={`px-5 py-2.5 text-white rounded-xl font-medium disabled:opacity-50 flex items-center gap-1.5 shadow-sm ${reviewForm.action === 'APPROVE' ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20' : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'}`}>
+                    <ClipboardList className="w-4 h-4" /> {isSubmitting ? 'Đang xử lý...' : (reviewForm.action === 'APPROVE' ? 'Duyệt Task' : 'Từ chối Task')}
                   </button>
                 </div>
               </form>

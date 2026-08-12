@@ -46,6 +46,7 @@ export interface PaymentTransactionInfo {
 
 export interface RentalHistoryDTO {
   rentalId: number;
+  slotId: number;
   slotNumber: string;
   pillarCode?: string;
   locationName?: string;
@@ -58,7 +59,7 @@ export interface RentalHistoryDTO {
 
 export interface BookingHistory {
   id: number;
-  slotId?: number;
+  slotId: number;
   slotNumber: string;
   pillarCode?: string;
   locationName?: string;
@@ -85,6 +86,7 @@ export interface GardeningTask {
   description?: string;
   status: string;
   evidenceImageUrl?: string;
+  rejectionReason?: string;
   taskType: string;
   assignedStaffId?: number;
   assignedStaffName?: string;
@@ -122,6 +124,8 @@ export interface UserAdmin {
   address?: string;
   enabled: boolean;
   roles: string[];
+  locationId?: number;
+  locationName?: string;
 }
 
 export interface PageResponse<T> {

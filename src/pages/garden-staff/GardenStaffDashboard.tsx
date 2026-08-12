@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ClipboardList, Wifi, CheckCircle, AlertTriangle, Loader2, ShieldAlert, Upload } from 'lucide-react';
+import { ClipboardList, Wifi, CheckCircle, AlertTriangle, Loader2, ShieldAlert, Upload, Calendar } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { taskApi } from '../../api/taskApi';
 import type { GardeningTask } from '../../types/api';
@@ -7,15 +7,18 @@ import clsx from 'clsx';
 
 const navItems = [
   { label: 'Công việc', path: '/dashboard/garden-staff', icon: <ClipboardList className="w-full h-full" /> },
+  { label: 'Lịch trực', path: '/dashboard/garden-staff/schedules', icon: <Calendar className="w-full h-full" /> },
   { label: 'Giám sát IoT', path: '/dashboard/garden-staff/monitoring', icon: <Wifi className="w-full h-full" /> },
   { label: 'Cảnh báo IoT', path: '/dashboard/garden-staff/alerts', icon: <ShieldAlert className="w-full h-full" /> },
   { label: 'Điều khiển máy bơm', path: '/dashboard/garden-staff/pump-control', icon: <CheckCircle className="w-full h-full" /> }
 ];
 
 const statusConfig: Record<string, { label: string; cls: string }> = {
-  PENDING: { label: 'Chờ xử lý', cls: 'badge-yellow' },
-  IN_PROGRESS: { label: 'Đang làm', cls: 'badge-blue' },
-  COMPLETED: { label: 'Hoàn thành', cls: 'badge-green' },
+  PENDING: { label: 'Chờ xử lý', cls: 'bg-yellow-100 text-yellow-700' },
+  IN_PROGRESS: { label: 'Đang làm', cls: 'bg-blue-100 text-blue-700' },
+  PENDING_APPROVAL: { label: 'Chờ duyệt', cls: 'bg-purple-100 text-purple-700' },
+  REJECTED: { label: 'Bị từ chối', cls: 'bg-red-100 text-red-700' },
+  COMPLETED: { label: 'Hoàn thành', cls: 'bg-green-100 text-green-700' },
 };
 
 export default function GardenStaffDashboard() {
@@ -64,10 +67,15 @@ export default function GardenStaffDashboard() {
                     <div className="font-bold text-gray-900">{task.taskName}</div>
                     <div className="text-sm text-gray-500">{task.targetSlotNumber} · {task.taskType}</div>
                     {task.description && <div className="text-xs text-gray-400 mt-1">{task.description}</div>}
+                    {task.status === 'REJECTED' && task.rejectionReason && (
+                      <div className="text-xs text-red-600 mt-2 font-medium bg-red-50 p-2 border border-red-100 rounded-md">
+                        Lý do từ chối: {task.rejectionReason}
+                      </div>
+                    )}
                   </div>
-                  <span className={clsx(st.cls, 'w-fit')}>{st.label}</span>
+                  <span className={clsx(st.cls, 'px-2.5 py-1 rounded-full text-xs font-semibold w-fit')}>{st.label}</span>
                 </div>
-                {task.status !== 'COMPLETED' && (
+                {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL') && (
                   <TaskActions task={task} onUpdated={fetchTasks} />
                 )}
               </div>
@@ -112,7 +120,7 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
     
     try {
       const imgUrl = await taskApi.uploadEvidenceImage(evidenceFile); 
-      await taskApi.updateTaskStatus(task.id, { status: 'COMPLETED', evidenceImageUrl: imgUrl });
+      await taskApi.updateTaskStatus(task.id, { status: 'PENDING_APPROVAL', evidenceImageUrl: imgUrl });
       
       setShowComplete(false);
       setEvidenceFile(null);
@@ -153,9 +161,9 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
         </button>
       )}
       
-      {task.status === 'IN_PROGRESS' && (
+      {(task.status === 'IN_PROGRESS' || task.status === 'REJECTED') && (
         <button disabled={busy} onClick={() => { setShowComplete(!showComplete); setShowReport(false); setActionError(''); setEvidenceFile(null); }} className="btn-primary text-xs py-1.5 px-3">
-          <CheckCircle className="w-3 h-3 inline mr-1" /> Hoàn thành công việc
+          <CheckCircle className="w-3 h-3 inline mr-1" /> {task.status === 'REJECTED' ? 'Nộp lại bằng chứng' : 'Hoàn thành công việc'}
         </button>
       )}
       

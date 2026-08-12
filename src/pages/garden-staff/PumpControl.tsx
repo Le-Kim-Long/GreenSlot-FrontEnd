@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { pumpApi, PumpStatusPayload } from '../../api/PumpApi'; // Nhớ đổi đường dẫn cho đúng với project của bạn
+import { pumpApi, PumpStatusPayload } from '../../api/pumpApi'; // Nhớ đổi đường dẫn cho đúng với project của bạn
 
 const PumpControl: React.FC = () => {
   const [pumpStatus, setPumpStatus] = useState<'ON' | 'OFF'>('OFF');

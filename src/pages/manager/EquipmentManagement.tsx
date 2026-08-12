@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { equipmentApi, Equipment } from '../../api/equipmentApi';
+import { managerApi } from '../../api/managerApi';
 import { 
   Wrench, Plus, Edit2, Trash2, X, Search, Filter, 
   Loader2, Calendar, ShieldCheck, ChevronDown, 
@@ -10,6 +11,7 @@ import { staffNavItems } from './staffNav';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
 import { uploadEquipmentImage } from '../../utils/firebaseUpload';
 import clsx from 'clsx';
+import apiClient from '../../api/axiosConfig';
 
 // 👉 Component CustomDropdown bo tròn rounded-xl
 function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn', className }: any) {
@@ -78,12 +80,14 @@ const emptyForm: Partial<Equipment> = {
 
 export default function EquipmentManagement() {
   const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [pillars, setPillars] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Search & Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [selectedPillarId, setSelectedPillarId] = useState<string>('');
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -130,8 +134,15 @@ export default function EquipmentManagement() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const data = await equipmentApi.getEquipments();
+      const data = selectedPillarId 
+          ? await apiClient.get(`/equipment/pillar/${selectedPillarId}`).then((r: any) => r.data)
+          : await equipmentApi.getEquipments();
       setEquipments(data || []);
+
+      if (pillars.length === 0) {
+          const pillarsData = await managerApi.getPillars();
+          setPillars(pillarsData || []);
+      }
     } catch (err) {
       setError('Không thể tải danh sách thiết bị.');
     } finally {
@@ -139,7 +150,7 @@ export default function EquipmentManagement() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [selectedPillarId]);
 
   const handleOpenCreate = () => {
     setEditingItem(null);
@@ -263,6 +274,17 @@ export default function EquipmentManagement() {
                 { value: "IN_USE", label: "Đang sử dụng" },
                 { value: "MAINTENANCE", label: "Đang bảo trì" },
                 { value: "BROKEN", label: "Hỏng" },
+              ]}
+            />
+
+            {/* Pillar Filter */}
+            <CustomDropdown
+              icon={<Layers className="w-4 h-4 text-green-600 shrink-0" />}
+              value={selectedPillarId}
+              onChange={(val: any) => setSelectedPillarId(String(val))}
+              options={[
+                { value: "", label: "Tất cả các trụ" },
+                ...pillars.map(p => ({ value: String(p.id), label: p.pillarName || `Trụ #${p.id}` }))
               ]}
             />
           </div>

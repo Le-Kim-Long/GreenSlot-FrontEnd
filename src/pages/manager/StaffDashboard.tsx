@@ -167,16 +167,18 @@ export default function StaffDashboard() {
       ) : (
         <>
           {/* 1. Global Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 mb-6">
-            {statCards.map((s, i) => (
-              <Link key={i} to={s.link} className="card hover:border-green-200 transition-colors group">
-                <div className={clsx('w-10 h-10 rounded-xl flex items-center justify-center mb-3', s.bg)}>{s.icon}</div>
-                <div className="text-2xl font-black text-gray-900 mb-0.5">{s.value}</div>
-                <div className="text-sm text-gray-500">{s.label}</div>
-                {s.sublabel && <div className="text-xs text-gray-400">{s.sublabel}</div>}
-              </Link>
-            ))}
-          </div>
+          {user?.role === 'manager' && (
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4 mb-6">
+              {statCards.map((s, i) => (
+                <Link key={i} to={s.link} className="card hover:border-green-200 transition-colors group">
+                  <div className={clsx('w-10 h-10 rounded-xl flex items-center justify-center mb-3', s.bg)}>{s.icon}</div>
+                  <div className="text-2xl font-black text-gray-900 mb-0.5">{s.value}</div>
+                  <div className="text-sm text-gray-500">{s.label}</div>
+                  {s.sublabel && <div className="text-xs text-gray-400">{s.sublabel}</div>}
+                </Link>
+              ))}
+            </div>
+          )}
 
           {/* 💥 2. KHU VỰC SỐ LIỆU CHUYÊN SOU THEO CƠ SỞ (LOCATION METRICS) */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm mb-6">
@@ -187,9 +189,10 @@ export default function StaffDashboard() {
                 <MapPin className="w-5 h-5 text-green-600 shrink-0" />
                 <span className="text-sm font-bold text-gray-700">Phân tích Cơ sở:</span>
                 <select
-                  className="border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition cursor-pointer"
+                  className="border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold text-gray-800 bg-gray-50 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   value={selectedLocationId}
                   onChange={(e) => setSelectedLocationId(Number(e.target.value))}
+                  disabled={user?.role !== 'manager'}
                 >
                   {locationsList.map((loc) => (
                     <option key={loc.id} value={loc.id}>

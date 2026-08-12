@@ -45,6 +45,7 @@ export default function CustomerDashboard() {
     PENDING: 'badge-yellow',
     COMPLETED: 'badge-gray',
     CANCELLED: 'badge-red',
+    EXPIRED: 'badge-gray',
   };
 
   const statusLabel: Record<string, string> = {
@@ -52,6 +53,7 @@ export default function CustomerDashboard() {
     PENDING: 'Chờ thanh toán',
     COMPLETED: 'Đã hoàn thành',
     CANCELLED: 'Đã hủy',
+    EXPIRED: 'Hết hạn',
   };
 
   return (

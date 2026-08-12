@@ -3,11 +3,23 @@ import type { User, UserRole } from '../types';
 import { authApi } from '../api/authApi';
 import { mapBackendRolesToFrontend } from '../utils/roleMap';
 
+import { jwtDecode } from 'jwt-decode';
+
 function loadStoredUser(): User | null {
   try {
     const token = localStorage.getItem('token');
     const storedUser = localStorage.getItem('user');
-    if (token && storedUser) return JSON.parse(storedUser);
+    if (token) {
+      const decoded: any = jwtDecode(token);
+      if (decoded.exp * 1000 < Date.now()) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        return null;
+      }
+      if (storedUser) {
+        return JSON.parse(storedUser);
+      }
+    }
   } catch { /* ignore */ }
   return null;
 }

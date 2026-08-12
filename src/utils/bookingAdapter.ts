@@ -16,8 +16,17 @@ export function mapRentalHistory(dto: RentalHistoryDTO): BookingHistory {
     ? paidTransactions.reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
     : (Number(latestTx?.amount) || 0);
 
+  let computedStatus = dto.rentalStatus;
+  if (computedStatus === 'ACTIVE' && dto.endTime) {
+    const isExpired = new Date(dto.endTime) < new Date();
+    if (isExpired) {
+      computedStatus = 'EXPIRED';
+    }
+  }
+
   return {
     id: dto.rentalId,
+    slotId: dto.slotId,
     slotNumber: dto.slotNumber,
     pillarCode: dto.pillarCode,
     locationName: dto.locationName,
@@ -27,7 +36,7 @@ export function mapRentalHistory(dto: RentalHistoryDTO): BookingHistory {
     startTime: dto.startTime,
     endTime: dto.endTime,
     totalPrice,
-    status: dto.rentalStatus,
+    status: computedStatus,
     paymentStatus: paidTx?.status || latestTx?.status,
     transactions: dto.transactions ?? [],
   };
