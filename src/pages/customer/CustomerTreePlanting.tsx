@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { treePlantingApi, TreePlantingRequest, CreateTreePlantingPayload } from '../../api/TreePlantingApi';
+import { bookingApi, BookingHistory } from '../../api/bookingApi';
+import { treeApi, Tree } from '../../api/treeApi';
 import { 
   Sprout, Plus, Search, Filter, Clock, CheckCircle2, 
   XCircle, Calendar, FileText, MapPin, ChevronDown, 
-  X, Eye, Loader2, AlertCircle, Sparkles 
+  X, Eye, Loader2, AlertCircle, AlertTriangle, Sparkles 
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -72,6 +74,11 @@ export default function CustomerTreePlanting() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Danh sách hợp đồng thuê & giống cây để chọn trong modal
+  const [myRentals, setMyRentals] = useState<BookingHistory[]>([]);
+  const [availableTrees, setAvailableTrees] = useState<Tree[]>([]);
+  const [loadingResources, setLoadingResources] = useState(false);
+
   // Lọc & Tìm kiếm
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -96,18 +103,77 @@ export default function CustomerTreePlanting() {
     }
   };
 
-  useEffect(() => { fetchMyRequests(); }, []);
+  const fetchResources = async () => {
+    setLoadingResources(true);
+    try {
+      const [rentalsData, treesData] = await Promise.all([
+        bookingApi.getHistory().catch(() => []),
+        treeApi.getTrees().catch(() => []),
+      ]);
+      setMyRentals((rentalsData || []).filter((r: BookingHistory) => r.status === 'ACTIVE'));
+      setAvailableTrees((treesData || []).filter((t: Tree) => t.isActive !== false));
+    } catch (err) {
+      console.error('Lỗi khi tải hợp đồng/cây trồng:', err);
+    } finally {
+      setLoadingResources(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyRequests();
+    fetchResources();
+  }, []);
 
   const handleOpenCreate = () => {
     setFormData(initialForm);
+    fetchResources();
     setIsCreateModalOpen(true);
   };
+
+  // Tính toán thời gian sinh trưởng vs thời hạn thuê còn lại
+  const selectedRental = myRentals.find(r => r.id === Number(formData.rentalId));
+  const selectedTree = availableTrees.find(t => t.id === Number(formData.newTreeId));
+
+  const getRemainingDays = (endDateStr?: string) => {
+    if (!endDateStr) return 0;
+    let end: Date;
+    if (endDateStr.includes('/')) {
+      const parts = endDateStr.split('/');
+      if (parts.length === 3) {
+        const [day, month, year] = parts.map(p => parseInt(p, 10));
+        end = new Date(year, month - 1, day, 23, 59, 59, 999);
+      } else {
+        end = new Date(endDateStr);
+      }
+    } else {
+      end = new Date(endDateStr);
+    }
+    if (isNaN(end.getTime())) return 0;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diffTime = end.getTime() - now.getTime();
+    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  };
+
+  const remainingDays = selectedRental ? getRemainingDays(selectedRental.endTime || selectedRental.endDate) : 0;
+  const growthDays = selectedTree?.harvestDays || 0;
+  const isGrowthExceeded = Boolean(
+    selectedRental && selectedTree && growthDays > 0 && growthDays > remainingDays
+  );
 
   // Gửi Form tạo mới (POST /api/tree-planting)
   const handleSubmitCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.rentalId || !formData.newTreeId || !formData.reason.trim()) {
-      alert('Vui lòng nhập đầy đủ Mã hợp đồng, Mã cây trồng và Lý do trồng.');
+      alert('Vui lòng chọn Hợp đồng thuê ô đất, Giống cây trồng và nhập Lý do.');
+      return;
+    }
+
+    if (isGrowthExceeded) {
+      const expiryText = selectedRental?.endDate || (selectedRental?.endTime ? new Date(selectedRental.endTime).toLocaleDateString('vi-VN') : '');
+      alert(
+        `Không thể gửi yêu cầu: Thời gian sinh trưởng của giống cây (${growthDays} ngày) vượt quá thời hạn thuê còn lại của ô đất (${remainingDays} ngày, hết hạn ngày ${expiryText}). Vui lòng gia hạn hợp đồng trước!`
+      );
       return;
     }
 
@@ -116,15 +182,15 @@ export default function CustomerTreePlanting() {
       await treePlantingApi.createRequest({
         rentalId: Number(formData.rentalId),
         newTreeId: Number(formData.newTreeId),
-        reason: formData.reason,
-        notes: formData.notes || '',
+        reason: formData.reason.trim(),
+        notes: formData.notes?.trim() || '',
       });
       alert('🎉 Đã gửi yêu cầu trồng cây thành công! Hệ thống nhà vườn sẽ sớm kiểm tra và phản hồi.');
       setIsCreateModalOpen(false);
       fetchMyRequests();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Lỗi tạo yêu cầu:', err);
-      alert('Gửi yêu cầu thất bại. Vui lòng kiểm tra lại thông tin.');
+      alert(err?.response?.data?.message || 'Gửi yêu cầu thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally {
       setIsSubmitting(false);
     }
@@ -351,32 +417,105 @@ export default function CustomerTreePlanting() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
-                    Mã Hợp Đồng / Vị Trí Đất <span className="text-red-500">*</span>
+                    Hợp Đồng / Ô Vườn Thuê <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="number" required min={1}
-                    className="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition font-semibold text-gray-800"
-                    placeholder="VD: 3 (rentalId)"
+                  <select
+                    required
+                    className="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition font-medium text-gray-800 bg-white"
                     value={formData.rentalId || ''}
                     onChange={e => setFormData({ ...formData, rentalId: Number(e.target.value) })}
-                  />
-                  <span className="text-[11px] text-gray-400 mt-1 block">Mã hợp đồng thuê ô đất của bạn</span>
+                  >
+                    <option value="">-- Chọn hợp đồng ô đất --</option>
+                    {myRentals.map(rental => {
+                      const days = getRemainingDays(rental.endTime || rental.endDate);
+                      return (
+                        <option key={rental.id} value={rental.id}>
+                          HĐ #{rental.id} - Ô {rental.slotNumber} ({rental.locationName || 'Vườn'}) [Còn {days} ngày]
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <span className="text-[11px] text-gray-400 mt-1 block">
+                    {loadingResources
+                      ? 'Đang tải danh sách hợp đồng...'
+                      : myRentals.length === 0
+                      ? 'Bạn chưa có ô đất thuê đang hoạt động'
+                      : 'Hợp đồng ô đất đang thuê'}
+                  </span>
                 </div>
 
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
-                    Mã Giống Cây Muốn Trồng <span className="text-red-500">*</span>
+                    Giống Cây Trồng <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="number" required min={1}
-                    className="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition font-semibold text-green-600"
-                    placeholder="VD: 3 (newTreeId)"
+                  <select
+                    required
+                    className="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition font-medium text-green-700 bg-white"
                     value={formData.newTreeId || ''}
                     onChange={e => setFormData({ ...formData, newTreeId: Number(e.target.value) })}
-                  />
-                  <span className="text-[11px] text-gray-400 mt-1 block">ID của giống cây trong danh mục</span>
+                  >
+                    <option value="">-- Chọn giống cây --</option>
+                    {availableTrees.map(tree => (
+                      <option key={tree.id} value={tree.id}>
+                        {tree.treeName} ({tree.harvestDays} ngày sinh trưởng)
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[11px] text-gray-400 mt-1 block">
+                    {loadingResources
+                      ? 'Đang tải danh sách cây...'
+                      : 'Danh mục giống cây tại nhà vườn'}
+                  </span>
                 </div>
               </div>
+
+              {/* THÔNG TIN SO SÁNH THỜI GIAN & CẢNH BÁO THỜI HẠN */}
+              {selectedRental && selectedTree && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl border border-gray-200/60 text-xs">
+                    <div>
+                      <span className="text-gray-500 block">Thời hạn thuê còn lại:</span>
+                      <span className="font-bold text-gray-900 text-sm">
+                        {remainingDays} ngày
+                      </span>
+                      <span className="text-[11px] text-gray-400 block">
+                        (Hết hạn: {selectedRental.endDate || (selectedRental.endTime ? new Date(selectedRental.endTime).toLocaleDateString('vi-VN') : '')})
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">Thời gian sinh trưởng:</span>
+                      <span className={clsx("font-bold text-sm", isGrowthExceeded ? "text-red-600" : "text-green-600")}>
+                        {growthDays} ngày
+                      </span>
+                      <span className="text-[11px] text-gray-400 block">
+                        ({selectedTree.treeName})
+                      </span>
+                    </div>
+                  </div>
+
+                  {isGrowthExceeded ? (
+                    <div className="bg-red-50 border border-red-200 p-3.5 rounded-2xl text-xs text-red-800 flex items-start gap-2.5 animate-in fade-in">
+                      <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-red-900 mb-0.5">Thời hạn thuê không đủ để cây sinh trưởng!</p>
+                        <p>
+                          Giống cây <strong>{selectedTree.treeName}</strong> cần ít nhất <strong>{growthDays} ngày</strong> để phát triển / thu hoạch, nhưng thời hạn thuê ô vườn <strong>{selectedRental.slotNumber}</strong> chỉ còn <strong>{remainingDays} ngày</strong>.
+                        </p>
+                        <p className="mt-1 font-semibold text-red-700">
+                          👉 Vui lòng gia hạn thêm thời gian thuê ô vườn trước khi đăng ký giống cây này.
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-green-50 border border-green-200 p-3 rounded-2xl text-xs text-green-800 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                      <span>
+                        Thời hạn thuê hợp lệ! Cây sẽ kịp thu hoạch trước khi hợp đồng kết thúc ({remainingDays - growthDays} ngày dự phòng).
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
@@ -422,8 +561,8 @@ export default function CustomerTreePlanting() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition shadow-md shadow-green-600/20 inline-flex items-center gap-2 disabled:opacity-50"
+                  disabled={isSubmitting || isGrowthExceeded || !formData.rentalId || !formData.newTreeId || !formData.reason.trim()}
+                  className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition shadow-md shadow-green-600/20 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sprout className="w-4 h-4" />}
                   <span>Gửi yêu cầu ngay</span>

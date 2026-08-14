@@ -551,6 +551,7 @@ export default function EquipmentManagement() {
                         <label className="block font-medium text-gray-700 mb-1">Ngày mua</label>
                         <input
                           type="date"
+                          max={new Date().toLocaleDateString('en-CA')}
                           className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none"
                           value={formData.purchaseDate || ''}
                           onChange={e => setFormData({...formData, purchaseDate: e.target.value})}
@@ -560,6 +561,7 @@ export default function EquipmentManagement() {
                         <label className="block font-medium text-gray-700 mb-1">Ngày bảo trì gần nhất</label>
                         <input
                           type="date"
+                          max={new Date().toLocaleDateString('en-CA')}
                           className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none"
                           value={formData.lastMaintenanceDate || ''}
                           onChange={e => setFormData({...formData, lastMaintenanceDate: e.target.value})}

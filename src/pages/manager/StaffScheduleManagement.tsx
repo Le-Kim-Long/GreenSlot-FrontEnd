@@ -121,6 +121,25 @@ export default function StaffScheduleManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.scheduleDate) {
+      alert('Vui lòng chọn ngày trực!');
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const chosenDate = new Date(formData.scheduleDate);
+    if (isNaN(chosenDate.getTime()) || chosenDate < today) {
+      alert('Ngày trực không hợp lệ: Không được chọn ngày trong quá khứ.');
+      return;
+    }
+
+    if (formData.startTime && formData.endTime && formData.startTime >= formData.endTime) {
+      alert('Thời gian trực không hợp lệ: Giờ kết thúc phải sau giờ bắt đầu.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       if (editingItem) {
@@ -334,6 +353,7 @@ export default function StaffScheduleManagement() {
                   <label className="block font-medium text-gray-700 mb-1">Ngày trực</label>
                   <input 
                     type="date" required
+                    min={new Date().toLocaleDateString('en-CA')}
                     className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"
                     value={formData.scheduleDate || ''}
                     onChange={e => setFormData({...formData, scheduleDate: e.target.value})}

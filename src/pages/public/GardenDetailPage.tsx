@@ -166,7 +166,7 @@ export default function GardenDetailPage() {
               <div className="space-y-4 mb-5">
                 <div>
                   <label className="label">Ngày bắt đầu</label>
-                  <input type="date" className="input" value={startDate} onChange={e => { setStartDate(e.target.value); setBookingError(''); }} min={new Date().toISOString().split('T')[0]} />
+                  <input type="date" className="input" value={startDate} onChange={e => { setStartDate(e.target.value); setBookingError(''); }} min={new Date().toLocaleDateString('en-CA')} />
                 </div>
                 <div>
                   <label className="label">Số tháng thuê</label>
