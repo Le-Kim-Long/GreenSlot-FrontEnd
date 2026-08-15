@@ -19,6 +19,9 @@ export interface AvailableSlotDTO {
   status: string;
   pillarCode: string;
   locationName: string;
+  locationId?: number;
+  locationAddress?: string;
+  imageUrl?: string;
 }
 
 export interface BookingRequest {
