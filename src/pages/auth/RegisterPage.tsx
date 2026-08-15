@@ -47,14 +47,19 @@ export default function RegisterPage() {
         const role = stored ? JSON.parse(stored).role : user?.role;
         navigate(role ? getDashboardPath(role) : '/');
       } else {
-        setError('Đăng ký bằng Google không thành công.');
+        setError('Đăng ký bằng Google không thành công từ máy chủ.');
       }
     } catch (err: any) {
-      console.error('Google auth error', err);
+      console.error('Google auth error:', err);
       if (err?.code === 'auth/popup-closed-by-user') {
         setError('Cửa sổ đăng nhập Google đã bị đóng.');
+      } else if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/configuration-not-found') {
+        setError('Google Sign-In chưa được kích hoạt trên Firebase Console. Vui lòng vào Authentication > Sign-in method và Bật Google.');
+      } else if (err?.code === 'auth/unauthorized-domain') {
+        setError('Tên miền hiện tại chưa được cấp phép. Vui lòng thêm domain vào Authorized Domains trên Firebase Console.');
       } else {
-        setError(err?.message || 'Đăng ký Google thất bại.');
+        const msg = err?.response?.data?.message || err?.message || 'Đăng ký Google thất bại.';
+        setError(msg);
       }
     } finally {
       setGoogleLoading(false);
