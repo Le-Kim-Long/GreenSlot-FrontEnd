@@ -27,11 +27,14 @@ export default function AlertAnalytics() {
   });
   const [endDate, setEndDate] = useState(() => now.toISOString().split('T')[0]);
 
-  // Load danh sách cơ sở nếu là manager tổng
+  // Load danh sách cơ sở
   useEffect(() => {
-    if (user?.role === 'manager' || user?.role === 'admin') {
+    if (user?.role === 'manager' || user?.role === 'admin' || user?.role === 'location_manager') {
       managerApi.getLocations().then((res: any) => {
         setLocations(res || []);
+        if (user?.role === 'location_manager' && user?.locationId) {
+          setSelectedLocationId(String(user.locationId));
+        }
       }).catch(() => {});
     }
   }, [user]);
@@ -93,7 +96,7 @@ export default function AlertAnalytics() {
             />
           </div>
 
-          {(user?.role === 'manager' || user?.role === 'admin') && locations.length > 0 && (
+          {locations.length > 0 && (
             <div className="flex items-center gap-2 ml-0 sm:ml-4 pl-0 sm:pl-4 border-t sm:border-t-0 sm:border-l border-gray-200 pt-2 sm:pt-0">
               <MapPin className="w-5 h-5 text-green-600 shrink-0" />
               <span className="text-sm font-semibold text-gray-700">Cơ sở:</span>
@@ -101,11 +104,14 @@ export default function AlertAnalytics() {
                 value={selectedLocationId}
                 onChange={(e) => setSelectedLocationId(e.target.value)}
                 className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white"
+                disabled={user?.role === 'location_manager'}
               >
-                <option value="">Tất cả cơ sở</option>
+                {(user?.role === 'manager' || user?.role === 'admin') && (
+                  <option value="">Tất cả cơ sở</option>
+                )}
                 {locations.map((loc) => (
                   <option key={loc.id} value={loc.id}>
-                    {loc.locationName}
+                    {loc.name || loc.locationName || `Cơ sở ${loc.id}`}
                   </option>
                 ))}
               </select>
