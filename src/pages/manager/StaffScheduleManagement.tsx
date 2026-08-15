@@ -1,61 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { staffScheduleApi, StaffSchedule } from '../../api/staffScheduleApi';
-import { Calendar, Plus, Edit2, Trash2, X, Search, Filter, Clock, MapPin, User, CheckCircle2 } from 'lucide-react';
+import { Calendar, Plus, Edit2, Trash2, X, Search, Clock, MapPin, User } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
-
-// 👉 Custom Dropdown bo tròn chuẩn SaaS
-function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn', className }: any) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false);
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const selectedLabel = options.find((opt: any) => String(opt.value) === String(value))?.label || placeholder;
-
-  return (
-    <div className={clsx("relative inline-block text-left", className)} ref={dropdownRef}>
-      <div 
-        onClick={() => setIsOpen(!isOpen)}
-        className={clsx(
-          "flex items-center gap-2 bg-white border rounded-xl px-3.5 py-2 text-sm shadow-sm cursor-pointer select-none transition-all duration-200",
-          isOpen ? "border-green-500 ring-2 ring-green-500/10 text-green-700" : "border-gray-200 hover:border-green-500/50 text-gray-700"
-        )}
-      >
-        {icon}
-        <span className="font-medium pr-2 whitespace-nowrap">{selectedLabel}</span>
-      </div>
-
-      {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 min-w-[180px] w-full bg-white border border-gray-100 rounded-xl shadow-xl py-1.5 z-50 overflow-hidden">
-          {options.map((opt: any) => {
-            const isSelected = String(opt.value) === String(value);
-            return (
-              <div
-                key={String(opt.value)}
-                onClick={() => { onChange(opt.value); setIsOpen(false); }}
-                className={clsx(
-                  "px-3.5 py-2 text-sm cursor-pointer transition-colors flex items-center justify-between",
-                  isSelected ? "bg-green-50 text-green-700 font-semibold" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                )}
-              >
-                <span>{opt.label}</span>
-                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-green-600 shrink-0 ml-2" />}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const emptyForm: Partial<StaffSchedule> = {
   staffId: 1,

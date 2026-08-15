@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { treeApi, Tree } from '../../api/treeApi';
 import { 
   Trees, Plus, Edit2, Trash2, X, Search, Filter, 
@@ -11,13 +11,13 @@ import clsx from 'clsx';
 // 👉 Import thêm hàm deleteTreeImage
 import { uploadTreeImage, deleteTreeImage } from '../../utils/firebaseUpload';
 
-interface Option {
+export interface Option {
   value: string | boolean;
   label: string;
 }
 
 // 👉 Component CustomDropdown bo tròn rounded-xl đẹp mắt
-function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn', className }: any) {
+function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn', className }: { icon: any; value: any; onChange: any; options: Option[]; placeholder?: string; className?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 

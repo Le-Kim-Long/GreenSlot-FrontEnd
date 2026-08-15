@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, Clock, MapPin, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffScheduleApi, StaffSchedule } from '../../api/staffScheduleApi';
 import { ClipboardList, Wifi, ShieldAlert, CheckCircle } from 'lucide-react';
