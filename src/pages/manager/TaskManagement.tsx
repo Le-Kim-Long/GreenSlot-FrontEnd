@@ -25,17 +25,8 @@ interface Slot {
   slotNumber?: string;
 }
 
-interface ServiceType {
-  id: number;
-  name: string;
-  serviceName: string;
-  description: string;
-  price: number;
-}
-
 export default function TaskManagement() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -66,15 +57,12 @@ export default function TaskManagement() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // 🌟 GỌI THÊM taskApi.getAllTasks()
-      const [servicesData, slotsData, locationsData, tasksData] = await Promise.all([
-        managerApi.getServiceTypes().catch(() => []),
+      const [slotsData, locationsData, tasksData] = await Promise.all([
         managerApi.getSlots().catch(() => []),
         managerApi.getLocations().catch(() => []),
         taskApi.getAllTasks().catch(() => []) // Gọi API lấy Task
       ]);
 
-      setServiceTypes(servicesData);
       setSlots(slotsData);
       setLocations(locationsData);
 

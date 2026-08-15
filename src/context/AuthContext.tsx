@@ -27,6 +27,7 @@ function loadStoredUser(): User | null {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
+  loginWithGoogle: (idToken: string) => Promise<boolean>;
   logout: () => void;
   register: (username: string, name: string, email: string, password: string, phone?: string) => Promise<string | true>;
   updateUser: (updates: Partial<User>) => void;
@@ -64,6 +65,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async (idToken: string): Promise<boolean> => {
+    try {
+      const data = await authApi.loginWithGoogle({ idToken });
+      if (data?.token) {
+        localStorage.setItem('token', data.token);
+
+        const role = mapBackendRolesToFrontend(data.roles) as UserRole;
+        const loggedUser: User = {
+          id: data.id?.toString(),
+          name: data.fullName || data.username,
+          email: data.email,
+          role,
+          createdAt: new Date().toISOString(),
+        };
+
+        localStorage.setItem('user', JSON.stringify(loggedUser));
+        setUser(loggedUser);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Google login failed', error);
+      return false;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -97,7 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, register, updateUser, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, register, updateUser, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin, Plus, Edit2, X, Search, Phone, Ruler, Trash2, Loader2, LayoutDashboard, Calendar, DollarSign, AlertTriangle } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';

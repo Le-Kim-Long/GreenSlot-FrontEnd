@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { treePlantingApi, TreePlantingRequest } from '../../api/TreePlantingApi';
 import { 
   Sprout, Search, Filter, Clock, CheckCircle2, 
   XCircle, User, MapPin, Calendar, FileText, 
-  ChevronDown, X, ShieldAlert, Eye, Loader2 
+  ChevronDown, X, Eye, Loader2 
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav';

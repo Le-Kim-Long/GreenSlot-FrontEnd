@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Columns3, Grid3X3, Wrench, DollarSign, TrendingUp, Calendar, ArrowRight, ClipboardList, Layers, User, ShieldAlert, Clock, CheckCircle2, AlertTriangle, PieChart as PieIcon } from 'lucide-react';
+import { MapPin, Columns3, Grid3X3, Wrench, DollarSign, TrendingUp, Calendar, ArrowRight, ClipboardList, Layers, User, ShieldAlert, CheckCircle2, AlertTriangle, PieChart as PieIcon } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
@@ -8,8 +8,6 @@ import { managerApi, LocationDashboardMetrics, RevenueAnalyticsResponse } from '
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
 
-// Bảng màu chuẩn cho Biểu đồ
-const COLORS = ['#16a34a', '#2563eb', '#9333ea', '#ea580c', '#d97706', '#0891b2', '#0d9488', '#e11d48'];
 const OCCUPANCY_COLORS = ['#16a34a', '#e2e8f0']; // Xanh (Đang thuê) vs Xám (Trống)
 
 interface Stats {
@@ -106,23 +104,6 @@ export default function StaffDashboard() {
     };
     fetchLocationMetrics();
   }, [selectedLocationId, startDate, endDate]);
-
-  const formatDateTime = (dateString?: string) => {
-    if (!dateString) return '-';
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return dateString;
-      return date.toLocaleString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return dateString;
-    }
-  };
 
   // Tính toán dữ liệu Biểu đồ Tỷ lệ Lấp đầy
   const totalSlots = metrics?.totalSlots || (metrics?.activeRentals || 0) + (metrics?.availableSlots || 0) || 10;

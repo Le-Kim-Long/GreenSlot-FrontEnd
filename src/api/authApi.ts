@@ -27,4 +27,7 @@ export const authApi = {
 
   resetPassword: (data: { token: string; newPassword: string }) =>
     apiClient.post('/auth/reset-password', data).then(r => r.data),
+
+  loginWithGoogle: (data: { idToken: string }): Promise<JwtResponse> =>
+    apiClient.post('/auth/google', data).then(r => r.data),
 };
