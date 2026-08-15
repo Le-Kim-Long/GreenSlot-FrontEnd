@@ -26,9 +26,9 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
 
 const paymentConfig: Record<string, { label: string; cls: string }> = {
   SUCCESS: { label: 'Đã thanh toán', cls: 'badge-green' },
-  PAID: { label: 'Đã thanh toán', cls: 'badge-green' },
   PENDING: { label: 'Chờ thanh toán', cls: 'badge-yellow' },
   FAILED: { label: 'Thất bại', cls: 'badge-red' },
+  EXPIRED: { label: 'Hết hạn thanh toán', cls: 'badge-gray' },
 };
 
 export default function MyRentalsPage() {
@@ -57,7 +57,7 @@ export default function MyRentalsPage() {
   const fetchHistory = () => {
     setLoading(true);
     bookingApi.getHistory()
-      .then(data => setRentals(Array.isArray(data) ? data : []))
+      .then(data => setRentals(Array.isArray(data) ? data.filter(r => r.paymentStatus !== 'FAILED') : []))
       .catch(() => setError('Không thể tải lịch sử thuê'))
       .finally(() => setLoading(false));
   };
