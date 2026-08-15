@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { equipmentApi, Equipment } from '../../api/equipmentApi';
 import { managerApi } from '../../api/managerApi';
-import { 
-  Wrench, Plus, Edit2, Trash2, X, Search, Filter, 
-  Loader2, Calendar, ShieldCheck, ChevronDown, 
-  Upload, Image as ImageIcon, Hash, Layers
+import {
+  Wrench, Plus, Edit2, Trash2, X, Search, Filter,
+  Loader2, Calendar, ShieldCheck, ChevronDown,
+  Upload, Image as ImageIcon, Hash, Layers, MapPin
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
 import { uploadEquipmentImage } from '../../utils/firebaseUpload';
+import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 import apiClient from '../../api/axiosConfig';
 
@@ -79,15 +80,38 @@ const emptyForm: Partial<Equipment> = {
 };
 
 export default function EquipmentManagement() {
+  const { user } = useAuth();
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [pillars, setPillars] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Search & Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [selectedPillarId, setSelectedPillarId] = useState<string>('');
+
+  // Cơ sở (location) của từng pillar — dùng để suy ra cơ sở của từng thiết bị và lọc theo cơ sở
+  const pillarLocationMap = React.useMemo(() => {
+    const map = new Map<number, number>();
+    pillars.forEach((p: any) => { if (p.locationId != null) map.set(p.id, p.locationId); });
+    return map;
+  }, [pillars]);
+
+  const locationNameMap = React.useMemo(() => {
+    const map = new Map<number, string>();
+    locations.forEach((l: any) => map.set(l.id, l.name));
+    return map;
+  }, [locations]);
+
+  // Chỉ manager/admin mới cần chọn cơ sở (location_manager chỉ có đúng 1 cơ sở, backend đã tự lọc sẵn)
+  const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
+
+  const pillarOptionsForLocation = selectedLocationId
+    ? pillars.filter((p: any) => String(p.locationId) === selectedLocationId)
+    : pillars;
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -134,7 +158,7 @@ export default function EquipmentManagement() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const data = selectedPillarId 
+      const data = selectedPillarId
           ? await apiClient.get(`/equipment/pillar/${selectedPillarId}`).then((r: any) => r.data)
           : await equipmentApi.getEquipments();
       setEquipments(data || []);
@@ -151,6 +175,26 @@ export default function EquipmentManagement() {
   };
 
   useEffect(() => { fetchData(); }, [selectedPillarId]);
+
+  // Tải danh sách cơ sở cho manager/admin để lọc thiết bị theo cơ sở
+  useEffect(() => {
+    if (user?.role === 'manager' || user?.role === 'admin') {
+      managerApi.getLocations().then((res: any) => setLocations(res || [])).catch((err: any) => {
+        console.error('Không thể tải danh sách cơ sở:', err);
+      });
+    }
+  }, [user]);
+
+  // Đổi cơ sở thì reset lại trụ đang chọn nếu trụ đó không thuộc cơ sở mới
+  const handleLocationChange = (locId: string) => {
+    setSelectedLocationId(locId);
+    if (selectedPillarId && locId) {
+      const pillar = pillars.find((p: any) => String(p.id) === selectedPillarId);
+      if (!pillar || String(pillar.locationId) !== locId) {
+        setSelectedPillarId('');
+      }
+    }
+  };
 
   const handleOpenCreate = () => {
     setEditingItem(null);
@@ -241,7 +285,10 @@ export default function EquipmentManagement() {
     const matchSearch = item.equipmentName?.toLowerCase().includes(search.toLowerCase()) ||
                         item.serialNumber?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchLocation = selectedLocationId === ''
+      ? true
+      : String(pillarLocationMap.get(item.pillarId)) === selectedLocationId;
+    return matchSearch && matchStatus && matchLocation;
   });
 
   return (
@@ -277,6 +324,19 @@ export default function EquipmentManagement() {
               ]}
             />
 
+            {/* Location Filter (chỉ manager/admin — location_manager đã bị giới hạn 1 cơ sở sẵn ở Backend) */}
+            {canFilterByLocation && (
+              <CustomDropdown
+                icon={<MapPin className="w-4 h-4 text-green-600 shrink-0" />}
+                value={selectedLocationId}
+                onChange={(val: any) => handleLocationChange(String(val))}
+                options={[
+                  { value: "", label: "Tất cả cơ sở" },
+                  ...locations.map((l: any) => ({ value: String(l.id), label: l.name }))
+                ]}
+              />
+            )}
+
             {/* Pillar Filter */}
             <CustomDropdown
               icon={<Layers className="w-4 h-4 text-green-600 shrink-0" />}
@@ -284,7 +344,7 @@ export default function EquipmentManagement() {
               onChange={(val: any) => setSelectedPillarId(String(val))}
               options={[
                 { value: "", label: "Tất cả các trụ" },
-                ...pillars.map(p => ({ value: String(p.id), label: p.pillarName || `Trụ #${p.id}` }))
+                ...pillarOptionsForLocation.map(p => ({ value: String(p.id), label: p.pillarName || p.pillarCode || `Trụ #${p.id}` }))
               ]}
             />
           </div>
@@ -348,6 +408,12 @@ export default function EquipmentManagement() {
                         <Layers className="w-4 h-4 text-gray-400" />
                         {item.pillarCode ? `Pillar: ${item.pillarCode}` : `Pillar ID: ${item.pillarId}`}
                       </div>
+                      {locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1) && (
+                        <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" />
+                          {locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1)}
+                        </div>
+                      )}
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col gap-1 text-xs text-gray-600">

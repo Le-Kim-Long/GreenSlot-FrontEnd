@@ -4,6 +4,8 @@ export interface TreePlantingRequest {
   id: number;
   rentalId: number;
   slotNumber: string;
+  locationId?: number;
+  locationName?: string;
   newTreeId: number;
   newTreeName: string;
   requestedById: number;

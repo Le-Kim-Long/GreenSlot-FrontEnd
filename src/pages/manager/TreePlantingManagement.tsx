@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { treePlantingApi, TreePlantingRequest } from '../../api/TreePlantingApi';
-import { 
-  Sprout, Search, Filter, Clock, CheckCircle2, 
-  XCircle, User, MapPin, Calendar, FileText, 
-  ChevronDown, X, Eye, Loader2 
+import { managerApi } from '../../api/managerApi';
+import {
+  Sprout, Search, Filter, Clock, CheckCircle2,
+  XCircle, User, MapPin, Calendar, FileText,
+  ChevronDown, X, Eye, Loader2
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav';
+import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 
 // 👉 Custom Dropdown bo tròn đẹp mắt
@@ -63,13 +65,19 @@ function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn'
 }
 
 export default function TreePlantingManagement() {
+  const { user } = useAuth();
   const [requests, setRequests] = useState<TreePlantingRequest[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   // Bộ lọc
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [selectedLocationId, setSelectedLocationId] = useState('');
+
+  // Chỉ manager/admin mới cần chọn cơ sở (location_manager chỉ có đúng 1 cơ sở, backend đã tự lọc sẵn)
+  const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
 
   // Modal Xử lý / Xem chi tiết
   const [selectedItem, setSelectedItem] = useState<TreePlantingRequest | null>(null);
@@ -90,6 +98,15 @@ export default function TreePlantingManagement() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  // Tải danh sách cơ sở cho manager/admin để lọc yêu cầu theo cơ sở
+  useEffect(() => {
+    if (user?.role === 'manager' || user?.role === 'admin') {
+      managerApi.getLocations().then((res: any) => setLocations(res || [])).catch((err: any) => {
+        console.error('Không thể tải danh sách cơ sở:', err);
+      });
+    }
+  }, [user]);
 
   const handleOpenDetail = (item: TreePlantingRequest) => {
     setSelectedItem(item);
@@ -117,12 +134,13 @@ export default function TreePlantingManagement() {
   };
 
   const filteredRequests = requests.filter(item => {
-    const matchSearch = 
+    const matchSearch =
       item.slotNumber?.toLowerCase().includes(search.toLowerCase()) ||
       item.newTreeName?.toLowerCase().includes(search.toLowerCase()) ||
       item.requestedByName?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchLocation = selectedLocationId === '' ? true : String(item.locationId) === selectedLocationId;
+    return matchSearch && matchStatus && matchLocation;
   });
 
   const getStatusBadge = (status: string) => {
@@ -165,6 +183,19 @@ export default function TreePlantingManagement() {
                 { value: "REJECTED", label: "Đã từ chối" },
               ]}
             />
+
+            {/* Location Filter (chỉ manager/admin — location_manager đã bị giới hạn 1 cơ sở sẵn ở Backend) */}
+            {canFilterByLocation && (
+              <CustomDropdown
+                icon={<MapPin className="w-4 h-4 text-green-600 shrink-0" />}
+                value={selectedLocationId}
+                onChange={(val: any) => setSelectedLocationId(String(val))}
+                options={[
+                  { value: "", label: "Tất cả cơ sở" },
+                  ...locations.map((l: any) => ({ value: String(l.id), label: l.name }))
+                ]}
+              />
+            )}
           </div>
         </div>
 
@@ -201,6 +232,9 @@ export default function TreePlantingManagement() {
                         <MapPin className="w-4 h-4 text-green-600" />
                         {item.slotNumber || `Slot #${item.rentalId}`}
                       </div>
+                      {item.locationName && (
+                        <div className="text-xs text-gray-400 mt-0.5">{item.locationName}</div>
+                      )}
                       <div className="text-xs text-green-700 font-medium flex items-center gap-1 mt-0.5">
                         <Sprout className="w-3 h-3" />
                         {item.newTreeName || `Cây ID: ${item.newTreeId}`}
