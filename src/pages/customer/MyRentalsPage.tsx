@@ -11,9 +11,8 @@ import clsx from 'clsx';
 const statusConfig: Record<string, { label: string; cls: string }> = {
   ACTIVE: { label: 'Đang thuê', cls: 'badge-green' },
   PENDING: { label: 'Chờ xác nhận', cls: 'badge-yellow' },
-  COMPLETED: { label: 'Đã hoàn thành', cls: 'badge-gray' },
   CANCELLED: { label: 'Đã hủy', cls: 'badge-red' },
-  EXPIRED: { label: 'Hết hạn', cls: 'badge-gray' },
+  EXPIRED: { label: 'Đã hoàn thành', cls: 'badge-gray' },
 };
 
 const paymentConfig: Record<string, { label: string; cls: string }> = {
@@ -74,7 +73,8 @@ export default function MyRentalsPage() {
     { key: 'all', label: 'Tất cả', count: rentals.length },
     { key: 'ACTIVE', label: 'Đang thuê', count: rentals.filter(r => r.status === 'ACTIVE').length },
     { key: 'PENDING', label: 'Chờ xác nhận', count: rentals.filter(r => r.status === 'PENDING').length },
-    { key: 'COMPLETED', label: 'Đã hoàn thành', count: rentals.filter(r => r.status === 'COMPLETED').length },
+    { key: 'EXPIRED', label: 'Đã hoàn thành', count: rentals.filter(r => r.status === 'EXPIRED').length },
+    { key: 'CANCELLED', label: 'Đã hủy', count: rentals.filter(r => r.status === 'CANCELLED').length },
   ];
 
   const handleExtend = async () => {

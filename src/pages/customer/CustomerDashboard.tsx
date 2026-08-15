@@ -26,13 +26,12 @@ export default function CustomerDashboard() {
     { label: 'Vườn đang thuê', value: activeRentals.length, icon: <Leaf className="w-6 h-6" />, bg: 'bg-green-50 text-green-600' },
     { label: 'Chờ thanh toán', value: pendingRentals.length, icon: <Clock className="w-6 h-6" />, bg: 'bg-yellow-50 text-yellow-600' },
     { label: 'Tổng đơn thuê', value: rentals.length, icon: <TrendingUp className="w-6 h-6" />, bg: 'bg-blue-50 text-blue-600' },
-    { label: 'Đơn hoàn thành', value: rentals.filter(r => r.status === 'COMPLETED').length, icon: <CheckCircle className="w-6 h-6" />, bg: 'bg-purple-50 text-purple-600' },
+    { label: 'Đơn hoàn thành', value: rentals.filter(r => r.status === 'EXPIRED').length, icon: <CheckCircle className="w-6 h-6" />, bg: 'bg-purple-50 text-purple-600' },
   ];
 
   const statusCls: Record<string, string> = {
     ACTIVE: 'badge-green',
     PENDING: 'badge-yellow',
-    COMPLETED: 'badge-gray',
     CANCELLED: 'badge-red',
     EXPIRED: 'badge-gray',
   };
@@ -40,9 +39,8 @@ export default function CustomerDashboard() {
   const statusLabel: Record<string, string> = {
     ACTIVE: 'Đang thuê',
     PENDING: 'Chờ thanh toán',
-    COMPLETED: 'Đã hoàn thành',
     CANCELLED: 'Đã hủy',
-    EXPIRED: 'Hết hạn',
+    EXPIRED: 'Đã hoàn thành',
   };
 
   return (
