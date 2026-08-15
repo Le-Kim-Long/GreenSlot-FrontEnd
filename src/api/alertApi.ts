@@ -60,9 +60,9 @@ export const alertApi = {
   },
 
   // Lấy thống kê cảnh báo theo khoảng thời gian (dùng cho dashboard analytics)
-  getAlertAnalytics: async (startDate: string, endDate: string): Promise<AlertAnalyticsDTO> => {
+  getAlertAnalytics: async (startDate: string, endDate: string, locationId?: number): Promise<AlertAnalyticsDTO> => {
     const response = await apiClient.get('/analytics/alerts', {
-      params: { startDate, endDate },
+      params: { startDate, endDate, ...(locationId ? { locationId } : {}) },
     });
     return response.data;
   },

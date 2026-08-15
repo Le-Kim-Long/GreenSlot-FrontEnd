@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { AlertTriangle, Clock, CheckCircle2, AlertOctagon, Calendar, Radio, Repeat } from 'lucide-react';
+import { AlertTriangle, Clock, CheckCircle2, AlertOctagon, Calendar, Radio, Repeat, MapPin } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { alertApi, AlertAnalyticsDTO } from '../../api/alertApi';
+import { managerApi } from '../../api/managerApi';
+import { useAuth } from '../../context/AuthContext';
 import { staffNavItems } from './staffNav';
 
 const COLORS = ['#16a34a', '#2563eb', '#9333ea', '#ea580c', '#d97706', '#0891b2', '#0d9488', '#e11d48'];
@@ -10,7 +12,10 @@ const COLORS = ['#16a34a', '#2563eb', '#9333ea', '#ea580c', '#d97706', '#0891b2'
 // Trang thống kê cảnh báo IoT (dành cho manager/location_manager): số liệu tổng quan
 // + biểu đồ theo khoảng thời gian tùy chọn, lấy từ GET /analytics/alerts
 export default function AlertAnalytics() {
+  const { user } = useAuth();
   const [data, setData] = useState<AlertAnalyticsDTO | null>(null);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -22,14 +27,25 @@ export default function AlertAnalytics() {
   });
   const [endDate, setEndDate] = useState(() => now.toISOString().split('T')[0]);
 
+  // Load danh sách cơ sở nếu là manager tổng
+  useEffect(() => {
+    if (user?.role === 'manager' || user?.role === 'admin') {
+      managerApi.getLocations().then((res: any) => {
+        setLocations(res || []);
+      }).catch(() => {});
+    }
+  }, [user]);
+
   // Gọi API lấy số liệu thống kê theo khoảng ngày đang chọn (endDate lấy hết 23:59:59 để bao trọn cả ngày)
   const fetchData = async () => {
     setLoading(true);
     setError('');
     try {
+      const locId = selectedLocationId ? parseInt(selectedLocationId, 10) : undefined;
       const result = await alertApi.getAlertAnalytics(
         new Date(`${startDate}T00:00:00`).toISOString(),
-        new Date(`${endDate}T23:59:59`).toISOString()
+        new Date(`${endDate}T23:59:59`).toISOString(),
+        locId
       );
       setData(result);
     } catch (err) {
@@ -40,10 +56,10 @@ export default function AlertAnalytics() {
     }
   };
 
-  // Tự động tải lại mỗi khi người dùng đổi khoảng ngày
+  // Tự động tải lại mỗi khi người dùng đổi khoảng ngày hoặc đổi cơ sở
   useEffect(() => {
     fetchData();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, selectedLocationId]);
 
   // Backend trả về dạng map { loại: số lượng } — chuyển sang mảng để recharts vẽ được
   const alertsByTypeData = data
@@ -56,24 +72,45 @@ export default function AlertAnalytics() {
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Thống kê Cảnh báo">
-      {/* Bộ lọc ngày tháng */}
+      {/* Bộ lọc ngày tháng và cơ sở */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-green-600 shrink-0" />
-          <span className="text-sm font-semibold text-gray-700">Thời gian:</span>
-          <input
-            type="date"
-            className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-          <span className="text-gray-400 font-bold">—</span>
-          <input
-            type="date"
-            className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-green-600 shrink-0" />
+            <span className="text-sm font-semibold text-gray-700">Thời gian:</span>
+            <input
+              type="date"
+              className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <span className="text-gray-400 font-bold">—</span>
+            <input
+              type="date"
+              className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+
+          {(user?.role === 'manager' || user?.role === 'admin') && locations.length > 0 && (
+            <div className="flex items-center gap-2 ml-0 sm:ml-4 pl-0 sm:pl-4 border-t sm:border-t-0 sm:border-l border-gray-200 pt-2 sm:pt-0">
+              <MapPin className="w-5 h-5 text-green-600 shrink-0" />
+              <span className="text-sm font-semibold text-gray-700">Cơ sở:</span>
+              <select
+                value={selectedLocationId}
+                onChange={(e) => setSelectedLocationId(e.target.value)}
+                className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white"
+              >
+                <option value="">Tất cả cơ sở</option>
+                {locations.map((loc) => (
+                  <option key={loc.id} value={loc.id}>
+                    {loc.locationName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
