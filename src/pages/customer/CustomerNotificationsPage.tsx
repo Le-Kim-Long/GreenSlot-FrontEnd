@@ -2,11 +2,7 @@ import { useEffect, useState } from 'react';
 import { Bell, Loader2, CheckCircle2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { notificationApi } from '../../api/notificationApi';
-
-const navItems = [
-  { label: 'Tổng quan', path: '/dashboard/customer', icon: <Bell className="w-full h-full" /> },
-  { label: 'Thông báo', path: '/dashboard/customer/notifications', icon: <Bell className="w-full h-full" /> },
-];
+import { customerNavItems as navItems } from './customerNavItems';
 
 export default function CustomerNotificationsPage() {
   const [items, setItems] = useState<any[]>([]);

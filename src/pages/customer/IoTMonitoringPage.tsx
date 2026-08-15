@@ -1,19 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Leaf, Wifi, Wrench, TrendingUp, CreditCard, Bell, Thermometer, Droplets, Sun, Activity, CheckCircle, Loader2 } from 'lucide-react';
+import { Wifi, TrendingUp, Thermometer, Droplets, Sun, Activity, CheckCircle, Loader2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
 import { iotApi } from '../../api/iotApi';
 import type { SensorTypeInfo } from '../../types/api';
-
-const customerNav = [
-  { label: 'Tổng quan', path: '/dashboard/customer', icon: <TrendingUp className="w-full h-full" /> },
-  { label: 'Vườn đang thuê', path: '/dashboard/customer/rentals', icon: <Leaf className="w-full h-full" /> },
-  { label: 'Giám sát IoT', path: '/dashboard/customer/monitoring', icon: <Wifi className="w-full h-full" /> },
-  { label: 'Dịch vụ chăm sóc', path: '/dashboard/customer/care', icon: <Wrench className="w-full h-full" /> },
-  { label: 'Lịch sử thanh toán', path: '/dashboard/customer/payments', icon: <CreditCard className="w-full h-full" /> },
-  { label: 'Thông báo', path: '/dashboard/customer/notifications', icon: <Bell className="w-full h-full" /> },
-];
+import { customerNavItems as customerNav } from './customerNavItems';
 
 const staffNav = [
   { label: 'Công việc', path: '/dashboard/garden-staff', icon: <TrendingUp className="w-full h-full" /> },

@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { treePlantingApi, TreePlantingRequest, CreateTreePlantingPayload } from '../../api/TreePlantingApi';
 import { bookingApi, BookingHistory } from '../../api/bookingApi';
 import { treeApi, Tree } from '../../api/treeApi';
-import { 
-  Sprout, Plus, Search, Filter, Clock, CheckCircle2, 
-  XCircle, Calendar, FileText, MapPin, ChevronDown, 
-  X, Eye, Loader2, AlertCircle, AlertTriangle, Sparkles 
+import {
+  Sprout, Plus, Search, Filter, Clock, CheckCircle2,
+  XCircle, Calendar, FileText, MapPin, ChevronDown,
+  X, Eye, Loader2, AlertCircle, AlertTriangle, Sparkles
 } from 'lucide-react';
 import clsx from 'clsx';
+import DashboardLayout from '../../components/common/DashboardLayout';
+import { customerNavItems as navItems } from './customerNavItems';
 
 // Component Dropdown bo tròn
 function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn', className }: any) {
@@ -226,8 +228,7 @@ export default function CustomerTreePlanting() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-screen bg-gray-50/50">
-      
+    <DashboardLayout navItems={navItems} title="Yêu cầu trồng cây">
       {/* Header Trang */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div>
@@ -667,7 +668,6 @@ export default function CustomerTreePlanting() {
           </div>
         </div>
       )}
-
-    </div>
+    </DashboardLayout>
   );
 }

@@ -1,22 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-// 👉 1. Import thêm icon Sprout ở đây
-import { Leaf, Wifi, Wrench, TrendingUp, Bell, CheckCircle, Clock, AlertTriangle, Loader2, ArrowRight, Sprout } from 'lucide-react';
+import { Leaf, TrendingUp, CheckCircle, Clock, AlertTriangle, Loader2, ArrowRight, Wifi } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
+import { customerNavItems as navItems } from './customerNavItems';
 import clsx from 'clsx';
-
-const navItems = [
-  { label: 'Tổng quan', path: '/dashboard/customer', icon: <TrendingUp className="w-full h-full" /> },
-  { label: 'Vườn đang thuê', path: '/dashboard/customer/rentals', icon: <Leaf className="w-full h-full" /> },
-  { label: 'Giám sát IoT', path: '/dashboard/customer/monitoring', icon: <Wifi className="w-full h-full" /> },
-  { label: 'Dịch vụ chăm sóc', path: '/dashboard/customer/care', icon: <Wrench className="w-full h-full" /> },
-  // 👉 2. Thêm menu Yêu cầu trồng cây vào Sidebar
-  { label: 'Yêu cầu trồng cây', path: '/dashboard/customer/tree-planting', icon: <Sprout className="w-full h-full" /> },
-  { label: 'Lịch sử thanh toán', path: '/dashboard/customer/payments', icon: <TrendingUp className="w-full h-full" /> },
-  { label: 'Thông báo', path: '/dashboard/customer/notifications', icon: <Bell className="w-full h-full" /> },
-];
 
 export default function CustomerDashboard() {
   const { user } = useAuth();

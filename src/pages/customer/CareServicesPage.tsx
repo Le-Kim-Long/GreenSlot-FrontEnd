@@ -1,21 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Leaf, Wifi, Wrench, TrendingUp, CreditCard, Bell, Plus, CheckCircle, X, Loader2, AlertTriangle } from 'lucide-react';
+import { Leaf, Plus, CheckCircle, X, Loader2, AlertTriangle } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
 import { managerApi } from '../../api/managerApi';
 import { taskApi } from '../../api/taskApi';
 import { resolveSlotId, cacheSlotForRental } from '../../utils/slotCache';
 import type { ServiceType } from '../../types/api';
-
-const navItems = [
-  { label: 'Tổng quan', path: '/dashboard/customer', icon: <TrendingUp className="w-full h-full" /> },
-  { label: 'Vườn đang thuê', path: '/dashboard/customer/rentals', icon: <Leaf className="w-full h-full" /> },
-  { label: 'Giám sát IoT', path: '/dashboard/customer/monitoring', icon: <Wifi className="w-full h-full" /> },
-  { label: 'Dịch vụ chăm sóc', path: '/dashboard/customer/care', icon: <Wrench className="w-full h-full" /> },
-  { label: 'Lịch sử thanh toán', path: '/dashboard/customer/payments', icon: <CreditCard className="w-full h-full" /> },
-  { label: 'Thông báo', path: '/dashboard/customer/notifications', icon: <Bell className="w-full h-full" /> },
-];
+import { customerNavItems as navItems } from './customerNavItems';
 
 interface RentalWithSlot extends BookingHistory {
   resolvedSlotId?: number;
