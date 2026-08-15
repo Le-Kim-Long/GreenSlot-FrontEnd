@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Leaf, Menu, X, LogOut, Bell, ChevronRight, UserCog } from 'lucide-react';
+import { Leaf, Menu, X, LogOut, Bell, ChevronRight, UserCog, MapPin } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 import { roleLabel } from '../../utils/roleMap';
@@ -135,9 +135,17 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
 
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-900 truncate">{user?.name}</p>
-              <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', user ? roleColors[user.role] : '')}>
-                {user ? roleLabels[user.role] : ''}
-              </span>
+              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                <span className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', user ? roleColors[user.role] : '')}>
+                  {user ? roleLabels[user.role] : ''}
+                </span>
+                {user?.locationName && (
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-md font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-0.5" title="Cơ sở được chỉ định">
+                    <MapPin className="w-3 h-3 text-emerald-600" />
+                    {user.locationName}
+                  </span>
+                )}
+              </div>
             </div>
             <Link to="/dashboard/profile" title="Chỉnh sửa thông tin" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
               <UserCog className="w-4 h-4 text-gray-400 hover:text-green-600" />

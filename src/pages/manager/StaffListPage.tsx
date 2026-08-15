@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Phone, Mail, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { useAuth } from '../../context/AuthContext';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
 import { roleLabel } from '../../utils/roleMap';
@@ -12,8 +13,9 @@ interface Location {
 }
 
 export default function StaffListPage() {
+  const { user } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
-  const [locationId, setLocationId] = useState<number>(0);
+  const [locationId, setLocationId] = useState<number>(() => user?.locationId || 0);
   const [staffs, setStaffs] = useState<UserAdmin[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(true);
   const [loadingStaffs, setLoadingStaffs] = useState(false);
@@ -23,11 +25,14 @@ export default function StaffListPage() {
     managerApi.getLocations()
       .then((locs: Location[]) => {
         setLocations(locs);
-        if (locs.length > 0) setLocationId(locs[0].id);
+        if (locs.length > 0) {
+          const target = user?.locationId ? locs.find(l => l.id === user.locationId) || locs[0] : locs[0];
+          setLocationId(target.id);
+        }
       })
       .catch(() => setError('Không thể tải danh sách cơ sở'))
       .finally(() => setLoadingLocations(false));
-  }, []);
+  }, [user?.locationId]);
 
   useEffect(() => {
     if (!locationId) return;

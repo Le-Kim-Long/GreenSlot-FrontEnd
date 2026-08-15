@@ -28,7 +28,7 @@ export default function StaffDashboard() {
   
   // 👉 State Mới cho Chức năng theo Cơ sở (Location Metrics)
   const [locationsList, setLocationsList] = useState<any[]>([]);
-  const [selectedLocationId, setSelectedLocationId] = useState<number>(1);
+  const [selectedLocationId, setSelectedLocationId] = useState<number>(() => user?.locationId || 1);
   const [metrics, setMetrics] = useState<LocationDashboardMetrics | null>(null);
   const [revenueData, setRevenueData] = useState<RevenueAnalyticsResponse | null>(null);
 
@@ -76,13 +76,14 @@ export default function StaffDashboard() {
         // Thiết lập danh sách Locations cho Dropdown
         if (locations.length > 0) {
           setLocationsList(locations);
-          setSelectedLocationId(locations[0].id);
+          const targetLoc = user?.locationId ? locations.find((l: any) => l.id === user.locationId) || locations[0] : locations[0];
+          setSelectedLocationId(targetLoc.id);
         }
       } catch { /* ignore */ }
       setLoading(false);
     };
     fetchStats();
-  }, []);
+  }, [user?.locationId, user?.role]);
 
   // 2. Tải số liệu chuyên sâu theo từng Cơ sở (Location Metrics) khi chọn cơ sở hoặc đổi ngày
   useEffect(() => {

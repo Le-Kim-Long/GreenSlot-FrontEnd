@@ -7,6 +7,8 @@ export interface User {
   phone?: string;
   address?: string;
   role: UserRole;
+  locationId?: number;
+  locationName?: string;
   avatar?: string;
   createdAt: string;
 }

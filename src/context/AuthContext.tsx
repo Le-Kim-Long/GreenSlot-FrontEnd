@@ -52,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: data.fullName || data.username,
           email: data.email,
           role,
+          locationId: data.locationId,
+          locationName: data.locationName,
           createdAt: new Date().toISOString(),
         };
 
@@ -78,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: data.fullName || data.username,
           email: data.email,
           role,
+          locationId: data.locationId,
+          locationName: data.locationName,
           createdAt: new Date().toISOString(),
         };
 
@@ -105,6 +109,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: data.fullName || data.username,
           email: data.email,
           role,
+          locationId: data.locationId,
+          locationName: data.locationName,
           createdAt: new Date().toISOString(),
         };
 

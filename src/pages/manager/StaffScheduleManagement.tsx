@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { staffScheduleApi, StaffSchedule } from '../../api/staffScheduleApi';
 import { Calendar, Plus, Edit2, Trash2, X, Search, Clock, MapPin, User } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { useAuth } from '../../context/AuthContext';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
 
@@ -18,6 +19,7 @@ const emptyForm: Partial<StaffSchedule> = {
 };
 
 export default function StaffScheduleManagement() {
+  const { user } = useAuth();
   const [schedules, setSchedules] = useState<StaffSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,7 +31,11 @@ export default function StaffScheduleManagement() {
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<StaffSchedule | null>(null);
-  const [formData, setFormData] = useState<Partial<StaffSchedule>>(emptyForm);
+  const [formData, setFormData] = useState<Partial<StaffSchedule>>(() => ({
+    ...emptyForm,
+    locationId: user?.locationId || 1,
+    locationName: user?.locationName || '',
+  }));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Xóa State
@@ -57,7 +63,11 @@ export default function StaffScheduleManagement() {
 
   const handleOpenCreate = () => {
     setEditingItem(null);
-    setFormData(emptyForm);
+    setFormData({
+      ...emptyForm,
+      locationId: user?.locationId || 1,
+      locationName: user?.locationName || '',
+    });
     setIsModalOpen(true);
   };
 

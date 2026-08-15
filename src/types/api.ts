@@ -8,6 +8,8 @@ export interface JwtResponse {
   email: string;
   fullName: string;
   roles: string[];
+  locationId?: number;
+  locationName?: string;
 }
 
 export interface AvailableSlotDTO {

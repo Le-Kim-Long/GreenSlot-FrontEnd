@@ -5,6 +5,7 @@ import {
   ClipboardList, UserPlus, X, Plus, Search, 
   MapPin, UserCheck, Loader2 
 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav'; 
 
@@ -26,6 +27,7 @@ interface Slot {
 }
 
 export default function TaskManagement() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,7 +35,7 @@ export default function TaskManagement() {
 
   // States cho Dropdown Lọc
   const [locations, setLocations] = useState<LocationItem[]>([]);
-  const [selectedLocationId, setSelectedLocationId] = useState<string>('');
+  const [selectedLocationId, setSelectedLocationId] = useState<string>(() => user?.locationId ? String(user.locationId) : '');
   const [filteredStaffs, setFilteredStaffs] = useState<GardenStaff[]>([]);
   const [isLoadingStaffs, setIsLoadingStaffs] = useState(false);
 
@@ -53,7 +55,6 @@ export default function TaskManagement() {
   const [reviewForm, setReviewForm] = useState({ action: 'APPROVE' as 'APPROVE' | 'REJECT', rejectionReason: '' });
 
   // Tải dữ liệu ban đầu
-  // Tải dữ liệu ban đầu
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -65,6 +66,10 @@ export default function TaskManagement() {
 
       setSlots(slotsData);
       setLocations(locationsData);
+      if (locationsData.length > 0) {
+        const target = user?.locationId ? locationsData.find((l: any) => l.id === user.locationId) || locationsData[0] : locationsData[0];
+        setSelectedLocationId(String(target.id));
+      }
 
       // 🌟 MAP (CHUYỂN ĐỔI) DỮ LIỆU TỪ API ĐỂ KHỚP VỚI INTERFACE CỦA GIAO DIỆN
       const formattedTasks = tasksData.map((t: any) => ({
@@ -86,7 +91,7 @@ export default function TaskManagement() {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [user?.locationId]);
 
   // Lấy danh sách Staff khi đổi Location
   useEffect(() => {

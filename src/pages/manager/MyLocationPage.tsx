@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Edit2, X, Phone, Ruler, Loader2, Calendar, DollarSign, AlertTriangle } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { useAuth } from '../../context/AuthContext';
 import { managerApi } from '../../api/managerApi';
 import { dashboardApi, DashboardMetrics } from '../../api/dashboardApi';
 import { staffNavItems } from './staffNav';
@@ -18,6 +19,7 @@ interface Location {
 const emptyForm = { name: '', address: '', contactPhone: '', status: 'ACTIVE', area: 0 };
 
 export default function MyLocationPage() {
+  const { user } = useAuth();
   const [location, setLocation] = useState<Location | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -41,7 +43,15 @@ export default function MyLocationPage() {
     setLoading(true);
     try {
       const data: Location[] = await managerApi.getLocations();
-      setLocation(data[0] ?? null);
+      if (data && data.length > 0) {
+        const myLoc = user?.locationId ? data.find(l => l.id === user.locationId) || data[0] : data[0];
+        setLocation(myLoc ?? null);
+      } else if (user?.locationId) {
+        const single = await managerApi.getLocation(user.locationId);
+        setLocation(single ?? null);
+      } else {
+        setLocation(null);
+      }
     } catch {
       setError('Không thể tải thông tin cơ sở');
     } finally {
@@ -49,7 +59,7 @@ export default function MyLocationPage() {
     }
   };
 
-  useEffect(() => { fetchLocation(); }, []);
+  useEffect(() => { fetchLocation(); }, [user?.locationId]);
 
   useEffect(() => {
     if (!location) return;
