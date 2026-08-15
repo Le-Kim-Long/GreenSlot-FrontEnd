@@ -1,7 +1,8 @@
-import { Leaf, Wifi, Wrench, TrendingUp, CreditCard, Bell, Sprout } from 'lucide-react';
+import { Leaf, Wifi, Wrench, TrendingUp, CreditCard, Bell, Sprout, Grid3X3 } from 'lucide-react';
 
 export const customerNavItems = [
   { label: 'Tổng quan', path: '/dashboard/customer', icon: <TrendingUp className="w-full h-full" /> },
+  { label: 'Thuê ô vườn mới', path: '/gardens', icon: <Grid3X3 className="w-full h-full" /> },
   { label: 'Vườn đang thuê', path: '/dashboard/customer/rentals', icon: <Leaf className="w-full h-full" /> },
   { label: 'Giám sát IoT', path: '/dashboard/customer/monitoring', icon: <Wifi className="w-full h-full" /> },
   { label: 'Dịch vụ chăm sóc', path: '/dashboard/customer/care', icon: <Wrench className="w-full h-full" /> },
