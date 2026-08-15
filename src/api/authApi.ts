@@ -22,12 +22,18 @@ export const authApi = {
   register: (userData: RegisterRequest) =>
     apiClient.post('/auth/register', userData).then(r => r.data),
 
+  verifyOtp: (data: { email: string; otp: string }): Promise<JwtResponse> =>
+    apiClient.post('/auth/verify-otp', data).then(r => r.data),
+
+  resendOtp: (data: { email: string }) =>
+    apiClient.post('/auth/resend-otp', data).then(r => r.data),
+
   forgotPassword: (data: { email: string }) =>
     apiClient.post('/auth/forgot-password', data).then(r => r.data),
 
   resetPassword: (data: { token: string; newPassword: string }) =>
     apiClient.post('/auth/reset-password', data).then(r => r.data),
 
-  loginWithGoogle: (data: { idToken: string }): Promise<JwtResponse> =>
-    apiClient.post('/auth/google', data).then(r => r.data),
+  loginWithGoogle: (data: { idToken: string; mode?: 'login' | 'register' }): Promise<JwtResponse> =>
+    apiClient.post('/auth/google', { ...data, mode: data.mode || 'login' }).then(r => r.data),
 };

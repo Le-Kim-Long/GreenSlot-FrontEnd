@@ -57,13 +57,13 @@ export default function LoginPage() {
       const result = await signInWithPopup(auth, provider);
       const idToken = await result.user.getIdToken();
 
-      const ok = await loginWithGoogle(idToken);
-      if (ok) {
+      const res = await loginWithGoogle(idToken, 'login');
+      if (res.success) {
         const stored = localStorage.getItem('user');
         const role = stored ? JSON.parse(stored).role : user?.role;
         navigate(role ? getDashboardPath(role) : '/');
       } else {
-        setError('Đăng nhập bằng Google không thành công từ máy chủ.');
+        setError(res.message || 'Đăng nhập bằng Google không thành công.');
       }
     } catch (err: any) {
       console.error('Google auth error:', err);

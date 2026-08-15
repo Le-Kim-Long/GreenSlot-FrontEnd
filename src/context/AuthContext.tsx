@@ -27,7 +27,8 @@ function loadStoredUser(): User | null {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  loginWithGoogle: (idToken: string) => Promise<boolean>;
+  loginWithGoogle: (idToken: string, mode?: 'login' | 'register') => Promise<{ success: boolean; message?: string }>;
+  verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   register: (username: string, name: string, email: string, password: string, phone?: string) => Promise<string | true>;
   updateUser: (updates: Partial<User>) => void;
@@ -65,9 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async (idToken: string): Promise<boolean> => {
+  const loginWithGoogle = async (idToken: string, mode: 'login' | 'register' = 'login'): Promise<{ success: boolean; message?: string }> => {
     try {
-      const data = await authApi.loginWithGoogle({ idToken });
+      const data = await authApi.loginWithGoogle({ idToken, mode });
       if (data?.token) {
         localStorage.setItem('token', data.token);
 
@@ -82,12 +83,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         localStorage.setItem('user', JSON.stringify(loggedUser));
         setUser(loggedUser);
-        return true;
+        return { success: true };
       }
-      return false;
-    } catch (error) {
+      return { success: false, message: 'Không nhận được token từ máy chủ.' };
+    } catch (error: any) {
       console.error('Google login failed', error);
-      return false;
+      const msg = error?.response?.data?.message || error?.message || 'Đăng nhập Google thất bại.';
+      return { success: false, message: msg };
+    }
+  };
+
+  const verifyOtp = async (email: string, otp: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const data = await authApi.verifyOtp({ email, otp });
+      if (data?.token) {
+        localStorage.setItem('token', data.token);
+
+        const role = mapBackendRolesToFrontend(data.roles) as UserRole;
+        const loggedUser: User = {
+          id: data.id?.toString(),
+          name: data.fullName || data.username,
+          email: data.email,
+          role,
+          createdAt: new Date().toISOString(),
+        };
+
+        localStorage.setItem('user', JSON.stringify(loggedUser));
+        setUser(loggedUser);
+        return { success: true };
+      }
+      return { success: false, message: 'Xác thực OTP không thành công.' };
+    } catch (error: any) {
+      console.error('Verify OTP failed', error);
+      const msg = error?.response?.data?.message || error?.message || 'Mã OTP không chính xác hoặc đã hết hạn.';
+      return { success: false, message: msg };
     }
   };
 
@@ -124,7 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGoogle, logout, register, updateUser, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, login, loginWithGoogle, verifyOtp, logout, register, updateUser, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
