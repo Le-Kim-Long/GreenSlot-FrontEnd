@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ShieldAlert,
   RefreshCw,
@@ -16,8 +16,11 @@ import {
   Activity,
   Send,
   ChevronDown,
+  Filter,
 } from 'lucide-react';
 import { alertApi, AlertDTO, ProcessAlertPayload } from '../../api/alertApi';
+import { managerApi } from '../../api/managerApi';
+import { useAuth } from '../../context/AuthContext';
 import { uploadTreeImage, deleteTreeImage } from '../../utils/firebaseUpload';
 import clsx from 'clsx';
 
@@ -215,7 +218,11 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
  * Dùng chung cho trang Xử lý Cảnh báo (manager/location_manager) và Cảnh báo IoT (garden_staff).
  */
 export default function PendingAlertsPanel() {
+  const { user } = useAuth();
   const [alerts, setAlerts] = useState<AlertDTO[]>([]);
+  const [pillars, setPillars] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -240,6 +247,36 @@ export default function PendingAlertsPanel() {
     fetchAlerts();
   }, []);
 
+  // Chỉ manager/admin mới cần chọn cơ sở (location_manager và garden_staff luôn chỉ có đúng 1 cơ sở, Backend đã tự lọc sẵn)
+  useEffect(() => {
+    if (user?.role === 'manager' || user?.role === 'admin') {
+      managerApi.getLocations().then((res: any) => setLocations(res || [])).catch((err: any) => {
+        console.error('Không thể tải danh sách cơ sở:', err);
+      });
+      managerApi.getPillars().then((res: any) => setPillars(res || [])).catch((err: any) => {
+        console.error('Không thể tải danh sách trụ:', err);
+      });
+    }
+  }, [user]);
+
+  const pillarLocationMap = useMemo(() => {
+    const map = new Map<number, number>();
+    pillars.forEach((p: any) => { if (p.locationId != null) map.set(p.id, p.locationId); });
+    return map;
+  }, [pillars]);
+
+  const locationNameMap = useMemo(() => {
+    const map = new Map<number, string>();
+    locations.forEach((l: any) => map.set(l.id, l.name));
+    return map;
+  }, [locations]);
+
+  const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
+
+  const visibleAlerts = selectedLocationId
+    ? alerts.filter((a) => String(pillarLocationMap.get(a.pillarId)) === selectedLocationId)
+    : alerts;
+
   // Xử lý xong 1 alert: bỏ nó khỏi danh sách đang chờ (không cần gọi lại API), đóng form, báo thành công
   const handleProcessed = (alertId: number) => {
     setAlerts((prev) => prev.filter((a) => a.id !== alertId));
@@ -250,22 +287,39 @@ export default function PendingAlertsPanel() {
 
   return (
     <>
-      <div className="flex items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
         <div className="flex items-center gap-2">
           <ShieldAlert className="w-5 h-5 text-green-600 shrink-0" />
           <span className="text-sm font-semibold text-gray-700">
-            Cảnh báo đang chờ xử lý: <span className="font-black text-gray-900">{alerts.length}</span>
+            Cảnh báo đang chờ xử lý: <span className="font-black text-gray-900">{visibleAlerts.length}</span>
           </span>
         </div>
-        <button
-          type="button"
-          onClick={fetchAlerts}
-          disabled={loading}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition disabled:opacity-50"
-        >
-          <RefreshCw className={clsx('w-4 h-4', loading && 'animate-spin')} />
-          <span>Làm mới</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {canFilterByLocation && (
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-green-600 shrink-0" />
+              <select
+                value={selectedLocationId}
+                onChange={(e) => setSelectedLocationId(e.target.value)}
+                className="border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white"
+              >
+                <option value="">Tất cả cơ sở</option>
+                {locations.map((l: any) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={fetchAlerts}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition disabled:opacity-50"
+          >
+            <RefreshCw className={clsx('w-4 h-4', loading && 'animate-spin')} />
+            <span>Làm mới</span>
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -286,14 +340,14 @@ export default function PendingAlertsPanel() {
           <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm font-medium">Đang tải danh sách cảnh báo...</p>
         </div>
-      ) : alerts.length === 0 ? (
+      ) : visibleAlerts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
           <CheckCircle2 className="w-10 h-10 opacity-30" />
           <p className="text-sm font-medium">Không có cảnh báo nào đang chờ xử lý 🎉</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {alerts.map((alert) => {
+          {visibleAlerts.map((alert) => {
             const isExpanded = expandedId === alert.id;
             return (
               <div key={alert.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -328,6 +382,11 @@ export default function PendingAlertsPanel() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-xs text-gray-500 font-medium">
+                    {locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1) && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-gray-400" /> {locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1)}
+                      </span>
+                    )}
                     {alert.pillarCode && (
                       <span className="inline-flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-gray-400" /> Trụ: {alert.pillarCode}

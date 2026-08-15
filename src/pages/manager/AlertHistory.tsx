@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   History,
   RefreshCw,
@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { alertApi, AlertDTO, AlertProcessingLogDTO } from '../../api/alertApi';
+import { managerApi } from '../../api/managerApi';
+import { useAuth } from '../../context/AuthContext';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
 
@@ -166,8 +168,12 @@ function AlertLogs({ alertId }: { alertId: number }) {
 
 // Trang "Lịch sử Xử lý Cảnh báo": xem toàn bộ alert (lọc theo trạng thái) + mở rộng để xem log xử lý chi tiết
 export default function AlertHistory() {
+  const { user } = useAuth();
   const [alerts, setAlerts] = useState<AlertDTO[]>([]);
   const [statusFilter, setStatusFilter] = useState('');
+  const [pillars, setPillars] = useState<any[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
+  const [selectedLocationId, setSelectedLocationId] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -193,6 +199,36 @@ export default function AlertHistory() {
     fetchAlerts();
   }, [statusFilter]);
 
+  // Chỉ manager/admin mới cần chọn cơ sở (location_manager luôn chỉ có đúng 1 cơ sở, Backend đã tự lọc sẵn)
+  useEffect(() => {
+    if (user?.role === 'manager' || user?.role === 'admin') {
+      managerApi.getLocations().then((res: any) => setLocations(res || [])).catch((err: any) => {
+        console.error('Không thể tải danh sách cơ sở:', err);
+      });
+      managerApi.getPillars().then((res: any) => setPillars(res || [])).catch((err: any) => {
+        console.error('Không thể tải danh sách trụ:', err);
+      });
+    }
+  }, [user]);
+
+  const pillarLocationMap = useMemo(() => {
+    const map = new Map<number, number>();
+    pillars.forEach((p: any) => { if (p.locationId != null) map.set(p.id, p.locationId); });
+    return map;
+  }, [pillars]);
+
+  const locationNameMap = useMemo(() => {
+    const map = new Map<number, string>();
+    locations.forEach((l: any) => map.set(l.id, l.name));
+    return map;
+  }, [locations]);
+
+  const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
+
+  const visibleAlerts = selectedLocationId
+    ? alerts.filter((a) => String(pillarLocationMap.get(a.pillarId)) === selectedLocationId)
+    : alerts;
+
   return (
     <DashboardLayout navItems={staffNavItems} title="Lịch sử Xử lý Cảnh báo">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
@@ -208,6 +244,23 @@ export default function AlertHistory() {
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
+
+          {canFilterByLocation && (
+            <>
+              <MapPin className="w-5 h-5 text-green-600 shrink-0 ml-2" />
+              <span className="text-sm font-semibold text-gray-700 mr-2">Cơ sở:</span>
+              <select
+                value={selectedLocationId}
+                onChange={(e) => setSelectedLocationId(e.target.value)}
+                className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
+              >
+                <option value="">Tất cả cơ sở</option>
+                {locations.map((l: any) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </>
+          )}
         </div>
         <button
           type="button"
@@ -231,14 +284,14 @@ export default function AlertHistory() {
           <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-sm font-medium">Đang tải danh sách cảnh báo...</p>
         </div>
-      ) : alerts.length === 0 ? (
+      ) : visibleAlerts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
           <History className="w-10 h-10 opacity-30" />
           <p className="text-sm font-medium">Không có cảnh báo nào phù hợp bộ lọc</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {alerts.map((alert) => {
+          {visibleAlerts.map((alert) => {
             const isExpanded = expandedId === alert.id;
             return (
               <div key={alert.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -281,6 +334,11 @@ export default function AlertHistory() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-xs text-gray-500 font-medium">
+                    {locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1) && (
+                      <span className="inline-flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-gray-400" /> {locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1)}
+                      </span>
+                    )}
                     {alert.pillarCode && (
                       <span className="inline-flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-gray-400" /> Trụ: {alert.pillarCode}
