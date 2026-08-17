@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, TrendingUp, ShieldCheck, Camera } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 
@@ -12,11 +12,8 @@ const navItems = [
 export default function CameraAllPage() {
   const [cameraSrc, setCameraSrc] = useState("");
   
-// Nếu dùng Vite:
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
-
-// Nếu dùng Create React App:
-// const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8080";
+  const rawApiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+  const BACKEND_URL = rawApiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
   useEffect(() => {
     let currentObjectUrl = "";
 
