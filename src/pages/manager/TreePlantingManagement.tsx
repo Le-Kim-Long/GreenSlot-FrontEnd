@@ -1,11 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { treePlantingApi, TreePlantingRequest } from '../../api/TreePlantingApi';
 import { managerApi } from '../../api/managerApi';
-import { harvestTestApi } from '../../api/harvestTestApi';
 import {
   Sprout, Search, Filter, Clock, CheckCircle2,
   XCircle, User, MapPin, Calendar, FileText,
-  ChevronDown, X, Eye, Loader2, FlaskConical
+  ChevronDown, X, Eye, Loader2
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav';
@@ -85,7 +84,6 @@ export default function TreePlantingManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [processNotes, setProcessNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -133,23 +131,6 @@ export default function TreePlantingManagement() {
       alert('Xử lý thất bại. Vui lòng thử lại sau.');
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  // 🧪 CHỈ DÙNG ĐỂ TEST: tua ngày trồng về quá khứ rồi chạy ngay job nhắc thu hoạch,
-  // thay vì phải đợi đủ số ngày thật + đợi tới giờ chạy cron (8h sáng)
-  const handleTestHarvest = async () => {
-    if (!selectedItem) return;
-    setIsTesting(true);
-    try {
-      await harvestTestApi.backdate(selectedItem.rentalId, 30, selectedItem.newTreeId);
-      await harvestTestApi.trigger();
-      alert('Đã test xong! Kiểm tra mục Thông báo của khách hàng và trang Công việc của quản lý/nhân viên.');
-    } catch (err) {
-      console.error('Test harvest reminder thất bại:', err);
-      alert('Test thất bại. Xem console để biết chi tiết lỗi.');
-    } finally {
-      setIsTesting(false);
     }
   };
 
@@ -392,20 +373,6 @@ export default function TreePlantingManagement() {
                       Phê duyệt trồng
                     </button>
                   </>
-                )}
-
-                {/* 🧪 CHỈ DÙNG ĐỂ TEST: sau khi đã duyệt (có tree + plantedAt), bấm để mô phỏng đã đủ ngày thu hoạch */}
-                {selectedItem.status === 'APPROVED' && (
-                  <button
-                    type="button"
-                    disabled={isTesting}
-                    onClick={handleTestHarvest}
-                    title="Chỉ dùng để test: tua ngày trồng về quá khứ + chạy ngay job nhắc thu hoạch"
-                    className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 text-sm font-semibold rounded-xl transition inline-flex items-center gap-1"
-                  >
-                    {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FlaskConical className="w-4 h-4" />}
-                    Test nhắc thu hoạch
-                  </button>
                 )}
               </div>
             </div>

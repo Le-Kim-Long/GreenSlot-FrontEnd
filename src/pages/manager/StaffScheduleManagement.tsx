@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { staffScheduleApi, StaffSchedule } from '../../api/staffScheduleApi';
-import { Calendar, Plus, Edit2, Trash2, X, Search, Clock, MapPin, User } from 'lucide-react';
+import { managerApi, LocationItem, GardenStaff } from '../../api/managerApi';
+import { Calendar, Plus, Edit2, Trash2, X, Search, Clock, MapPin, User, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { Toast, ToastData } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
 
 const emptyForm: Partial<StaffSchedule> = {
-  staffId: 1,
+  staffId: undefined,
   staffName: '',
-  locationId: 1,
+  locationId: undefined,
   locationName: '',
   scheduleDate: new Date().toISOString().split('T')[0],
   startTime: '08:00',
@@ -33,14 +35,59 @@ export default function StaffScheduleManagement() {
   const [editingItem, setEditingItem] = useState<StaffSchedule | null>(null);
   const [formData, setFormData] = useState<Partial<StaffSchedule>>(() => ({
     ...emptyForm,
-    locationId: user?.locationId || 1,
+    locationId: user?.locationId || undefined,
     locationName: user?.locationName || '',
   }));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Danh sách cơ sở & nhân viên để chọn trong form (thay vì gõ tay ID)
+  const [locations, setLocations] = useState<LocationItem[]>([]);
+  const [staffs, setStaffs] = useState<GardenStaff[]>([]);
+  const [isLoadingStaffs, setIsLoadingStaffs] = useState(false);
+
   // Xóa State
   const [confirmDelete, setConfirmDelete] = useState<StaffSchedule | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Toast thông báo
+  const [toast, setToast] = useState<ToastData | null>(null);
+  const showToast = (type: ToastData['type'], title: string, detail?: string) => setToast({ type, title, detail });
+
+  useEffect(() => {
+    managerApi.getLocations().then(setLocations).catch(() => setLocations([]));
+  }, []);
+
+  useEffect(() => {
+    if (!formData.locationId) {
+      setStaffs([]);
+      return;
+    }
+    setIsLoadingStaffs(true);
+    managerApi.getGardenStaffsByLocation(formData.locationId)
+      .then(setStaffs)
+      .catch(() => setStaffs([]))
+      .finally(() => setIsLoadingStaffs(false));
+  }, [formData.locationId]);
+
+  const handleLocationChange = (locationId: number) => {
+    const loc = locations.find(l => l.id === locationId);
+    setFormData(prev => ({
+      ...prev,
+      locationId,
+      locationName: loc?.name || '',
+      staffId: undefined,
+      staffName: '',
+    }));
+  };
+
+  const handleStaffChange = (staffId: number) => {
+    const staff = staffs.find(s => s.id === staffId);
+    setFormData(prev => ({
+      ...prev,
+      staffId,
+      staffName: staff?.fullName || '',
+    }));
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -65,7 +112,7 @@ export default function StaffScheduleManagement() {
     setEditingItem(null);
     setFormData({
       ...emptyForm,
-      locationId: user?.locationId || 1,
+      locationId: user?.locationId || undefined,
       locationName: user?.locationName || '',
     });
     setIsModalOpen(true);
@@ -81,7 +128,7 @@ export default function StaffScheduleManagement() {
     e.preventDefault();
 
     if (!formData.scheduleDate) {
-      alert('Vui lòng chọn ngày trực!');
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn ngày trực!');
       return;
     }
 
@@ -89,12 +136,12 @@ export default function StaffScheduleManagement() {
     today.setHours(0, 0, 0, 0);
     const chosenDate = new Date(formData.scheduleDate);
     if (isNaN(chosenDate.getTime()) || chosenDate < today) {
-      alert('Ngày trực không hợp lệ: Không được chọn ngày trong quá khứ.');
+      showToast('warning', 'Ngày trực không hợp lệ', 'Không được chọn ngày trong quá khứ.');
       return;
     }
 
     if (formData.startTime && formData.endTime && formData.startTime >= formData.endTime) {
-      alert('Thời gian trực không hợp lệ: Giờ kết thúc phải sau giờ bắt đầu.');
+      showToast('warning', 'Thời gian trực không hợp lệ', 'Giờ kết thúc phải sau giờ bắt đầu.');
       return;
     }
 
@@ -105,11 +152,11 @@ export default function StaffScheduleManagement() {
       } else {
         await staffScheduleApi.createSchedule(formData);
       }
-      alert(editingItem ? 'Cập nhật lịch làm việc thành công!' : 'Phân ca thành công!');
+      showToast('success', editingItem ? 'Cập nhật lịch làm việc thành công!' : 'Phân ca thành công!');
       setIsModalOpen(false);
       fetchData();
     } catch (err) {
-      alert('Thao tác thất bại. Vui lòng kiểm tra lại thông tin.');
+      showToast('error', 'Thao tác thất bại', 'Vui lòng kiểm tra lại thông tin.');
     } finally {
       setIsSubmitting(false);
     }
@@ -121,9 +168,10 @@ export default function StaffScheduleManagement() {
     try {
       await staffScheduleApi.deleteSchedule(confirmDelete.id);
       setConfirmDelete(null);
+      showToast('success', 'Đã xóa lịch làm việc');
       fetchData();
     } catch (err) {
-      alert('Xóa lịch làm việc thất bại.');
+      showToast('error', 'Xóa lịch làm việc thất bại');
     } finally {
       setIsDeleting(false);
     }
@@ -137,6 +185,7 @@ export default function StaffScheduleManagement() {
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Lịch làm việc & Phân ca Nhân viên">
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
       <div className="p-6 max-w-7xl mx-auto">
         
         {/* Thanh công cụ lọc & tìm kiếm */}
@@ -265,45 +314,38 @@ export default function StaffScheduleManagement() {
               <form onSubmit={handleSubmit} className="space-y-4 text-sm">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-medium text-gray-700 mb-1">Mã nhân viên (Staff ID)</label>
-                    <input 
-                      type="number" required
-                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"
-                      value={formData.staffId || ''}
-                      onChange={e => setFormData({...formData, staffId: Number(e.target.value)})}
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-medium text-gray-700 mb-1">Tên nhân viên</label>
-                    <input 
+                    <label className="block font-medium text-gray-700 mb-1">Cơ sở <span className="text-red-500">*</span></label>
+                    <select
                       required
-                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"
-                      value={formData.staffName || ''}
-                      onChange={e => setFormData({...formData, staffName: e.target.value})}
-                      placeholder="VD: Nguyễn Văn A"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block font-medium text-gray-700 mb-1">Mã khu vực (Location ID)</label>
-                    <input 
-                      type="number" required
-                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"
+                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20 bg-white"
                       value={formData.locationId || ''}
-                      onChange={e => setFormData({...formData, locationId: Number(e.target.value)})}
-                    />
+                      onChange={e => handleLocationChange(Number(e.target.value))}
+                    >
+                      <option value="" disabled>-- Chọn cơ sở --</option>
+                      {locations.map(loc => (
+                        <option key={loc.id} value={loc.id}>{loc.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
-                    <label className="block font-medium text-gray-700 mb-1">Tên khu vực</label>
-                    <input 
+                    <label className="block font-medium text-gray-700 mb-1 flex items-center justify-between">
+                      <span>Nhân viên <span className="text-red-500">*</span></span>
+                      {isLoadingStaffs && <Loader2 className="w-3.5 h-3.5 animate-spin text-green-600" />}
+                    </label>
+                    <select
                       required
-                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"
-                      value={formData.locationName || ''}
-                      onChange={e => setFormData({...formData, locationName: e.target.value})}
-                      placeholder="VD: Vườn Quận 7"
-                    />
+                      disabled={!formData.locationId || isLoadingStaffs}
+                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                      value={formData.staffId || ''}
+                      onChange={e => handleStaffChange(Number(e.target.value))}
+                    >
+                      <option value="" disabled>
+                        {!formData.locationId ? '-- Chọn cơ sở trước --' : staffs.length === 0 ? '-- Không có nhân viên tại cơ sở này --' : '-- Chọn nhân viên --'}
+                      </option>
+                      {staffs.map(staff => (
+                        <option key={staff.id} value={staff.id}>{staff.fullName}{staff.username ? ` (${staff.username})` : ''}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
