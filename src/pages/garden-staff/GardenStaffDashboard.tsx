@@ -169,12 +169,7 @@ export default function GardenStaffDashboard() {
                     {st.label}
                   </span>
                 </div>
-<<<<<<< HEAD
                 {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL' && task.status !== 'CANCELLED') && (
-=======
-
-                {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL') && (
->>>>>>> d0568c4 (feat(task): add evidence image preview, review modal, and evidence re-upload feature)
                   <TaskActions task={task} onUpdated={fetchTasks} />
                 )}
               </div>
@@ -318,8 +313,7 @@ function TaskActions({
 
   return (
     <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
-<<<<<<< HEAD
-      {actionError && <div className="w-full bg-red-50 text-red-600 rounded-lg p-2 text-xs mb-2 font-medium">{actionError}</div>}
+      {actionError && <div className="w-full bg-red-50 text-red-600 rounded-lg p-2.5 text-xs mb-2 font-medium border border-red-200">{actionError}</div>}
 
       {task.taskType === 'HARVEST' && (task.status === 'PENDING' || task.status === 'IN_PROGRESS') && (
         notified ? (
@@ -333,10 +327,6 @@ function TaskActions({
         )
       )}
 
-=======
-      {actionError && <div className="w-full bg-red-50 text-red-600 rounded-lg p-2.5 text-xs mb-2 font-medium border border-red-200">{actionError}</div>}
-      
->>>>>>> d0568c4 (feat(task): add evidence image preview, review modal, and evidence re-upload feature)
       {task.status === 'PENDING' && (
         <button disabled={busy} onClick={() => updateStatus('IN_PROGRESS')} className="btn-primary text-xs py-1.5 px-3">
           Bắt đầu làm
