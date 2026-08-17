@@ -17,7 +17,6 @@ import HowItWorksPage from './pages/public/HowItWorksPage';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import MyRentalsPage from './pages/customer/MyRentalsPage';
 import IoTMonitoringPage from './pages/customer/IoTMonitoringPage';
-import CareServicesPage from './pages/customer/CareServicesPage';
 import PaymentHistoryPage from './pages/customer/PaymentHistoryPage';
 import CustomerNotificationsPage from './pages/customer/CustomerNotificationsPage';
 import TreePlantingRequestPage from './pages/customer/CustomerTreePlanting';
@@ -97,7 +96,6 @@ function AppRoutes() {
       <Route path="/dashboard/customer" element={<ProtectedRoute allowedRoles={['customer']}><CustomerDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/customer/rentals" element={<ProtectedRoute allowedRoles={['customer']}><MyRentalsPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/monitoring" element={<ProtectedRoute allowedRoles={['customer']}><IoTMonitoringPage /></ProtectedRoute>} />
-      <Route path="/dashboard/customer/care" element={<ProtectedRoute allowedRoles={['customer']}><CareServicesPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/payments" element={<ProtectedRoute allowedRoles={['customer']}><PaymentHistoryPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/notifications" element={<ProtectedRoute allowedRoles={['customer']}><CustomerNotificationsPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/tree-planting" element={<ProtectedRoute allowedRoles={['customer']}><TreePlantingRequestPage /></ProtectedRoute>} />

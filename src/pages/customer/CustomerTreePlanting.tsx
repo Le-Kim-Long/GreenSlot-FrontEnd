@@ -112,7 +112,8 @@ export default function CustomerTreePlanting() {
         bookingApi.getHistory().catch(() => []),
         treeApi.getTrees().catch(() => []),
       ]);
-      setMyRentals((rentalsData || []).filter((r: BookingHistory) => r.status === 'ACTIVE'));
+      // Chỉ cho chọn ô đất đang trống (chưa có cây) — không cho gửi yêu cầu thay thế cây đang trồng
+      setMyRentals((rentalsData || []).filter((r: BookingHistory) => r.status === 'ACTIVE' && !r.treeName));
       setAvailableTrees((treesData || []).filter((t: Tree) => t.isActive !== false));
     } catch (err) {
       console.error('Lỗi khi tải hợp đồng/cây trồng:', err);
@@ -179,6 +180,12 @@ export default function CustomerTreePlanting() {
       return;
     }
 
+    const confirmed = window.confirm(
+      `Bạn chắc chắn muốn trồng "${selectedTree?.treeName}" tại ô ${selectedRental?.slotNumber}?\n\n` +
+      `Lưu ý: Sau khi được chấp thuận, bạn sẽ KHÔNG thể đổi sang giống cây khác cho đến khi thu hoạch xong.`
+    );
+    if (!confirmed) return;
+
     setIsSubmitting(true);
     try {
       await treePlantingApi.createRequest({
@@ -234,10 +241,10 @@ export default function CustomerTreePlanting() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Sprout className="w-7 h-7 text-green-600" />
-            Yêu cầu Trồng & Thay thế Cây
+            Yêu cầu Trồng Cây
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Gửi yêu cầu trồng giống cây mới vào khu đất bạn đang thuê và theo dõi tiến độ phê duyệt từ nhà vườn.
+            Gửi yêu cầu trồng giống cây mới vào khu đất trống bạn đang thuê. Lưu ý: sau khi được chấp thuận, bạn không thể đổi sang giống cây khác cho đến khi thu hoạch xong.
           </p>
         </div>
         <button
@@ -440,8 +447,8 @@ export default function CustomerTreePlanting() {
                     {loadingResources
                       ? 'Đang tải danh sách hợp đồng...'
                       : myRentals.length === 0
-                      ? 'Bạn chưa có ô đất thuê đang hoạt động'
-                      : 'Hợp đồng ô đất đang thuê'}
+                      ? 'Bạn chưa có ô đất trống nào (ô đã có cây thì phải đợi thu hoạch mới trồng cây khác được)'
+                      : 'Chỉ hiện ô đất đang thuê và chưa trồng cây'}
                   </span>
                 </div>
 
@@ -520,7 +527,7 @@ export default function CustomerTreePlanting() {
 
               <div>
                 <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
-                  Lý Do Trồng / Thay Thế <span className="text-red-500">*</span>
+                  Lý Do Trồng <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   rows={3} required
@@ -548,6 +555,13 @@ export default function CustomerTreePlanting() {
                 <AlertCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                 <p>
                   Yêu cầu của bạn sẽ được gửi tới kỹ thuật viên nhà vườn kiểm tra điều kiện thổ nhưỡng và quy hoạch vị trí trước khi chấp thuận.
+                </p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl text-xs text-amber-800 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Lưu ý quan trọng:</strong> Sau khi được chấp thuận và trồng, bạn <strong>không thể đổi sang giống cây khác</strong> cho tới khi thu hoạch xong. Hãy chắc chắn với lựa chọn của bạn trước khi gửi.
                 </p>
               </div>
 
