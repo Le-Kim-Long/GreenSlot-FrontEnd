@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { ToastProvider } from './context/ToastContext';
 import type { UserRole } from './types';
 import { getDashboardPath } from './utils/roleMap';
 
@@ -145,7 +146,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <NotificationProvider>
-          <AppRoutes />
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
         </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>

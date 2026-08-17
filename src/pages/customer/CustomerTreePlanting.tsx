@@ -8,6 +8,7 @@ import {
   X, Eye, Loader2, AlertCircle, AlertTriangle, Sparkles
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useToast } from '../../context/ToastContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { customerNavItems as navItems } from './customerNavItems';
 
@@ -72,6 +73,7 @@ const initialForm: CreateTreePlantingPayload = {
 };
 
 export default function CustomerTreePlanting() {
+  const toast = useToast();
   const [requests, setRequests] = useState<TreePlantingRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -168,22 +170,25 @@ export default function CustomerTreePlanting() {
   const handleSubmitCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.rentalId || !formData.newTreeId || !formData.reason.trim()) {
-      alert('Vui lòng chọn Hợp đồng thuê ô đất, Giống cây trồng và nhập Lý do.');
+      toast.warning('Vui lòng chọn Hợp đồng thuê ô đất, Giống cây trồng và nhập Lý do.');
       return;
     }
 
     if (isGrowthExceeded) {
       const expiryText = selectedRental?.endDate || (selectedRental?.endTime ? new Date(selectedRental.endTime).toLocaleDateString('vi-VN') : '');
-      alert(
+      toast.error(
         `Không thể gửi yêu cầu: Thời gian sinh trưởng của giống cây (${growthDays} ngày) vượt quá thời hạn thuê còn lại của ô đất (${remainingDays} ngày, hết hạn ngày ${expiryText}). Vui lòng gia hạn hợp đồng trước!`
       );
       return;
     }
 
-    const confirmed = window.confirm(
-      `Bạn chắc chắn muốn trồng "${selectedTree?.treeName}" tại ô ${selectedRental?.slotNumber}?\n\n` +
-      `Lưu ý: Sau khi được chấp thuận, bạn sẽ KHÔNG thể đổi sang giống cây khác cho đến khi thu hoạch xong.`
-    );
+    const confirmed = await toast.confirm({
+      title: 'Xác nhận yêu cầu trồng cây',
+      message: `Bạn chắc chắn muốn trồng "${selectedTree?.treeName}" tại ô ${selectedRental?.slotNumber}?\n\nLưu ý: Sau khi được chấp thuận, bạn sẽ KHÔNG thể đổi sang giống cây khác cho đến khi thu hoạch xong.`,
+      confirmText: 'Gửi yêu cầu',
+      cancelText: 'Hủy bỏ',
+      type: 'warning',
+    });
     if (!confirmed) return;
 
     setIsSubmitting(true);
@@ -194,12 +199,12 @@ export default function CustomerTreePlanting() {
         reason: formData.reason.trim(),
         notes: formData.notes?.trim() || '',
       });
-      alert('🎉 Đã gửi yêu cầu trồng cây thành công! Hệ thống nhà vườn sẽ sớm kiểm tra và phản hồi.');
+      toast.success('🎉 Đã gửi yêu cầu trồng cây thành công! Hệ thống nhà vườn sẽ sớm kiểm tra và phản hồi.');
       setIsCreateModalOpen(false);
       fetchMyRequests();
     } catch (err: any) {
       console.error('Lỗi tạo yêu cầu:', err);
-      alert(err?.response?.data?.message || 'Gửi yêu cầu thất bại. Vui lòng kiểm tra lại thông tin.');
+      toast.error(err?.response?.data?.message || 'Gửi yêu cầu thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally {
       setIsSubmitting(false);
     }

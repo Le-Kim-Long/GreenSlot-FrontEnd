@@ -7,6 +7,7 @@ import {
   ExternalLink, CheckCircle, Calendar, Upload
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav'; 
 
@@ -32,6 +33,7 @@ interface Slot {
 
 export default function TaskManagement() {
   const { user } = useAuth();
+  const toast = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -168,9 +170,10 @@ export default function TaskManagement() {
       try {
         const url = await taskApi.uploadEvidenceImage(file);
         setCreateForm(prev => ({ ...prev, evidenceImageUrl: url }));
+        toast.success('Tải ảnh hướng dẫn thành công!');
       } catch (error) {
         console.error('Lỗi upload ảnh:', error);
-        alert('Tải ảnh thất bại. Vui lòng thử lại.');
+        toast.error('Tải ảnh thất bại. Vui lòng thử lại.');
       } finally {
         setIsUploadingImage(false);
       }
@@ -200,10 +203,10 @@ export default function TaskManagement() {
       setTasks(prev => prev.map(t => t.id === selectedTask.id ? { ...t, evidenceImageUrl: publicUrl } : t));
       setDetailFile(null);
       setDetailFilePreview(null);
-      alert('Đã cập nhật ảnh thực tế thành công!');
+      toast.success('Đã cập nhật ảnh thực tế thành công!');
     } catch (e: any) {
       console.error(e);
-      alert('Lỗi cập nhật ảnh: ' + (e.response?.data?.message || e.message));
+      toast.error('Lỗi cập nhật ảnh: ' + (e.response?.data?.message || e.message));
     } finally {
       setIsUpdatingDetailImage(false);
     }
@@ -213,7 +216,7 @@ export default function TaskManagement() {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.taskName || !createForm.targetSlotId) {
-      alert("Vui lòng nhập đầy đủ Tên công việc và chọn Ô vườn!");
+      toast.warning('Vui lòng nhập đầy đủ Tên công việc và chọn Ô vườn!');
       return;
     }
     setIsSubmitting(true);
@@ -226,12 +229,12 @@ export default function TaskManagement() {
         evidenceImageUrl: createForm.evidenceImageUrl || undefined
       };
       await taskApi.createTask(payload);
-      alert('Tạo công việc thành công! Task đang ở trạng thái chờ phân công.');
+      toast.success('Tạo công việc thành công! Task đang ở trạng thái chờ phân công.');
       handleCloseModal();
       fetchData(); 
     } catch (error) {
       console.error('Lỗi tạo task:', error);
-      alert('Tạo công việc thất bại.');
+      toast.error('Tạo công việc thất bại. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }
@@ -241,7 +244,7 @@ export default function TaskManagement() {
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assignForm.staffId || !selectedTask) {
-      alert("Vui lòng chọn Nhân viên thực hiện!");
+      toast.warning('Vui lòng chọn Nhân viên thực hiện!');
       return;
     }
     setIsSubmitting(true);
@@ -249,13 +252,13 @@ export default function TaskManagement() {
       const taskId = selectedTask.id;
       const staffId = Number(assignForm.staffId);
       await taskApi.assignTask(taskId, staffId);
-      alert('Giao việc thành công!');
+      toast.success('Giao việc thành công!');
       handleCloseModal();
       fetchData(); 
     } catch (error: any) {
       console.error('Lỗi giao việc:', error);
       const errorMsg = error.response?.data?.message || error.message;
-      alert(`Giao việc thất bại. Lý do: ${errorMsg}`);
+      toast.error(`Giao việc thất bại. Lý do: ${errorMsg}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -269,13 +272,17 @@ export default function TaskManagement() {
     setIsSubmitting(true);
     try {
       await taskApi.reviewTask(selectedTask.id, reviewForm);
-      alert(reviewForm.action === 'APPROVE' ? 'Đã duyệt hoàn thành công việc!' : 'Đã từ chối công việc (yêu cầu làm lại)!');
+      if (reviewForm.action === 'APPROVE') {
+        toast.success('Đã duyệt hoàn thành công việc!');
+      } else {
+        toast.warning('Đã từ chối công việc (yêu cầu làm lại)!');
+      }
       handleCloseModal();
       fetchData();
     } catch (error: any) {
       console.error('Lỗi duyệt task:', error);
       const errorMsg = error.response?.data?.message || error.message;
-      alert(`Lỗi khi duyệt task: ${errorMsg}`);
+      toast.error(`Lỗi khi duyệt task: ${errorMsg}`);
     } finally {
       setIsSubmitting(false);
     }
