@@ -274,7 +274,7 @@ export default function PendingAlertsPanel() {
   const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
 
   const visibleAlerts = selectedLocationId
-    ? alerts.filter((a) => String(pillarLocationMap.get(a.pillarId)) === selectedLocationId)
+    ? alerts.filter((a) => a.pillarId != null && String(pillarLocationMap.get(a.pillarId)) === selectedLocationId)
     : alerts;
 
   // Xử lý xong 1 alert: bỏ nó khỏi danh sách đang chờ (không cần gọi lại API), đóng form, báo thành công
@@ -382,7 +382,7 @@ export default function PendingAlertsPanel() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-xs text-gray-500 font-medium">
-                    {locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1) && (
+                    {alert.pillarId != null && locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1) && (
                       <span className="inline-flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-gray-400" /> {locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1)}
                       </span>
