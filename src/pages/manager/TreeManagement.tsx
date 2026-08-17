@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { treeApi, Tree } from '../../api/treeApi';
 import { 
   Trees, Plus, Edit2, Trash2, X, Search, Filter, 
-  Loader2, DollarSign, Clock, ShieldAlert, ChevronDown, 
+  Loader2, Clock, ChevronDown,
   Droplets, Sun, Beaker, Upload, Image as ImageIcon 
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { Toast, ToastData } from '../../components/common/Toast';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
 // 👉 Import thêm hàm deleteTreeImage
@@ -112,6 +113,10 @@ export default function TreeManagement() {
   // State quản lý loading khi đang upload ảnh lên Firebase
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
+  // Toast thông báo
+  const [toast, setToast] = useState<ToastData | null>(null);
+  const showToast = (type: ToastData['type'], title: string, detail?: string) => setToast({ type, title, detail });
+
   // 💥 HÀM THÔNG MINH: Xóa ảnh tạm khỏi Firebase nếu ảnh đó KHÔNG phải ảnh gốc trong DB
   const removeTempImage = async (urlToRemove?: string | null) => {
     if (!urlToRemove) return;
@@ -127,11 +132,11 @@ export default function TreeManagement() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chỉ chọn file hình ảnh (JPG, PNG, WEBP...)');
+      showToast('warning', 'Định dạng ảnh không hợp lệ', 'Vui lòng chỉ chọn file hình ảnh (JPG, PNG, WEBP...)');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert('Dung lượng ảnh tối đa là 5MB');
+      showToast('warning', 'Ảnh quá lớn', 'Dung lượng ảnh tối đa là 5MB');
       return;
     }
 
@@ -145,7 +150,7 @@ export default function TreeManagement() {
       setFormData(prev => ({ ...prev, imageUrl: firebaseUrl }));
     } catch (err) {
       console.error('Lỗi upload ảnh Firebase:', err);
-      alert('Tải ảnh lên Firebase thất bại. Vui lòng thử lại!');
+      showToast('error', 'Tải ảnh thất bại', 'Không thể tải ảnh lên Firebase. Vui lòng thử lại!');
     } finally {
       setIsUploadingImage(false);
     }
@@ -204,8 +209,8 @@ export default function TreeManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.treeName?.trim() || !formData.scientificName?.trim()) {
-      alert('Vui lòng nhập Tên cây và Tên khoa học.');
+    if (!formData.treeName?.trim()) {
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng nhập Tên cây.');
       return;
     }
 
@@ -216,13 +221,13 @@ export default function TreeManagement() {
       } else {
         await treeApi.createTree(formData);
       }
-      alert(editingItem ? 'Cập nhật cây trồng thành công!' : 'Thêm giống cây mới thành công!');
+      showToast('success', editingItem ? 'Cập nhật cây trồng thành công!' : 'Thêm giống cây mới thành công!');
       // Khi bấm Lưu thành công thì CHỈ ĐÓNG MODAL (không xóa ảnh vì ảnh đã trở thành ảnh chính thức)
       handleCloseModal();
       fetchData();
     } catch (err) {
       console.error('Lỗi lưu cây trồng:', err);
-      alert('Thao tác thất bại. Vui lòng kiểm tra lại thông số.');
+      showToast('error', 'Thao tác thất bại', 'Vui lòng kiểm tra lại thông số.');
     } finally {
       setIsSubmitting(false);
     }
@@ -232,11 +237,17 @@ export default function TreeManagement() {
     if (!confirmDelete) return;
     setIsDeleting(true);
     try {
-      await treeApi.deleteTree(confirmDelete.id);
+      await treeApi.forceDeleteTree(confirmDelete.id);
       setConfirmDelete(null);
+      showToast('success', 'Đã xóa giống cây trồng');
       fetchData();
-    } catch (err) {
-      alert('Xóa thất bại. Giống cây này có thể đang được khách hàng thuê hoặc canh tác.');
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        showToast('error', 'Không có quyền xóa', 'Vui lòng liên hệ Quản lý kinh doanh.');
+      } else {
+        const detail = err?.response?.data?.message || err?.message || 'Không rõ nguyên nhân.';
+        showToast('error', 'Xóa thất bại', detail);
+      }
     } finally {
       setIsDeleting(false);
     }
@@ -251,8 +262,9 @@ export default function TreeManagement() {
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Danh mục Cây trồng">
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
       <div className="p-6 max-w-7xl mx-auto">
-        
+
         {/* Control Panel */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-3 flex-1">
@@ -297,20 +309,19 @@ export default function TreeManagement() {
           <table className="w-full text-left border-collapse text-sm">
             <thead className="bg-gray-50/75 border-b border-gray-100">
               <tr>
-                <th className="p-4 font-semibold text-gray-600">Cây trồng & Khoa học</th>
-                <th className="p-4 font-semibold text-gray-600">Giá thuê / Thu hoạch</th>
+                <th className="p-4 font-semibold text-gray-600">Cây trồng</th>
+                <th className="p-4 font-semibold text-gray-600">Thu hoạch</th>
                 <th className="p-4 font-semibold text-gray-600">Định mức sinh thái (IoT)</th>
-                <th className="p-4 font-semibold text-gray-600">Đền bù</th>
                 <th className="p-4 font-semibold text-gray-600">Trạng thái</th>
                 <th className="p-4 font-semibold text-gray-600 text-right">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={6} className="p-8 text-center text-gray-500">Đang tải danh mục cây trồng...</td></tr>
+                <tr><td colSpan={5} className="p-8 text-center text-gray-500">Đang tải danh mục cây trồng...</td></tr>
               ) : filteredTrees.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-gray-400">
+                  <td colSpan={5} className="p-12 text-center text-gray-400">
                     <Trees className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p>Không tìm thấy giống cây trồng nào phù hợp.</p>
                   </td>
@@ -327,18 +338,11 @@ export default function TreeManagement() {
                             <Trees className="w-5 h-5" />
                           )}
                         </div>
-                        <div>
-                          <div className="font-semibold text-gray-900">{tree.treeName}</div>
-                          <div className="text-xs text-gray-400 italic mt-0.5">{tree.scientificName}</div>
-                        </div>
+                        <div className="font-semibold text-gray-900">{tree.treeName}</div>
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="font-semibold text-green-600 flex items-center gap-1">
-                        <DollarSign className="w-3.5 h-3.5" />
-                        {tree.price?.toLocaleString('vi-VN')} đ
-                      </div>
-                      <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                      <div className="text-xs text-gray-500 flex items-center gap-1">
                         <Clock className="w-3 h-3 text-gray-400" />
                         Thu hoạch: ~{tree.harvestDays} ngày (Thuê min {tree.minRentalDays} ngày)
                       </div>
@@ -349,12 +353,6 @@ export default function TreeManagement() {
                         <span className="flex items-center gap-1.5"><Sun className="w-3.5 h-3.5 text-amber-500" /> Sáng: {tree.lightMin} - {tree.lightMax} giờ</span>
                         <span className="flex items-center gap-1.5"><Beaker className="w-3.5 h-3.5 text-purple-500" /> pH: {tree.phMin} - {tree.phMax}</span>
                       </div>
-                    </td>
-                    <td className="p-4 font-medium text-gray-700">
-                      <span className="inline-flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md text-xs font-semibold border border-amber-100/50">
-                        <ShieldAlert className="w-3 h-3" />
-                        {tree.compensationPercentage}%
-                      </span>
                     </td>
                     <td className="p-4">
                       <span className={clsx('px-2.5 py-1 rounded-full text-xs font-semibold', tree.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500')}>
@@ -445,34 +443,6 @@ export default function TreeManagement() {
                           value={formData.treeName || ''}
                           onChange={e => setFormData({...formData, treeName: e.target.value})}
                           placeholder="VD: Cây Tràm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-medium text-gray-700 mb-1">Tên khoa học <span className="text-red-500">*</span></label>
-                        <input
-                          required
-                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition italic"
-                          value={formData.scientificName || ''}
-                          onChange={e => setFormData({...formData, scientificName: e.target.value})}
-                          placeholder="VD: Melaleuca cajuputi"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-medium text-gray-700 mb-1">Giá thuê (VNĐ / kỳ) <span className="text-red-500">*</span></label>
-                        <input
-                          type="number" step={1000} min={0} required
-                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none font-semibold text-green-600"
-                          value={formData.price ?? ''}
-                          onChange={e => setFormData({...formData, price: Number(e.target.value)})}
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-medium text-gray-700 mb-1">Tỷ lệ đền bù thiệt hại (%) <span className="text-red-500">*</span></label>
-                        <input
-                          type="number" min={0} max={100} required
-                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none"
-                          value={formData.compensationPercentage ?? ''}
-                          onChange={e => setFormData({...formData, compensationPercentage: Number(e.target.value)})}
                         />
                       </div>
                       <div>
