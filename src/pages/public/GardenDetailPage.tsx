@@ -19,7 +19,7 @@ export default function GardenDetailPage() {
   const [bookingMonths, setBookingMonths] = useState(1);
   const [monthsInput, setMonthsInput] = useState('1');
   const [monthsError, setMonthsError] = useState('');
-  const [startDate, setStartDate] = useState('');
+  const [startDate, setStartDate] = useState(() => new Date().toLocaleDateString('en-CA'));
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [booking, setBooking] = useState(false);
   const [bookingError, setBookingError] = useState('');
@@ -71,7 +71,7 @@ export default function GardenDetailPage() {
   const handleBook = () => {
     if (!isAuthenticated) { navigate('/login'); return; }
     if (!startDate) { setBookingError('Vui lòng chọn ngày bắt đầu'); return; }
-    const chosenDate = new Date(startDate);
+    const chosenDate = new Date(`${startDate}T00:00:00`);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     if (isNaN(chosenDate.getTime()) || chosenDate < today) {
@@ -95,10 +95,15 @@ export default function GardenDetailPage() {
     setBooking(true);
     setBookingError('');
     try {
+      const now = new Date();
+      const todayStr = now.toLocaleDateString('en-CA');
+      const isToday = startDate === todayStr;
+      const startTimeIso = isToday ? now.toISOString() : new Date(`${startDate}T00:00:00`).toISOString();
+
       const result = await bookingApi.bookSlot({
         slotId: slot.id,
         durationInMonths: bookingMonths,
-        startTime: new Date(startDate).toISOString(),
+        startTime: startTimeIso,
       });
       cacheSlotId(slot.slotNumber, slot.id);
       if (result.paymentUrl) {
@@ -115,8 +120,7 @@ export default function GardenDetailPage() {
   };
 
   const totalPrice = slot ? slot.price * bookingMonths : 0;
-  const discount = bookingMonths >= 3 ? totalPrice * 0.05 : 0;
-  const finalPrice = totalPrice - discount;
+  const finalPrice = totalPrice;
 
   if (loading) {
     return (
@@ -255,7 +259,7 @@ export default function GardenDetailPage() {
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         }`}
                       >
-                        {m} tháng {m >= 3 ? '(-5%)' : ''}
+                        {m} tháng
                       </button>
                     ))}
                   </div>
@@ -265,12 +269,6 @@ export default function GardenDetailPage() {
                     <span className="text-gray-600">{slot.price.toLocaleString('vi-VN')}đ × {bookingMonths} tháng</span>
                     <span className="font-medium">{totalPrice.toLocaleString('vi-VN')}đ</span>
                   </div>
-                  {discount > 0 && (
-                    <div className="flex justify-between text-sm text-green-600">
-                      <span>Giảm giá (≥3 tháng 5%)</span>
-                      <span>-{Math.round(discount).toLocaleString('vi-VN')}đ</span>
-                    </div>
-                  )}
                   <div className="border-t border-green-200 pt-2 flex justify-between font-bold text-gray-900">
                     <span>Tổng cộng</span>
                     <span>{Math.round(finalPrice).toLocaleString('vi-VN')}đ</span>

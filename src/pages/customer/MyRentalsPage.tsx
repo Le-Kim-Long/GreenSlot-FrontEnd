@@ -347,7 +347,7 @@ export default function MyRentalsPage() {
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {m} tháng {m >= 3 ? '(-5%)' : ''}
+                    {m} tháng
                   </button>
                 ))}
               </div>
