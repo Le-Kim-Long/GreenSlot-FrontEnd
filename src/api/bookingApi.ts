@@ -33,6 +33,10 @@ export const bookingApi = {
 
   cancelBooking: (rentalId: number): Promise<void> =>
     apiClient.patch(`/bookings/${rentalId}/cancel`).then(() => undefined),
+
+  // Khách chọn tự thu hoạch (SELF) hay nhờ nhân viên thu hoạch giúp (STAFF)
+  recordHarvestDecision: (rentalId: number, decision: 'SELF' | 'STAFF'): Promise<void> =>
+    apiClient.post(`/bookings/${rentalId}/harvest-decision`, { decision }).then(() => undefined),
 };
 
 export type { BookingHistory, BookingRequest, BookingResponse, ExtensionRequest };

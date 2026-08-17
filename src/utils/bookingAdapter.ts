@@ -39,6 +39,9 @@ export function mapRentalHistory(dto: RentalHistoryDTO): BookingHistory {
     status: computedStatus,
     paymentStatus: paidTx?.status || latestTx?.status,
     transactions: dto.transactions ?? [],
+    treeName: dto.treeName,
+    harvestNotifiedAt: dto.harvestNotifiedAt,
+    harvestDecision: dto.harvestDecision,
   };
 }
 

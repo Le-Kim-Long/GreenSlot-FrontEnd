@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle } from 'lucide-react';
+import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
 import { managerApi } from '../../api/managerApi';
@@ -37,6 +37,7 @@ export default function MyRentalsPage() {
   const [cancelModal, setCancelModal] = useState<BookingHistory | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState('');
+  const [decidingId, setDecidingId] = useState<number | null>(null);
 
   const handleExtendMonthsChange = (rawVal: string) => {
     // Chỉ giữ chữ số, loại bỏ âm (-), thập phân (., ,), chữ cái
@@ -171,6 +172,18 @@ export default function MyRentalsPage() {
     }
   };
 
+  const handleHarvestDecision = async (rentalId: number, decision: 'SELF' | 'STAFF') => {
+    setDecidingId(rentalId);
+    try {
+      await bookingApi.recordHarvestDecision(rentalId, decision);
+      fetchHistory();
+    } catch {
+      setError('Ghi nhận lựa chọn thất bại. Vui lòng thử lại.');
+    } finally {
+      setDecidingId(null);
+    }
+  };
+
   const handleReportSubmit = async () => {
     if (!reportModal) return;
     if (!serviceTypeId) {
@@ -250,6 +263,32 @@ export default function MyRentalsPage() {
                       <Calendar className="w-3.5 h-3.5" /> {rental.startDate} — {rental.endDate}
                     </div>
                     <div className="font-bold text-green-600 mt-1">{rental.totalPrice.toLocaleString('vi-VN')}đ</div>
+
+                    {rental.status === 'ACTIVE' && rental.harvestNotifiedAt && !rental.harvestDecision && (
+                      <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                        <div className="text-sm font-semibold text-amber-800 flex items-center gap-1.5 mb-2">
+                          <Sprout className="w-4 h-4" /> Cây {rental.treeName || ''} đã sẵn sàng thu hoạch!
+                        </div>
+                        <p className="text-xs text-amber-700 mb-2">Bạn muốn tự thu hoạch hay nhờ nhân viên hỗ trợ?</p>
+                        <div className="flex gap-2">
+                          <button
+                            disabled={decidingId === rental.id}
+                            onClick={() => handleHarvestDecision(rental.id, 'SELF')}
+                            className="btn-outline-green text-xs flex-1"
+                          >
+                            Tôi tự thu hoạch
+                          </button>
+                          <button
+                            disabled={decidingId === rental.id}
+                            onClick={() => handleHarvestDecision(rental.id, 'STAFF')}
+                            className="btn-primary text-xs flex-1"
+                          >
+                            {decidingId === rental.id ? <Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> : null}
+                            Nhờ nhân viên giúp
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-row sm:flex-col gap-2 h-fit">
                     {rental.status === 'ACTIVE' && (

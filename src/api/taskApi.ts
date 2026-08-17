@@ -30,6 +30,18 @@ export const taskApi = {
   getMyTasks: (): Promise<GardeningTask[]> =>
     apiClient.get('/tasks/my-tasks').then(r => r.data),
 
+  // Công việc chưa ai nhận, cùng cơ sở với staff hiện tại — vd task Thu hoạch tự tạo
+  getAvailableTasks: (): Promise<GardeningTask[]> =>
+    apiClient.get('/tasks/available').then(r => r.data),
+
+  // Staff tự nhận việc, không cần quản lý gán
+  claimTask: (taskId: number): Promise<GardeningTask> =>
+    apiClient.post(`/tasks/${taskId}/claim`).then(r => r.data),
+
+  // Staff báo cho khách hàng biết cây đã sẵn sàng thu hoạch, để khách chọn tự thu hoạch hay nhờ staff
+  notifyHarvestChoice: (taskId: number): Promise<GardeningTask> =>
+    apiClient.post(`/tasks/${taskId}/notify-harvest`).then(r => r.data),
+
   updateTaskStatus: (taskId: number, data: TaskStatusUpdate): Promise<GardeningTask> =>
     apiClient.patch(`/tasks/${taskId}/status`, data).then(r => r.data),
 

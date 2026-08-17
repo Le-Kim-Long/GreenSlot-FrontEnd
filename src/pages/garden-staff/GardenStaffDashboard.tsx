@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ClipboardList, Wifi, CheckCircle, AlertTriangle, Loader2, ShieldAlert, Upload, Calendar } from 'lucide-react';
+import { ClipboardList, Wifi, CheckCircle, AlertTriangle, Loader2, ShieldAlert, Upload, Calendar, Bell } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { taskApi } from '../../api/taskApi';
 import type { GardeningTask } from '../../types/api';
@@ -19,22 +19,40 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
   PENDING_APPROVAL: { label: 'Chờ duyệt', cls: 'bg-purple-100 text-purple-700' },
   REJECTED: { label: 'Bị từ chối', cls: 'bg-red-100 text-red-700' },
   COMPLETED: { label: 'Hoàn thành', cls: 'bg-green-100 text-green-700' },
+  CANCELLED: { label: 'Đã hủy (khách tự thu hoạch)', cls: 'bg-gray-100 text-gray-600' },
 };
 
 export default function GardenStaffDashboard() {
   const [tasks, setTasks] = useState<GardeningTask[]>([]);
+  const [availableTasks, setAvailableTasks] = useState<GardeningTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [claimingId, setClaimingId] = useState<number | null>(null);
 
   const fetchTasks = () => {
     setLoading(true);
-    taskApi.getMyTasks()
-      .then(setTasks)
+    Promise.all([taskApi.getMyTasks(), taskApi.getAvailableTasks()])
+      .then(([mine, available]) => {
+        setTasks(mine);
+        setAvailableTasks(available);
+      })
       .catch(() => setError('Không thể tải danh sách công việc'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchTasks(); }, []);
+
+  const handleClaim = async (taskId: number) => {
+    setClaimingId(taskId);
+    try {
+      await taskApi.claimTask(taskId);
+      fetchTasks();
+    } catch {
+      setError('Nhận việc thất bại, có thể staff khác đã nhận trước.');
+    } finally {
+      setClaimingId(null);
+    }
+  };
 
   const pending = tasks.filter(t => t.status === 'PENDING');
   const inProgress = tasks.filter(t => t.status === 'IN_PROGRESS');
@@ -48,6 +66,32 @@ export default function GardenStaffDashboard() {
       </div>
 
       {error && <div className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>}
+
+      {availableTasks.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+            <Bell className="w-4 h-4 text-amber-500" /> Công việc chưa ai nhận ({availableTasks.length})
+          </h3>
+          <div className="space-y-2">
+            {availableTasks.map(task => (
+              <div key={task.id} className="card border-amber-200 bg-amber-50/50 flex items-center justify-between gap-3">
+                <div>
+                  <div className="font-bold text-gray-900">{task.taskName}</div>
+                  <div className="text-sm text-gray-500">{task.targetSlotNumber} · {task.taskType}</div>
+                </div>
+                <button
+                  disabled={claimingId === task.id}
+                  onClick={() => handleClaim(task.id)}
+                  className="btn-primary text-xs py-1.5 px-3 whitespace-nowrap"
+                >
+                  {claimingId === task.id ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : null}
+                  Nhận việc
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-16"><Loader2 className="w-8 h-8 animate-spin text-green-600 mx-auto" /></div>
@@ -75,7 +119,7 @@ export default function GardenStaffDashboard() {
                   </div>
                   <span className={clsx(st.cls, 'px-2.5 py-1 rounded-full text-xs font-semibold w-fit')}>{st.label}</span>
                 </div>
-                {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL') && (
+                {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL' && task.status !== 'CANCELLED') && (
                   <TaskActions task={task} onUpdated={fetchTasks} />
                 )}
               </div>
@@ -94,6 +138,20 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
   const [actionError, setActionError] = useState('');
   const [issue, setIssue] = useState({ issueTitle: '', description: '' });
+  const [notified, setNotified] = useState(false);
+
+  const handleNotifyHarvest = async () => {
+    setActionError('');
+    setBusy(true);
+    try {
+      await taskApi.notifyHarvestChoice(task.id);
+      setNotified(true);
+    } catch {
+      setActionError('Báo khách hàng thất bại.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const updateStatus = async (status: string) => {
     setActionError('');
@@ -154,7 +212,19 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
   return (
     <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
       {actionError && <div className="w-full bg-red-50 text-red-600 rounded-lg p-2 text-xs mb-2 font-medium">{actionError}</div>}
-      
+
+      {task.taskType === 'HARVEST' && (task.status === 'PENDING' || task.status === 'IN_PROGRESS') && (
+        notified ? (
+          <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 inline-flex items-center gap-1">
+            <Bell className="w-3 h-3" /> Đã báo khách hàng
+          </span>
+        ) : (
+          <button disabled={busy} onClick={handleNotifyHarvest} className="btn-secondary text-xs py-1.5 px-3">
+            <Bell className="w-3 h-3 inline mr-1" /> Báo khách hàng
+          </button>
+        )
+      )}
+
       {task.status === 'PENDING' && (
         <button disabled={busy} onClick={() => updateStatus('IN_PROGRESS')} className="btn-primary text-xs py-1.5 px-3">
           Bắt đầu làm
