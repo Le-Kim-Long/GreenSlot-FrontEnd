@@ -7,6 +7,7 @@ import {
   Upload, Image as ImageIcon, Hash, Layers, MapPin
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { Toast, ToastData } from '../../components/common/Toast';
 import { staffNavItems } from './staffNav';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
 import { uploadEquipmentImage } from '../../utils/firebaseUpload';
@@ -73,7 +74,7 @@ const emptyForm: Partial<Equipment> = {
   serialNumber: '',
   description: '',
   status: 'AVAILABLE',
-  pillarId: 1,
+  pillarId: undefined,
   purchaseDate: '',
   lastMaintenanceDate: '',
   imageUrl: '',
@@ -117,8 +118,22 @@ export default function EquipmentManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Equipment | null>(null);
   const [formData, setFormData] = useState<Partial<Equipment>>(emptyForm);
+  const [formLocationId, setFormLocationId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Trụ vườn khả dụng trong form Thêm/Sửa, lọc theo cơ sở đang chọn trong form
+  const formPillarOptions = formLocationId
+    ? pillars.filter((p: any) => String(p.locationId) === formLocationId)
+    : pillars;
+
+  const handleFormLocationChange = (locId: string) => {
+    setFormLocationId(locId);
+    const currentPillar = pillars.find((p: any) => String(p.id) === String(formData.pillarId));
+    if (locId && (!currentPillar || String(currentPillar.locationId) !== locId)) {
+      setFormData(prev => ({ ...prev, pillarId: undefined }));
+    }
+  };
 
   // Delete State
   const [confirmDelete, setConfirmDelete] = useState<Equipment | null>(null);
@@ -126,6 +141,10 @@ export default function EquipmentManagement() {
 
   // State quản lý loading khi upload ảnh lên Backend API
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Toast thông báo
+  const [toast, setToast] = useState<ToastData | null>(null);
+  const showToast = (type: ToastData['type'], title: string, detail?: string) => setToast({ type, title, detail });
 
   // 👉 Xử lý khi chọn file hình từ máy -> upload thẳng lên Firebase Storage (client-side)
   // Lưu ý: không dùng equipmentApi.uploadImage() (backend) vì endpoint đó tạo file không public,
@@ -135,11 +154,11 @@ export default function EquipmentManagement() {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chỉ chọn file hình ảnh (JPG, PNG, WEBP...)');
+      showToast('warning', 'Định dạng ảnh không hợp lệ', 'Vui lòng chỉ chọn file hình ảnh (JPG, PNG, WEBP...)');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert('Dung lượng ảnh tối đa là 5MB');
+      showToast('warning', 'Ảnh quá lớn', 'Dung lượng ảnh tối đa là 5MB');
       return;
     }
 
@@ -149,7 +168,7 @@ export default function EquipmentManagement() {
       setFormData(prev => ({ ...prev, imageUrl: firebaseUrl }));
     } catch (err) {
       console.error('Lỗi upload ảnh:', err);
-      alert('Tải ảnh lên Firebase thất bại. Vui lòng thử lại!');
+      showToast('error', 'Tải ảnh thất bại', 'Không thể tải ảnh lên Firebase. Vui lòng thử lại!');
     } finally {
       setIsUploadingImage(false);
     }
@@ -200,6 +219,7 @@ export default function EquipmentManagement() {
     setEditingItem(null);
     setError('');
     setFormData(emptyForm);
+    setFormLocationId('');
     setIsModalOpen(true);
   };
 
@@ -207,12 +227,14 @@ export default function EquipmentManagement() {
     setError('');
     setEditingItem(item);
     setFormData(emptyForm);
+    setFormLocationId(String(pillarLocationMap.get(item.pillarId) ?? ''));
     setIsModalOpen(true);
     setLoadingDetail(true);
 
     try {
       const freshData = await equipmentApi.getEquipment(item.id);
       setEditingItem(freshData);
+      setFormLocationId(String(pillarLocationMap.get(freshData.pillarId) ?? ''));
       // Backend trả về LocalDateTime đầy đủ (VD "2026-01-27T13:36:08.34"), nhưng input type="date"
       // chỉ hiểu đúng "YYYY-MM-DD" — cắt bớt phần giờ để hiển thị đúng trên form
       setFormData({
@@ -235,8 +257,12 @@ export default function EquipmentManagement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.equipmentName?.trim() || !formData.serialNumber?.trim()) {
-      alert('Vui lòng nhập Tên thiết bị và Số Serial.');
+    if (!formData.equipmentName?.trim()) {
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng nhập Tên thiết bị.');
+      return;
+    }
+    if (!formData.pillarId) {
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn Trụ vườn cho thiết bị.');
       return;
     }
 
@@ -256,12 +282,12 @@ export default function EquipmentManagement() {
       } else {
         await equipmentApi.createEquipment(payload);
       }
-      alert(editingItem ? 'Cập nhật thiết bị thành công!' : 'Thêm thiết bị mới thành công!');
+      showToast('success', editingItem ? 'Cập nhật thiết bị thành công!' : 'Thêm thiết bị mới thành công!');
       handleCloseModal();
       fetchData();
     } catch (err) {
       console.error('Lỗi lưu thiết bị:', err);
-      alert('Thao tác thất bại. Vui lòng kiểm tra lại thông tin.');
+      showToast('error', 'Thao tác thất bại', 'Vui lòng kiểm tra lại thông tin.');
     } finally {
       setIsSubmitting(false);
     }
@@ -273,9 +299,10 @@ export default function EquipmentManagement() {
     try {
       await equipmentApi.deleteEquipment(confirmDelete.id);
       setConfirmDelete(null);
+      showToast('success', 'Đã xóa thiết bị');
       fetchData();
     } catch (err) {
-      alert('Xóa thất bại. Thiết bị này có thể đang ràng buộc với dữ liệu khác.');
+      showToast('error', 'Xóa thất bại', 'Thiết bị này có thể đang ràng buộc với dữ liệu khác.');
     } finally {
       setIsDeleting(false);
     }
@@ -293,8 +320,9 @@ export default function EquipmentManagement() {
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Danh mục Thiết bị">
+      {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
       <div className="p-6 max-w-7xl mx-auto">
-        
+
         {/* Control Panel */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div className="flex flex-wrap items-center gap-3 flex-1">
@@ -527,32 +555,31 @@ export default function EquipmentManagement() {
                           placeholder="VD: Máy bơm tự động 500W"
                         />
                       </div>
+                      {canFilterByLocation && (
+                        <div>
+                          <label className="block font-medium text-gray-700 mb-1">Cơ sở <span className="text-red-500">*</span></label>
+                          <CustomDropdown
+                            icon={<MapPin className="w-4 h-4 text-green-600 shrink-0" />}
+                            value={formLocationId}
+                            onChange={(val: any) => handleFormLocationChange(String(val))}
+                            options={locations.map((l: any) => ({ value: String(l.id), label: l.name }))}
+                            placeholder="Chọn cơ sở"
+                            className="w-full"
+                          />
+                        </div>
+                      )}
                       <div>
-                        <label className="block font-medium text-gray-700 mb-1">Số Serial Number <span className="text-red-500">*</span></label>
-                        <input
-                          required
-                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition font-mono"
-                          value={formData.serialNumber || ''}
-                          onChange={e => setFormData({...formData, serialNumber: e.target.value})}
-                          placeholder="VD: SN-202409-001"
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-medium text-gray-700 mb-1">Pillar ID <span className="text-red-500">*</span></label>
-                        <input
-                          type="number" min={1} required
-                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none"
+                        <label className="block font-medium text-gray-700 mb-1">Trụ vườn <span className="text-red-500">*</span></label>
+                        <CustomDropdown
+                          icon={<Layers className="w-4 h-4 text-green-600 shrink-0" />}
                           value={formData.pillarId ?? ''}
-                          onChange={e => setFormData({...formData, pillarId: Number(e.target.value)})}
-                        />
-                      </div>
-                      <div>
-                        <label className="block font-medium text-gray-700 mb-1">Mã Pillar (Code)</label>
-                        <input
-                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none"
-                          value={formData.pillarCode || ''}
-                          onChange={e => setFormData({...formData, pillarCode: e.target.value})}
-                          placeholder="VD: PIL-A01"
+                          onChange={(val: any) => setFormData({...formData, pillarId: Number(val)})}
+                          options={formPillarOptions.map((p: any) => ({
+                            value: String(p.id),
+                            label: p.pillarName ? `${p.pillarName}${p.pillarCode ? ` (${p.pillarCode})` : ''}` : (p.pillarCode || `Trụ #${p.id}`),
+                          }))}
+                          placeholder={canFilterByLocation && !formLocationId ? 'Chọn cơ sở trước' : 'Chọn trụ vườn'}
+                          className="w-full"
                         />
                       </div>
                     </div>

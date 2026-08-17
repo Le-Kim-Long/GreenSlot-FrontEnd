@@ -12,9 +12,8 @@ const navItems = [
 export default function CameraAllPage() {
   const [cameraSrc, setCameraSrc] = useState("");
   
-  // Giao diện React gọi đến Spring Boot
-  const rawApiUrl = import.meta.env.VITE_API_URL || '';
-  const BACKEND_URL = rawApiUrl ? rawApiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '') : '';
+  const rawApiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+  const BACKEND_URL = rawApiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
   useEffect(() => {
     let currentObjectUrl = "";
 
