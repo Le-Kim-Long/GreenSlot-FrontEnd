@@ -42,9 +42,9 @@ export default function GardenDetailPage() {
       return;
     }
 
-    if (num > 60) {
+    if (num > 120) {
       setBookingMonths(num);
-      setMonthsError('Số tháng thuê tối đa là 60 tháng (5 năm).');
+      setMonthsError('Số tháng thuê tối đa là 120 tháng (10 năm).');
       return;
     }
 
@@ -82,8 +82,8 @@ export default function GardenDetailPage() {
       setBookingError('Số tháng thuê không hợp lệ: Vui lòng nhập số tự nhiên dương (tối thiểu 1 tháng).');
       return;
     }
-    if (bookingMonths > 60) {
-      setBookingError('Số tháng thuê không được vượt quá 60 tháng.');
+    if (bookingMonths > 120) {
+      setBookingError('Số tháng thuê không được vượt quá 120 tháng (10 năm).');
       return;
     }
     setBookingError('');

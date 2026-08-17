@@ -56,9 +56,9 @@ export default function MyRentalsPage() {
       return;
     }
 
-    if (num > 60) {
+    if (num > 120) {
       setExtendMonths(num);
-      setExtendMonthsError('Số tháng gia hạn tối đa là 60 tháng (5 năm).');
+      setExtendMonthsError('Số tháng gia hạn tối đa là 120 tháng (10 năm).');
       return;
     }
 
@@ -114,8 +114,8 @@ export default function MyRentalsPage() {
       setExtendError('Số tháng gia hạn không hợp lệ: Vui lòng nhập số tự nhiên dương (tối thiểu 1 tháng).');
       return;
     }
-    if (extendMonths > 60) {
-      setExtendError('Số tháng gia hạn không được vượt quá 60 tháng.');
+    if (extendMonths > 120) {
+      setExtendError('Số tháng gia hạn không được vượt quá 120 tháng (10 năm).');
       return;
     }
     setExtending(true);
