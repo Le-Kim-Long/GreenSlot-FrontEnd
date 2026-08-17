@@ -14,6 +14,13 @@ export interface CreateTaskPayload {
   targetSlotId: number;
 }
 
+export interface EligibleHarvestRental {
+  rentalId: number;
+  slotNumber: string;
+  treeName: string;
+  plantedAt?: string;
+}
+
 export const taskApi = {
   requestService: (data: ServiceRequest): Promise<GardeningTask> =>
     apiClient.post('/services/request', data).then(r => r.data),
@@ -42,6 +49,14 @@ export const taskApi = {
   // Staff báo cho khách hàng biết cây đã sẵn sàng thu hoạch, để khách chọn tự thu hoạch hay nhờ staff
   notifyHarvestChoice: (taskId: number): Promise<GardeningTask> =>
     apiClient.post(`/tasks/${taskId}/notify-harvest`).then(r => r.data),
+
+  // Danh sách ô đất đang có cây tại cơ sở của staff, để chọn báo thu hoạch sớm (chưa đủ ngày sinh trưởng)
+  getEligibleEarlyHarvestRentals: (): Promise<EligibleHarvestRental[]> =>
+    apiClient.get('/tasks/harvest/eligible-rentals').then(r => r.data),
+
+  // Staff chủ động báo thu hoạch sớm cho 1 ô đất, không cần đợi hệ thống tự tạo task theo số ngày
+  notifyEarlyHarvest: (rentalId: number): Promise<GardeningTask> =>
+    apiClient.post('/tasks/harvest/early', { rentalId }).then(r => r.data),
 
   updateTaskStatus: (taskId: number, data: TaskStatusUpdate): Promise<GardeningTask> =>
     apiClient.patch(`/tasks/${taskId}/status`, data).then(r => r.data),

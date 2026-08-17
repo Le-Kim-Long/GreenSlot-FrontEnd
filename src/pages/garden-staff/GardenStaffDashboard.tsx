@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { 
-  ClipboardList, Wifi, CheckCircle, AlertTriangle, 
-  Loader2, ShieldAlert, Upload, Calendar, Bell, Eye, 
-  Image as ImageIcon, X, ExternalLink 
+import {
+  ClipboardList, Wifi, CheckCircle, AlertTriangle,
+  Loader2, ShieldAlert, Upload, Calendar, Bell, Eye,
+  Image as ImageIcon, X, ExternalLink, Sprout, Zap
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
-import { taskApi } from '../../api/taskApi';
+import { taskApi, EligibleHarvestRental } from '../../api/taskApi';
 import type { GardeningTask } from '../../types/api';
 import clsx from 'clsx';
 
@@ -34,18 +34,44 @@ export default function GardenStaffDashboard() {
   const [claimingId, setClaimingId] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  // Báo thu hoạch sớm (trước khi đủ số ngày sinh trưởng)
+  const [eligibleRentals, setEligibleRentals] = useState<EligibleHarvestRental[]>([]);
+  const [showEarlyPanel, setShowEarlyPanel] = useState(false);
+  const [selectedEarlyRentalId, setSelectedEarlyRentalId] = useState('');
+  const [earlyNotifying, setEarlyNotifying] = useState(false);
+  const [earlyError, setEarlyError] = useState('');
+  const [earlySuccess, setEarlySuccess] = useState('');
+
   const fetchTasks = () => {
     setLoading(true);
-    Promise.all([taskApi.getMyTasks(), taskApi.getAvailableTasks()])
-      .then(([mine, available]) => {
+    Promise.all([taskApi.getMyTasks(), taskApi.getAvailableTasks(), taskApi.getEligibleEarlyHarvestRentals()])
+      .then(([mine, available, eligible]) => {
         setTasks(mine);
         setAvailableTasks(available);
+        setEligibleRentals(eligible);
       })
       .catch(() => setError('Không thể tải danh sách công việc'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchTasks(); }, []);
+
+  const handleNotifyEarlyHarvest = async () => {
+    if (!selectedEarlyRentalId) return;
+    setEarlyNotifying(true);
+    setEarlyError('');
+    setEarlySuccess('');
+    try {
+      await taskApi.notifyEarlyHarvest(Number(selectedEarlyRentalId));
+      setEarlySuccess('Đã báo khách hàng thành công!');
+      setSelectedEarlyRentalId('');
+      fetchTasks();
+    } catch (err: any) {
+      setEarlyError(err?.response?.data?.message || 'Báo thu hoạch sớm thất bại.');
+    } finally {
+      setEarlyNotifying(false);
+    }
+  };
 
   const handleClaim = async (taskId: number) => {
     setClaimingId(taskId);
@@ -71,6 +97,49 @@ export default function GardenStaffDashboard() {
       </div>
 
       {error && <div className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>}
+
+      {eligibleRentals.length > 0 && (
+        <div className="mb-6">
+          <button
+            onClick={() => setShowEarlyPanel(v => !v)}
+            className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5 hover:text-green-700"
+          >
+            <Zap className="w-4 h-4 text-amber-500" /> Báo thu hoạch sớm {showEarlyPanel ? '▲' : '▼'}
+          </button>
+
+          {showEarlyPanel && (
+            <div className="card border-amber-200 bg-amber-50/50 space-y-3">
+              <p className="text-xs text-gray-600">
+                Chọn ô đất đang có cây tại cơ sở của bạn để báo khách hàng biết cây đã sẵn sàng thu hoạch, kể cả khi chưa đủ số ngày sinh trưởng dự kiến.
+              </p>
+              {earlyError && <div className="bg-red-50 text-red-600 rounded-lg px-3 py-2 text-xs">{earlyError}</div>}
+              {earlySuccess && <div className="bg-green-50 text-green-700 rounded-lg px-3 py-2 text-xs">{earlySuccess}</div>}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  className="input text-sm flex-1"
+                  value={selectedEarlyRentalId}
+                  onChange={e => setSelectedEarlyRentalId(e.target.value)}
+                >
+                  <option value="">-- Chọn ô đất --</option>
+                  {eligibleRentals.map(r => (
+                    <option key={r.rentalId} value={r.rentalId}>
+                      Ô {r.slotNumber} · {r.treeName}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  disabled={!selectedEarlyRentalId || earlyNotifying}
+                  onClick={handleNotifyEarlyHarvest}
+                  className="btn-primary text-xs py-2 px-4 whitespace-nowrap flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {earlyNotifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sprout className="w-3.5 h-3.5" />}
+                  Báo thu hoạch sớm
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {availableTasks.length > 0 && (
         <div className="mb-6">
