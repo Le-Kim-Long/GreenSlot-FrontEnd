@@ -169,6 +169,7 @@ export default function GardenStaffDashboard() {
                     {st.label}
                   </span>
                 </div>
+
                 {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL' && task.status !== 'CANCELLED') && (
                   <TaskActions task={task} onUpdated={fetchTasks} />
                 )}
@@ -326,7 +327,10 @@ function TaskActions({
           </button>
         )
       )}
+<<<<<<< HEAD
 
+=======
+>>>>>>> d9247c0 (fix(staff): resolve merge conflict in GardenStaffDashboard)
       {task.status === 'PENDING' && (
         <button disabled={busy} onClick={() => updateStatus('IN_PROGRESS')} className="btn-primary text-xs py-1.5 px-3">
           Bắt đầu làm
