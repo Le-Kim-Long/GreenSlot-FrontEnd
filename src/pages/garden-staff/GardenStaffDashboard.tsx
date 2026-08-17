@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { ClipboardList, Wifi, CheckCircle, AlertTriangle, Loader2, ShieldAlert, Upload, Calendar, Bell } from 'lucide-react';
+import { 
+  ClipboardList, Wifi, CheckCircle, AlertTriangle, 
+  Loader2, ShieldAlert, Upload, Calendar, Bell, Eye, 
+  Image as ImageIcon, X, ExternalLink 
+} from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { taskApi } from '../../api/taskApi';
 import type { GardeningTask } from '../../types/api';
@@ -17,7 +21,7 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
   PENDING: { label: 'Chờ xử lý', cls: 'bg-yellow-100 text-yellow-700' },
   IN_PROGRESS: { label: 'Đang làm', cls: 'bg-blue-100 text-blue-700' },
   PENDING_APPROVAL: { label: 'Chờ duyệt', cls: 'bg-purple-100 text-purple-700' },
-  REJECTED: { label: 'Bị từ chối', cls: 'bg-red-100 text-red-700' },
+  REJECTED: { label: 'Bị từ chối (Làm lại)', cls: 'bg-red-100 text-red-700' },
   COMPLETED: { label: 'Hoàn thành', cls: 'bg-green-100 text-green-700' },
   CANCELLED: { label: 'Đã hủy (khách tự thu hoạch)', cls: 'bg-gray-100 text-gray-600' },
 };
@@ -28,6 +32,7 @@ export default function GardenStaffDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [claimingId, setClaimingId] = useState<number | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const fetchTasks = () => {
     setLoading(true);
@@ -101,25 +106,75 @@ export default function GardenStaffDashboard() {
           <p>Chưa có công việc được phân công</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {tasks.map(task => {
             const st = statusConfig[task.status] || { label: task.status, cls: 'badge-gray' };
             return (
-              <div key={task.id} className="card">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="font-bold text-gray-900">{task.taskName}</div>
-                    <div className="text-sm text-gray-500">{task.targetSlotNumber} · {task.taskType}</div>
-                    {task.description && <div className="text-xs text-gray-400 mt-1">{task.description}</div>}
+              <div key={task.id} className="card shadow-sm border border-gray-100">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-gray-400">#{task.id}</span>
+                      <div className="font-bold text-gray-900 text-base">{task.taskName}</div>
+                    </div>
+                    <div className="text-xs font-medium text-green-700 mt-0.5">
+                      Ô vườn: {task.targetSlotNumber || 'N/A'} · Loại: {task.taskType}
+                    </div>
+                    {task.description && (
+                      <div className="text-xs text-gray-600 mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                        {task.description}
+                      </div>
+                    )}
+                    
                     {task.status === 'REJECTED' && task.rejectionReason && (
-                      <div className="text-xs text-red-600 mt-2 font-medium bg-red-50 p-2 border border-red-100 rounded-md">
-                        Lý do từ chối: {task.rejectionReason}
+                      <div className="text-xs text-red-600 mt-2 font-medium bg-red-50 p-2.5 border border-red-200 rounded-lg">
+                        ⚠️ <strong>Lý do từ chối:</strong> {task.rejectionReason}
+                      </div>
+                    )}
+
+                    {/* Hiển thị Ảnh Bằng Chứng Đã Nộp */}
+                    {task.evidenceImageUrl && (
+                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
+                        <div 
+                          onClick={() => setPreviewImage(task.evidenceImageUrl!)}
+                          className="group relative w-16 h-16 rounded-lg overflow-hidden border border-green-300 bg-gray-900 cursor-pointer shadow-sm flex-shrink-0"
+                        >
+                          <img 
+                            src={task.evidenceImageUrl} 
+                            alt="Ảnh bằng chứng" 
+                            className="w-full h-full object-cover group-hover:scale-105 transition"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Ảnh';
+                            }}
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white">
+                            <Eye className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <div className="text-xs">
+                          <span className="font-semibold text-gray-700 block">Ảnh bằng chứng đã nộp</span>
+                          <button 
+                            type="button" 
+                            onClick={() => setPreviewImage(task.evidenceImageUrl!)}
+                            className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 mt-0.5"
+                          >
+                            <Eye className="w-3 h-3" /> Bấm để xem ảnh lớn
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
-                  <span className={clsx(st.cls, 'px-2.5 py-1 rounded-full text-xs font-semibold w-fit')}>{st.label}</span>
+
+                  <span className={clsx(st.cls, 'px-3 py-1 rounded-full text-xs font-semibold w-fit self-start')}>
+                    {st.label}
+                  </span>
                 </div>
+<<<<<<< HEAD
                 {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL' && task.status !== 'CANCELLED') && (
+=======
+
+                {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL') && (
+>>>>>>> d0568c4 (feat(task): add evidence image preview, review modal, and evidence re-upload feature)
                   <TaskActions task={task} onUpdated={fetchTasks} />
                 )}
               </div>
@@ -127,15 +182,57 @@ export default function GardenStaffDashboard() {
           })}
         </div>
       )}
+
+      {/* Lightbox Phóng To Ảnh */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in backdrop-blur-sm"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] p-2" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setPreviewImage(null)} 
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 p-1.5 bg-white/20 hover:bg-white/30 rounded-full transition"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img 
+              src={previewImage} 
+              alt="Phóng to bằng chứng" 
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/20 bg-gray-900"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://placehold.co/800x600?text=Lỗi+tải+ảnh';
+              }}
+            />
+            <div className="text-center mt-3">
+              <a 
+                href={previewImage} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-flex items-center gap-1.5 text-xs text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Mở trong tab mới
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
 
-function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () => void }) {
+function TaskActions({ 
+  task, 
+  onUpdated 
+}: { 
+  task: GardeningTask; 
+  onUpdated: () => void;
+}) {
   const [busy, setBusy] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidencePreview, setEvidencePreview] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
   const [issue, setIssue] = useState({ issueTitle: '', description: '' });
   const [notified, setNotified] = useState(false);
@@ -167,6 +264,15 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setEvidenceFile(file);
+      const url = URL.createObjectURL(file);
+      setEvidencePreview(url);
+    }
+  };
+
   const handleCompleteWithUpload = async () => {
     if (!evidenceFile) {
       setActionError('Bắt buộc phải chọn hình ảnh bằng chứng trước khi hoàn thành công việc.');
@@ -182,10 +288,11 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
       
       setShowComplete(false);
       setEvidenceFile(null);
+      setEvidencePreview(null);
       onUpdated();
     } catch (error) {
       console.error(error);
-      setActionError('Lỗi khi tải ảnh lên hoặc cập nhật trạng thái công việc.');
+      setActionError('Lỗi khi tải ảnh lên hoặc cập nhật trạng thái công việc. Vui lòng thử lại.');
     } finally {
       setBusy(false);
     }
@@ -211,6 +318,7 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
 
   return (
     <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
+<<<<<<< HEAD
       {actionError && <div className="w-full bg-red-50 text-red-600 rounded-lg p-2 text-xs mb-2 font-medium">{actionError}</div>}
 
       {task.taskType === 'HARVEST' && (task.status === 'PENDING' || task.status === 'IN_PROGRESS') && (
@@ -225,6 +333,10 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
         )
       )}
 
+=======
+      {actionError && <div className="w-full bg-red-50 text-red-600 rounded-lg p-2.5 text-xs mb-2 font-medium border border-red-200">{actionError}</div>}
+      
+>>>>>>> d0568c4 (feat(task): add evidence image preview, review modal, and evidence re-upload feature)
       {task.status === 'PENDING' && (
         <button disabled={busy} onClick={() => updateStatus('IN_PROGRESS')} className="btn-primary text-xs py-1.5 px-3">
           Bắt đầu làm
@@ -232,49 +344,52 @@ function TaskActions({ task, onUpdated }: { task: GardeningTask; onUpdated: () =
       )}
       
       {(task.status === 'IN_PROGRESS' || task.status === 'REJECTED') && (
-        <button disabled={busy} onClick={() => { setShowComplete(!showComplete); setShowReport(false); setActionError(''); setEvidenceFile(null); }} className="btn-primary text-xs py-1.5 px-3">
-          <CheckCircle className="w-3 h-3 inline mr-1" /> {task.status === 'REJECTED' ? 'Nộp lại bằng chứng' : 'Hoàn thành công việc'}
+        <button disabled={busy} onClick={() => { setShowComplete(!showComplete); setShowReport(false); setActionError(''); setEvidenceFile(null); setEvidencePreview(null); }} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1">
+          <CheckCircle className="w-3.5 h-3.5 inline" /> {task.status === 'REJECTED' ? 'Nộp lại bằng chứng' : 'Hoàn thành công việc'}
         </button>
       )}
       
-      <button disabled={busy} onClick={() => { setShowReport(!showReport); setShowComplete(false); setActionError(''); }} className="btn-secondary text-xs py-1.5 px-3">
-        <AlertTriangle className="w-3 h-3 inline mr-1" /> Báo sự cố
+      <button disabled={busy} onClick={() => { setShowReport(!showReport); setShowComplete(false); setActionError(''); }} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+        <AlertTriangle className="w-3.5 h-3.5 inline text-orange-500" /> Báo sự cố
       </button>
       
       {showComplete && (
-        <div className="w-full mt-2 p-3 bg-green-50 rounded-xl border border-green-200 space-y-3">
-          <label className="block text-xs font-bold text-gray-700">Tải lên hình ảnh bằng chứng (Bắt buộc) *</label>
+        <div className="w-full mt-2 p-4 bg-green-50/80 rounded-xl border border-green-200 space-y-3">
+          <label className="block text-xs font-bold text-gray-800 flex items-center gap-1.5">
+            <ImageIcon className="w-4 h-4 text-green-700" />
+            Tải lên hình ảnh bằng chứng (Bắt buộc) *
+          </label>
           
           <div className="flex items-center gap-3">
             <input 
               type="file" 
               accept="image/*"
-              onChange={e => {
-                if (e.target.files && e.target.files.length > 0) {
-                  setEvidenceFile(e.target.files[0]);
-                }
-              }}
-              className="block w-full text-sm text-gray-500
+              onChange={handleFileChange}
+              className="block w-full text-xs text-gray-500
                 file:mr-4 file:py-2 file:px-4
-                file:rounded-full file:border-0
+                file:rounded-xl file:border-0
                 file:text-xs file:font-semibold
-                file:bg-green-100 file:text-green-700
-                hover:file:bg-green-200 cursor-pointer"
+                file:bg-green-600 file:text-white
+                hover:file:bg-green-700 cursor-pointer border border-green-200 rounded-xl p-1 bg-white"
             />
           </div>
           
-          {evidenceFile && (
-             <div className="text-xs text-gray-600 truncate">
-               Đã chọn: {evidenceFile.name}
-             </div>
+          {evidencePreview && (
+            <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-green-200">
+              <img src={evidencePreview} alt="Preview" className="w-14 h-14 object-cover rounded-lg border border-gray-200 shadow-sm" />
+              <div className="flex-1 text-xs">
+                <span className="font-semibold text-gray-800 block truncate">{evidenceFile?.name}</span>
+                <span className="text-gray-500 text-[11px]">{((evidenceFile?.size || 0) / (1024 * 1024)).toFixed(2)} MB</span>
+              </div>
+            </div>
           )}
 
           <div className="flex gap-2 pt-2">
-            <button onClick={handleCompleteWithUpload} disabled={busy || !evidenceFile} className="btn-primary text-xs py-1.5 px-3 flex-1 disabled:opacity-50">
-              {busy ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : <Upload className="w-3 h-3 inline mr-1" />}
-              {busy ? 'Đang tải lên...' : 'Xác nhận hoàn thành'}
+            <button onClick={handleCompleteWithUpload} disabled={busy || !evidenceFile} className="btn-primary text-xs py-2 px-4 flex-1 disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm">
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin inline" /> : <Upload className="w-3.5 h-3.5 inline" />}
+              {busy ? 'Đang tải lên & gửi duyệt...' : 'Gửi hoàn thành & chờ duyệt'}
             </button>
-            <button onClick={() => setShowComplete(false)} disabled={busy} className="btn-secondary text-xs py-1.5 px-3">Hủy</button>
+            <button onClick={() => setShowComplete(false)} disabled={busy} className="btn-secondary text-xs py-2 px-3">Hủy</button>
           </div>
         </div>
       )}

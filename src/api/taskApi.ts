@@ -62,4 +62,7 @@ export const taskApi = {
 
   reviewTask: (taskId: number, data: { action: 'APPROVE' | 'REJECT'; rejectionReason?: string }): Promise<GardeningTask> =>
     apiClient.post(`/tasks/${taskId}/review`, data).then(r => r.data),
+
+  updateTaskEvidence: (taskId: number, evidenceImageUrl: string): Promise<GardeningTask> =>
+    apiClient.patch(`/tasks/${taskId}/evidence`, { evidenceImageUrl }).then(r => r.data),
 };
