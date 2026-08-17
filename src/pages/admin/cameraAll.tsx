@@ -12,8 +12,11 @@ const navItems = [
 export default function CameraAllPage() {
   const [cameraSrc, setCameraSrc] = useState("");
   
-// Giao diện React gọi đến Spring Boot (Máy tính)
-const BACKEND_URL = "http://10.10.10.231:8080";
+// Nếu dùng Vite:
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8080";
+
+// Nếu dùng Create React App:
+// const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:8080";
   useEffect(() => {
     let currentObjectUrl = "";
 
