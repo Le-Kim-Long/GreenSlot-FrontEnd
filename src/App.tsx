@@ -47,6 +47,7 @@ import MySchedule from './pages/garden-staff/MySchedule';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import CameraDashboard from './pages/admin/CameraDashboard';
+import CameraAllPage from './pages/admin/cameraAll';
 
 import ProfilePage from './pages/profile/ProfilePage';
 import PaymentResultPage from './pages/public/PaymentResultPage';
@@ -133,6 +134,7 @@ function AppRoutes() {
       <Route path="/dashboard/admin/cameras" element={<ProtectedRoute allowedRoles={['admin']}><CameraDashboard /></ProtectedRoute>} />
       {/* Legacy owner routes → redirect */}
       <Route path="/dashboard/owner/*" element={<Navigate to="/gardens" replace />} />
+      <Route path="/dashboard/admin/cameras/all" element={<ProtectedRoute allowedRoles={['admin']}><CameraAllPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
