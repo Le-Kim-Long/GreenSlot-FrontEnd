@@ -8,6 +8,7 @@ import {
   X, Eye, Loader2, AlertCircle, AlertTriangle, Sparkles
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useToast } from '../../context/ToastContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { customerNavItems as navItems } from './customerNavItems';
 
@@ -72,6 +73,7 @@ const initialForm: CreateTreePlantingPayload = {
 };
 
 export default function CustomerTreePlanting() {
+  const toast = useToast();
   const [requests, setRequests] = useState<TreePlantingRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -112,7 +114,8 @@ export default function CustomerTreePlanting() {
         bookingApi.getHistory().catch(() => []),
         treeApi.getTrees().catch(() => []),
       ]);
-      setMyRentals((rentalsData || []).filter((r: BookingHistory) => r.status === 'ACTIVE'));
+      // Chỉ cho chọn ô đất đang trống (chưa có cây) — không cho gửi yêu cầu thay thế cây đang trồng
+      setMyRentals((rentalsData || []).filter((r: BookingHistory) => r.status === 'ACTIVE' && !r.treeName));
       setAvailableTrees((treesData || []).filter((t: Tree) => t.isActive !== false));
     } catch (err) {
       console.error('Lỗi khi tải hợp đồng/cây trồng:', err);
@@ -167,17 +170,26 @@ export default function CustomerTreePlanting() {
   const handleSubmitCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.rentalId || !formData.newTreeId || !formData.reason.trim()) {
-      alert('Vui lòng chọn Hợp đồng thuê ô đất, Giống cây trồng và nhập Lý do.');
+      toast.warning('Vui lòng chọn Hợp đồng thuê ô đất, Giống cây trồng và nhập Lý do.');
       return;
     }
 
     if (isGrowthExceeded) {
       const expiryText = selectedRental?.endDate || (selectedRental?.endTime ? new Date(selectedRental.endTime).toLocaleDateString('vi-VN') : '');
-      alert(
+      toast.error(
         `Không thể gửi yêu cầu: Thời gian sinh trưởng của giống cây (${growthDays} ngày) vượt quá thời hạn thuê còn lại của ô đất (${remainingDays} ngày, hết hạn ngày ${expiryText}). Vui lòng gia hạn hợp đồng trước!`
       );
       return;
     }
+
+    const confirmed = await toast.confirm({
+      title: 'Xác nhận yêu cầu trồng cây',
+      message: `Bạn chắc chắn muốn trồng "${selectedTree?.treeName}" tại ô ${selectedRental?.slotNumber}?\n\nLưu ý: Sau khi được chấp thuận, bạn sẽ KHÔNG thể đổi sang giống cây khác cho đến khi thu hoạch xong.`,
+      confirmText: 'Gửi yêu cầu',
+      cancelText: 'Hủy bỏ',
+      type: 'warning',
+    });
+    if (!confirmed) return;
 
     setIsSubmitting(true);
     try {
@@ -187,12 +199,12 @@ export default function CustomerTreePlanting() {
         reason: formData.reason.trim(),
         notes: formData.notes?.trim() || '',
       });
-      alert('🎉 Đã gửi yêu cầu trồng cây thành công! Hệ thống nhà vườn sẽ sớm kiểm tra và phản hồi.');
+      toast.success('🎉 Đã gửi yêu cầu trồng cây thành công! Hệ thống nhà vườn sẽ sớm kiểm tra và phản hồi.');
       setIsCreateModalOpen(false);
       fetchMyRequests();
     } catch (err: any) {
       console.error('Lỗi tạo yêu cầu:', err);
-      alert(err?.response?.data?.message || 'Gửi yêu cầu thất bại. Vui lòng kiểm tra lại thông tin.');
+      toast.error(err?.response?.data?.message || 'Gửi yêu cầu thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally {
       setIsSubmitting(false);
     }
@@ -234,10 +246,10 @@ export default function CustomerTreePlanting() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Sprout className="w-7 h-7 text-green-600" />
-            Yêu cầu Trồng & Thay thế Cây
+            Yêu cầu Trồng Cây
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Gửi yêu cầu trồng giống cây mới vào khu đất bạn đang thuê và theo dõi tiến độ phê duyệt từ nhà vườn.
+            Gửi yêu cầu trồng giống cây mới vào khu đất trống bạn đang thuê. Lưu ý: sau khi được chấp thuận, bạn không thể đổi sang giống cây khác cho đến khi thu hoạch xong.
           </p>
         </div>
         <button
@@ -440,8 +452,8 @@ export default function CustomerTreePlanting() {
                     {loadingResources
                       ? 'Đang tải danh sách hợp đồng...'
                       : myRentals.length === 0
-                      ? 'Bạn chưa có ô đất thuê đang hoạt động'
-                      : 'Hợp đồng ô đất đang thuê'}
+                      ? 'Bạn chưa có ô đất trống nào (ô đã có cây thì phải đợi thu hoạch mới trồng cây khác được)'
+                      : 'Chỉ hiện ô đất đang thuê và chưa trồng cây'}
                   </span>
                 </div>
 
@@ -520,7 +532,7 @@ export default function CustomerTreePlanting() {
 
               <div>
                 <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
-                  Lý Do Trồng / Thay Thế <span className="text-red-500">*</span>
+                  Lý Do Trồng <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   rows={3} required
@@ -548,6 +560,13 @@ export default function CustomerTreePlanting() {
                 <AlertCircle className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                 <p>
                   Yêu cầu của bạn sẽ được gửi tới kỹ thuật viên nhà vườn kiểm tra điều kiện thổ nhưỡng và quy hoạch vị trí trước khi chấp thuận.
+                </p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-2xl text-xs text-amber-800 flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Lưu ý quan trọng:</strong> Sau khi được chấp thuận và trồng, bạn <strong>không thể đổi sang giống cây khác</strong> cho tới khi thu hoạch xong. Hãy chắc chắn với lựa chọn của bạn trước khi gửi.
                 </p>
               </div>
 

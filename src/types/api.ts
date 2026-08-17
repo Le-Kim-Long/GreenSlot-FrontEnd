@@ -60,6 +60,11 @@ export interface RentalHistoryDTO {
   endTime: string;
   rentalStatus: string;
   transactions: PaymentTransactionInfo[];
+  treeName?: string;
+  harvestNotifiedAt?: string;
+  harvestDecision?: string;
+  plantedAt?: string;
+  expectedHarvestAt?: string;
 }
 
 export interface BookingHistory {
@@ -77,6 +82,11 @@ export interface BookingHistory {
   status: string;
   paymentStatus?: string;
   transactions: PaymentTransactionInfo[];
+  treeName?: string;
+  harvestNotifiedAt?: string;
+  harvestDecision?: string;
+  plantedAt?: string;
+  expectedHarvestAt?: string;
 }
 
 export interface ServiceRequest {

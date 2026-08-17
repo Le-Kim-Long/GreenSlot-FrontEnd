@@ -33,6 +33,9 @@ export const treeApi = {
   updateTree: (id: number, data: Partial<Tree>): Promise<Tree> => 
     apiClient.put(`/trees/${id}`, data).then(r => r.data),
   
-  deleteTree: (id: number): Promise<any> => 
+  deleteTree: (id: number): Promise<any> =>
     apiClient.delete(`/trees/${id}`).then(r => r.data),
+
+  forceDeleteTree: (id: number): Promise<any> =>
+    apiClient.delete(`/trees/${id}/force`).then(r => r.data),
 };

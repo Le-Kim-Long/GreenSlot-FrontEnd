@@ -21,6 +21,7 @@ import {
 import { alertApi, AlertDTO, ProcessAlertPayload } from '../../api/alertApi';
 import { managerApi } from '../../api/managerApi';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { uploadTreeImage, deleteTreeImage } from '../../utils/firebaseUpload';
 import clsx from 'clsx';
 
@@ -46,6 +47,7 @@ function formatDateTime(dateString?: string | null) {
 // rồi gửi lên backend qua alertApi.processAlert (POST /alerts/process)
 function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void }) {
   const [status, setStatus] = useState<'RESOLVED' | 'IN_PROGRESS' | 'FAILED'>('RESOLVED');
+  const toast = useToast();
   const [comment, setComment] = useState('');
   const [evidenceImageUrl, setEvidenceImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -63,11 +65,11 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      window.alert('Vui lòng chỉ chọn file hình ảnh (JPG, PNG, WEBP...).');
+      toast.warning('Vui lòng chỉ chọn file hình ảnh (JPG, PNG, WEBP...).');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      window.alert('Dung lượng ảnh tối đa là 5MB');
+      toast.warning('Dung lượng ảnh tối đa là 5MB');
       return;
     }
 
@@ -76,9 +78,10 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
       await removeTempImage(evidenceImageUrl);
       const firebaseUrl = await uploadTreeImage(file);
       setEvidenceImageUrl(firebaseUrl);
+      toast.success('Tải ảnh bằng chứng thành công!');
     } catch (err) {
       console.error('Lỗi upload ảnh bằng chứng:', err);
-      window.alert('Tải ảnh lên Firebase thất bại. Vui lòng thử lại!');
+      toast.error('Tải ảnh lên Firebase thất bại. Vui lòng thử lại!');
     } finally {
       setIsUploadingImage(false);
     }
@@ -95,7 +98,7 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
     e.preventDefault();
 
     if (!comment.trim()) {
-      window.alert('Vui lòng nhập cách xử lý / lời bình!');
+      toast.warning('Vui lòng nhập cách xử lý / lời bình!');
       return;
     }
 
@@ -108,10 +111,11 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
         evidenceImageUrl: evidenceImageUrl || undefined,
       };
       await alertApi.processAlert(payload);
+      toast.success('Gửi báo cáo xử lý cảnh báo thành công!');
       onDone();
     } catch (err) {
       console.error('Lỗi gửi báo cáo xử lý:', err);
-      window.alert('Gửi báo cáo thất bại! Vui lòng kiểm tra lại kết nối mạng.');
+      toast.error('Gửi báo cáo thất bại! Vui lòng kiểm tra lại kết nối mạng.');
     } finally {
       setIsSubmitting(false);
     }
@@ -274,7 +278,7 @@ export default function PendingAlertsPanel() {
   const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
 
   const visibleAlerts = selectedLocationId
-    ? alerts.filter((a) => String(pillarLocationMap.get(a.pillarId)) === selectedLocationId)
+    ? alerts.filter((a) => a.pillarId != null && String(pillarLocationMap.get(a.pillarId)) === selectedLocationId)
     : alerts;
 
   // Xử lý xong 1 alert: bỏ nó khỏi danh sách đang chờ (không cần gọi lại API), đóng form, báo thành công
@@ -382,7 +386,7 @@ export default function PendingAlertsPanel() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-xs text-gray-500 font-medium">
-                    {locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1) && (
+                    {alert.pillarId != null && locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1) && (
                       <span className="inline-flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5 text-gray-400" /> {locationNameMap.get(pillarLocationMap.get(alert.pillarId) ?? -1)}
                       </span>

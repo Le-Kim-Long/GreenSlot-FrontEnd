@@ -25,6 +25,13 @@ export const uploadEquipmentImage = async (file: File): Promise<string> => {
   return getDownloadURL(uploadTask.ref);
 };
 
+export const uploadEvidenceImageToFirebase = async (file: File): Promise<string> => {
+  const fileName = `evidence/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+  const storageRef = ref(storage, fileName);
+  const uploadTask = await uploadBytesResumable(storageRef, file);
+  return getDownloadURL(uploadTask.ref);
+};
+
 // 💥 THÊM HÀM NÀY: Xóa ảnh khỏi kho Firebase Storage dựa vào link URL
 export const deleteTreeImage = async (imageUrl: string): Promise<void> => {
   try {

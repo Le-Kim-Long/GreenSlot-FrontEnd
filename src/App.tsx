@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { ToastProvider } from './context/ToastContext';
 import type { UserRole } from './types';
 import { getDashboardPath } from './utils/roleMap';
 
@@ -17,9 +19,9 @@ import HowItWorksPage from './pages/public/HowItWorksPage';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import MyRentalsPage from './pages/customer/MyRentalsPage';
 import IoTMonitoringPage from './pages/customer/IoTMonitoringPage';
-import CareServicesPage from './pages/customer/CareServicesPage';
 import PaymentHistoryPage from './pages/customer/PaymentHistoryPage';
 import CustomerNotificationsPage from './pages/customer/CustomerNotificationsPage';
+import CustomerHarvestHistoryPage from './pages/customer/CustomerHarvestHistoryPage';
 import TreePlantingRequestPage from './pages/customer/CustomerTreePlanting';
 
 import StaffDashboard from './pages/manager/StaffDashboard';
@@ -38,15 +40,18 @@ import EquipmentManagement from './pages/manager/EquipmentManagement';
 import TreeManagement from './pages/manager/TreeManagement';
 import StaffScheduleManagement from './pages/manager/StaffScheduleManagement';
 import TreePlantingManagement from './pages/manager/TreePlantingManagement';
+import HarvestHistoryManagement from './pages/manager/HarvestHistoryManagement';
 
 import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
 import GardenStaffAlerts from './pages/garden-staff/GardenStaffAlert';
 import PumpControl from './pages/garden-staff/PumpControl';
 import MySchedule from './pages/garden-staff/MySchedule';
+import GardenStaffHarvestHistoryPage from './pages/garden-staff/HarvestHistoryPage';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import UserManagementPage from './pages/admin/UserManagementPage';
 import CameraDashboard from './pages/admin/CameraDashboard';
+import CameraAllPage from './pages/admin/cameraAll';
 
 import ProfilePage from './pages/profile/ProfilePage';
 import PaymentResultPage from './pages/public/PaymentResultPage';
@@ -96,10 +101,10 @@ function AppRoutes() {
       <Route path="/dashboard/customer" element={<ProtectedRoute allowedRoles={['customer']}><CustomerDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/customer/rentals" element={<ProtectedRoute allowedRoles={['customer']}><MyRentalsPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/monitoring" element={<ProtectedRoute allowedRoles={['customer']}><IoTMonitoringPage /></ProtectedRoute>} />
-      <Route path="/dashboard/customer/care" element={<ProtectedRoute allowedRoles={['customer']}><CareServicesPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/payments" element={<ProtectedRoute allowedRoles={['customer']}><PaymentHistoryPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/notifications" element={<ProtectedRoute allowedRoles={['customer']}><CustomerNotificationsPage /></ProtectedRoute>} />
       <Route path="/dashboard/customer/tree-planting" element={<ProtectedRoute allowedRoles={['customer']}><TreePlantingRequestPage /></ProtectedRoute>} />
+      <Route path="/dashboard/customer/harvest-history" element={<ProtectedRoute allowedRoles={['customer']}><CustomerHarvestHistoryPage /></ProtectedRoute>} />
 
       {/* Staff / Manager */}
       <Route path="/dashboard/staff" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffDashboard /></ProtectedRoute>} />
@@ -118,6 +123,7 @@ function AppRoutes() {
       <Route path="/dashboard/staff/trees" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><TreeManagement /></ProtectedRoute>} />
       <Route path="/dashboard/staff/schedules" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffScheduleManagement /></ProtectedRoute>} />
       <Route path="/dashboard/staff/tree-planting" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><TreePlantingManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/harvest-history" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><HarvestHistoryManagement /></ProtectedRoute>} />
 
       {/* Garden Staff */}
       <Route path="/dashboard/garden-staff" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffDashboard /></ProtectedRoute>} />
@@ -125,6 +131,7 @@ function AppRoutes() {
       <Route path="/dashboard/garden-staff/alerts" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffAlerts /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/monitoring" element={<ProtectedRoute allowedRoles={['garden_staff']}><IoTMonitoringPage /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/pump-control" element={<ProtectedRoute allowedRoles={['garden_staff']}><PumpControl /></ProtectedRoute>} />
+      <Route path="/dashboard/garden-staff/harvest-history" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffHarvestHistoryPage /></ProtectedRoute>} />
 
 
       {/* Admin */}
@@ -133,6 +140,7 @@ function AppRoutes() {
       <Route path="/dashboard/admin/cameras" element={<ProtectedRoute allowedRoles={['admin']}><CameraDashboard /></ProtectedRoute>} />
       {/* Legacy owner routes → redirect */}
       <Route path="/dashboard/owner/*" element={<Navigate to="/gardens" replace />} />
+      <Route path="/dashboard/admin/cameras/all" element={<ProtectedRoute allowedRoles={['admin']}><CameraAllPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -143,7 +151,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <NotificationProvider>
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );

@@ -32,5 +32,6 @@ export const staffNavItems = [
   { label: 'Thiết bị IoT', path: '/dashboard/staff/equipment', icon: <Cpu className="w-full h-full" /> },
   { label: 'Cây trồng', path: '/dashboard/staff/trees', icon: <Trees className="w-full h-full" /> },
   { label: 'Yêu cầu trồng cây', path: '/dashboard/staff/tree-planting', icon: <Sprout className="w-full h-full" /> },
+  { label: 'Lịch sử thu hoạch', path: '/dashboard/staff/harvest-history', icon: <History className="w-full h-full" /> },
   { label: 'Lịch trực', path: '/dashboard/staff/schedules', icon: <Calendar className="w-full h-full" /> },
 ];

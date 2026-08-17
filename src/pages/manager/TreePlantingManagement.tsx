@@ -9,6 +9,7 @@ import {
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import clsx from 'clsx';
 
 // 👉 Custom Dropdown bo tròn đẹp mắt
@@ -66,6 +67,7 @@ function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn'
 
 export default function TreePlantingManagement() {
   const { user } = useAuth();
+  const toast = useToast();
   const [requests, setRequests] = useState<TreePlantingRequest[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,15 +121,16 @@ export default function TreePlantingManagement() {
     if (!selectedItem) return;
     setIsSubmitting(true);
     try {
-      await treePlantingApi.updateRequest(selectedItem.id, {
-        status: newStatus,
-        notes: processNotes,
-      });
-      alert(`Đã ${newStatus === 'APPROVED' ? 'Phê duyệt' : 'Từ chối'} yêu cầu thành công!`);
+      if (newStatus === 'APPROVED') {
+        await treePlantingApi.approveRequest(selectedItem.id);
+      } else {
+        await treePlantingApi.rejectRequest(selectedItem.id, processNotes);
+      }
+      toast.success(`Đã ${newStatus === 'APPROVED' ? 'Phê duyệt' : 'Từ chối'} yêu cầu thành công!`);
       setIsModalOpen(false);
       fetchData();
     } catch (err) {
-      alert('Xử lý thất bại. Vui lòng thử lại sau.');
+      toast.error('Xử lý thất bại. Vui lòng thử lại sau.');
     } finally {
       setIsSubmitting(false);
     }
