@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, TrendingUp, ShieldCheck, Camera } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 
@@ -12,8 +12,9 @@ const navItems = [
 export default function CameraAllPage() {
   const [cameraSrc, setCameraSrc] = useState("");
   
-// Giao diện React gọi đến Spring Boot (Máy tính)
-const BACKEND_URL = "http://10.10.10.231:8080";
+  // Giao diện React gọi đến Spring Boot
+  const rawApiUrl = import.meta.env.VITE_API_URL || '';
+  const BACKEND_URL = rawApiUrl ? rawApiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '') : '';
   useEffect(() => {
     let currentObjectUrl = "";
 
