@@ -17,10 +17,41 @@ export default function GardenDetailPage() {
   const [error, setError] = useState('');
 
   const [bookingMonths, setBookingMonths] = useState(1);
+  const [monthsInput, setMonthsInput] = useState('1');
+  const [monthsError, setMonthsError] = useState('');
   const [startDate, setStartDate] = useState('');
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [booking, setBooking] = useState(false);
   const [bookingError, setBookingError] = useState('');
+
+  const handleMonthsChange = (rawVal: string) => {
+    // Chỉ giữ lại các chữ số (loại bỏ chữ cái, dấu âm -, số thập phân ., ,, ký tự đặc biệt)
+    const cleaned = rawVal.replace(/\D/g, '');
+    setMonthsInput(cleaned);
+
+    if (!cleaned) {
+      setBookingMonths(0);
+      setMonthsError('Vui lòng nhập số tháng thuê (tối thiểu 1 tháng).');
+      return;
+    }
+
+    const num = parseInt(cleaned, 10);
+    if (isNaN(num) || num < 1) {
+      setBookingMonths(0);
+      setMonthsError('Số tháng thuê phải là số tự nhiên dương (tối thiểu 1 tháng).');
+      return;
+    }
+
+    if (num > 120) {
+      setBookingMonths(num);
+      setMonthsError('Số tháng thuê tối đa là 120 tháng (10 năm).');
+      return;
+    }
+
+    setBookingMonths(num);
+    setMonthsError('');
+    setBookingError('');
+  };
 
   useEffect(() => {
     bookingApi.getAvailableSlots()
@@ -45,6 +76,14 @@ export default function GardenDetailPage() {
     today.setHours(0, 0, 0, 0);
     if (isNaN(chosenDate.getTime()) || chosenDate < today) {
       setBookingError('Ngày bắt đầu không hợp lệ: Không được chọn ngày trong quá khứ.');
+      return;
+    }
+    if (!bookingMonths || bookingMonths < 1 || !Number.isInteger(bookingMonths)) {
+      setBookingError('Số tháng thuê không hợp lệ: Vui lòng nhập số tự nhiên dương (tối thiểu 1 tháng).');
+      return;
+    }
+    if (bookingMonths > 120) {
+      setBookingError('Số tháng thuê không được vượt quá 120 tháng (10 năm).');
       return;
     }
     setBookingError('');
@@ -169,10 +208,57 @@ export default function GardenDetailPage() {
                   <input type="date" className="input" value={startDate} onChange={e => { setStartDate(e.target.value); setBookingError(''); }} min={new Date().toLocaleDateString('en-CA')} />
                 </div>
                 <div>
-                  <label className="label">Số tháng thuê</label>
-                  <select className="input" value={bookingMonths} onChange={e => setBookingMonths(Number(e.target.value))}>
-                    {[1, 2, 3, 6, 12].map(m => <option key={m} value={m}>{m} tháng</option>)}
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="label mb-0">Số tháng thuê</label>
+                    <span className="text-xs text-gray-500 font-medium">(Tối thiểu 1 tháng)</span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      className={`input font-medium pr-16 ${monthsError ? 'border-red-500 focus:ring-red-400' : ''}`}
+                      placeholder="Nhập số tháng thuê..."
+                      value={monthsInput}
+                      onKeyDown={(e) => {
+                        // Chặn dấu âm (-), dấu cộng (+), số thập phân (.), (,), ký tự 'e', 'E'
+                        if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      onChange={(e) => handleMonthsChange(e.target.value)}
+                    />
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium pointer-events-none">
+                      tháng
+                    </div>
+                  </div>
+                  {monthsError && (
+                    <p className="text-xs text-red-600 font-medium mt-1.5 flex items-center gap-1">
+                      ⚠️ {monthsError}
+                    </p>
+                  )}
+                  {/* Gợi ý chọn nhanh các gói tháng */}
+                  <div className="flex flex-wrap gap-1.5 mt-2.5">
+                    {[1, 3, 6, 12, 24].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => {
+                          setMonthsInput(m.toString());
+                          setBookingMonths(m);
+                          setMonthsError('');
+                          setBookingError('');
+                        }}
+                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                          bookingMonths === m && !monthsError
+                            ? 'bg-green-600 text-white shadow-sm ring-1 ring-green-600'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {m} tháng {m >= 3 ? '(-5%)' : ''}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div className="bg-green-50 rounded-xl p-4 space-y-2">
                   <div className="flex justify-between text-sm">
