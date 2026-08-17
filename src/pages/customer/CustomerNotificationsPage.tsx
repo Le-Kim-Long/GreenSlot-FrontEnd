@@ -57,10 +57,14 @@ export default function CustomerNotificationsPage() {
                   <div className="text-sm text-gray-500 mt-1">{item.message}</div>
                   <div className="text-xs text-gray-400 mt-2">{new Date(item.createdAt).toLocaleString('vi-VN')}</div>
                 </div>
-                {!item.isRead && (
-                  <button onClick={() => handleMarkRead(item.id)} className="btn-outline-green text-xs inline-flex items-center gap-1">
+                {!item.isRead ? (
+                  <button onClick={() => handleMarkRead(item.id)} className="btn-outline-green text-xs inline-flex items-center gap-1 shrink-0">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Đánh dấu đã đọc
                   </button>
+                ) : (
+                  <span className="text-xs text-gray-400 inline-flex items-center gap-1 shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Đã đọc
+                  </span>
                 )}
               </div>
             </div>

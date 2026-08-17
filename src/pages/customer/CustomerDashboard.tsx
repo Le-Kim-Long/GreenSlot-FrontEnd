@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, TrendingUp, CheckCircle, Clock, AlertTriangle, Loader2, ArrowRight, Wifi } from 'lucide-react';
+import { Leaf, CheckCircle, Clock, AlertTriangle, Loader2, ArrowRight, Wifi } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
@@ -25,7 +25,6 @@ export default function CustomerDashboard() {
   const stats = [
     { label: 'Vườn đang thuê', value: activeRentals.length, icon: <Leaf className="w-6 h-6" />, bg: 'bg-green-50 text-green-600' },
     { label: 'Chờ thanh toán', value: pendingRentals.length, icon: <Clock className="w-6 h-6" />, bg: 'bg-yellow-50 text-yellow-600' },
-    { label: 'Tổng đơn thuê', value: rentals.length, icon: <TrendingUp className="w-6 h-6" />, bg: 'bg-blue-50 text-blue-600' },
     { label: 'Đơn hoàn thành', value: rentals.filter(r => r.status === 'EXPIRED').length, icon: <CheckCircle className="w-6 h-6" />, bg: 'bg-purple-50 text-purple-600' },
   ];
 
@@ -54,7 +53,7 @@ export default function CustomerDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {stats.map((s, i) => (
           <div key={i} className="card">
             <div className={clsx('w-10 h-10 rounded-xl flex items-center justify-center mb-3', s.bg)}>{s.icon}</div>

@@ -7,6 +7,12 @@ import { roleLabel } from '../../utils/roleMap';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
 // 👉 IMPORT THÊM API ĐỂ TỰ ĐỘNG ĐỒNG BỘ TRONG DASHBOARD
 import { imageApi, UploadedImage } from '../../api/userApi';
+import { notificationApi, NOTIFICATIONS_UPDATED_EVENT } from '../../api/notificationApi';
+
+// Trang "Thông báo" hiện chỉ có cho khách hàng — thêm route cho role khác vào đây khi có trang tương ứng
+const notificationsPathByRole: Record<string, string> = {
+  customer: '/dashboard/customer/notifications',
+};
 
 interface NavItem {
   label: string;
@@ -26,6 +32,20 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notificationsPath = user ? notificationsPathByRole[user.role] : undefined;
+
+  useEffect(() => {
+    if (!notificationsPath) return;
+    const refreshUnreadCount = () => {
+      notificationApi.getNotifications()
+        .then(list => setUnreadCount((list || []).filter(n => !n.isRead).length))
+        .catch(() => {});
+    };
+    refreshUnreadCount();
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshUnreadCount);
+    return () => window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, refreshUnreadCount);
+  }, [notificationsPath]);
 
   // 👉 ÉP SANG LINK ĐỌC ĐƯỢC NGAY TẠI SIDEBAR
   const avatarUrl = formatFirebaseUrl(
@@ -203,9 +223,18 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
             <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
+            <button
+              onClick={() => notificationsPath && navigate(notificationsPath)}
+              disabled={!notificationsPath}
+              title={notificationsPath ? 'Xem thông báo' : undefined}
+              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors disabled:cursor-default disabled:hover:bg-transparent"
+            >
               <Bell className="w-5 h-5 text-gray-600" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
             <Link to="/" className="text-sm text-gray-500 hover:text-green-600 px-2 py-1 rounded-lg hover:bg-green-50 transition-colors">
               Trang chủ
