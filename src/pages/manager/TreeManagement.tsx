@@ -232,11 +232,16 @@ export default function TreeManagement() {
     if (!confirmDelete) return;
     setIsDeleting(true);
     try {
-      await treeApi.deleteTree(confirmDelete.id);
+      await treeApi.forceDeleteTree(confirmDelete.id);
       setConfirmDelete(null);
       fetchData();
-    } catch (err) {
-      alert('Xóa thất bại. Giống cây này có thể đang được khách hàng thuê hoặc canh tác.');
+    } catch (err: any) {
+      if (err?.response?.status === 403) {
+        alert('Bạn không có quyền xóa vĩnh viễn giống cây này. Vui lòng liên hệ Quản lý kinh doanh.');
+      } else {
+        const detail = err?.response?.data?.message || err?.message || 'Không rõ nguyên nhân.';
+        alert(`Xóa thất bại.\n\nChi tiết lỗi: ${detail}`);
+      }
     } finally {
       setIsDeleting(false);
     }
