@@ -1,4 +1,5 @@
 import apiClient from './axiosConfig';
+import { uploadEvidenceImageToFirebase } from '../utils/firebaseUpload';
 import type {
   GardeningTask,
   IssueReport,
@@ -48,16 +49,24 @@ export const taskApi = {
   reportIssue: (taskId: number, data: IssueReport): Promise<GardeningTask> =>
     apiClient.post(`/tasks/${taskId}/report-issue`, data).then(r => r.data),
 
-  // Thêm API upload hình ảnh bằng chứng
-  uploadEvidenceImage: (file: File): Promise<string> => {
+  // Thêm API upload hình ảnh bằng chứng (Client Firebase + Backend Fallback)
+  uploadEvidenceImage: async (file: File): Promise<string> => {
+    try {
+      // 1. Thử upload trực tiếp qua Firebase Client SDK
+      const firebaseUrl = await uploadEvidenceImageToFirebase(file);
+      if (firebaseUrl) return firebaseUrl;
+    } catch (err) {
+      console.warn('Firebase client upload failed, falling back to Backend API:', err);
+    }
+
+    // 2. Fallback sang API Backend (/api/images/upload/evidence)
     const formData = new FormData();
     formData.append('file', file);
-    
     return apiClient.post('/images/upload/evidence', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-    }).then(r => r.data.publicUrl); // Trả về trực tiếp chuỗi URL để dễ sử dụng
+    }).then(r => r.data.publicUrl);
   },
 
   reviewTask: (taskId: number, data: { action: 'APPROVE' | 'REJECT'; rejectionReason?: string }): Promise<GardeningTask> =>

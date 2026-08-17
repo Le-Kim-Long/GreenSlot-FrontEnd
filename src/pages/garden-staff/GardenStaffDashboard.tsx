@@ -169,6 +169,7 @@ export default function GardenStaffDashboard() {
                     {st.label}
                   </span>
                 </div>
+
                 {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL' && task.status !== 'CANCELLED') && (
                   <TaskActions task={task} onUpdated={fetchTasks} />
                 )}
