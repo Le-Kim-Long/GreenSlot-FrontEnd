@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sprout, Calendar, MapPin, User, Loader2, History, Search } from 'lucide-react';
+import { Sprout, Calendar, MapPin, User, History, Search } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from './staffNav';
 import { harvestHistoryApi, HarvestHistoryItem } from '../../api/harvestHistoryApi';

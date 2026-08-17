@@ -11,3 +11,5 @@ dist
 
 # custom ignored files
 IMPLEMENT_PLAN.md
+.vercel
+.env*
