@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { 
-  ClipboardList, Wifi, ShieldAlert, Calendar, 
+  ClipboardList, Wifi, ShieldAlert, Calendar,
   Droplets, Power, RefreshCw, AlertCircle, CheckCircle2,
-  Zap, Info
+  Zap, Info, History
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { pumpApi, PumpStatusPayload } from '../../api/pumpApi';
@@ -13,7 +13,8 @@ const navItems = [
   { label: 'Lịch trực', path: '/dashboard/garden-staff/schedules', icon: <Calendar className="w-full h-full" /> },
   { label: 'Giám sát IoT', path: '/dashboard/garden-staff/monitoring', icon: <Wifi className="w-full h-full" /> },
   { label: 'Cảnh báo IoT', path: '/dashboard/garden-staff/alerts', icon: <ShieldAlert className="w-full h-full" /> },
-  { label: 'Điều khiển máy bơm', path: '/dashboard/garden-staff/pump-control', icon: <Droplets className="w-full h-full" /> }
+  { label: 'Điều khiển máy bơm', path: '/dashboard/garden-staff/pump-control', icon: <Droplets className="w-full h-full" /> },
+  { label: 'Lịch sử thu hoạch', path: '/dashboard/garden-staff/harvest-history', icon: <History className="w-full h-full" /> }
 ];
 
 export default function PumpControl() {

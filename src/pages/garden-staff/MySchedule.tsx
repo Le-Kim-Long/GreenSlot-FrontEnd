@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffScheduleApi, StaffSchedule } from '../../api/staffScheduleApi';
-import { ClipboardList, Wifi, ShieldAlert, CheckCircle } from 'lucide-react';
+import { ClipboardList, Wifi, ShieldAlert, CheckCircle, History } from 'lucide-react';
 
 const navItems = [
   { label: 'Công việc', path: '/dashboard/garden-staff', icon: <ClipboardList className="w-full h-full" /> },
   { label: 'Lịch trực', path: '/dashboard/garden-staff/schedules', icon: <CalendarIcon className="w-full h-full" /> },
   { label: 'Giám sát IoT', path: '/dashboard/garden-staff/monitoring', icon: <Wifi className="w-full h-full" /> },
   { label: 'Cảnh báo IoT', path: '/dashboard/garden-staff/alerts', icon: <ShieldAlert className="w-full h-full" /> },
-  { label: 'Điều khiển máy bơm', path: '/dashboard/garden-staff/pump-control', icon: <CheckCircle className="w-full h-full" /> }
+  { label: 'Điều khiển máy bơm', path: '/dashboard/garden-staff/pump-control', icon: <CheckCircle className="w-full h-full" /> },
+  { label: 'Lịch sử thu hoạch', path: '/dashboard/garden-staff/harvest-history', icon: <History className="w-full h-full" /> }
 ];
 
 export default function MySchedule() {
