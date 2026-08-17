@@ -3,7 +3,8 @@ import { taskApi } from '../../api/taskApi';
 import { managerApi, LocationItem, GardenStaff } from '../../api/managerApi';
 import { 
   ClipboardList, UserPlus, X, Plus, Search, 
-  MapPin, UserCheck, Loader2 
+  MapPin, UserCheck, Loader2, Eye, Image as ImageIcon, 
+  ExternalLink, CheckCircle, Calendar, Upload
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
@@ -16,9 +17,12 @@ interface Task {
   description: string;
   type: string;
   status: string;
-  slotId: number;
+  slotId?: number;
+  slotNumber?: string;
   assigneeName?: string;
   evidenceImageUrl?: string;
+  rejectionReason?: string;
+  createdAt?: string;
 }
 
 interface Slot {
@@ -32,6 +36,7 @@ export default function TaskManagement() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
   // States cho Dropdown Lọc
   const [locations, setLocations] = useState<LocationItem[]>([]);
@@ -39,17 +44,20 @@ export default function TaskManagement() {
   const [filteredStaffs, setFilteredStaffs] = useState<GardenStaff[]>([]);
   const [isLoadingStaffs, setIsLoadingStaffs] = useState(false);
 
-  // States quản lý Modal (Tách biệt Tạo mới, Giao việc, Duyệt task)
-  const [modalType, setModalType] = useState<'CREATE' | 'ASSIGN' | 'REVIEW' | 'NONE'>('NONE');
+  // States quản lý Modal
+  const [modalType, setModalType] = useState<'CREATE' | 'ASSIGN' | 'REVIEW' | 'DETAIL' | 'IMAGE_PREVIEW' | 'NONE'>('NONE');
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Form States
   const [createForm, setCreateForm] = useState({
     taskName: '',
     description: '',
     taskType: 'MAINTENANCE',
-    targetSlotId: ''
+    targetSlotId: '',
+    evidenceImageUrl: ''
   });
   const [assignForm, setAssignForm] = useState({ staffId: '' });
   const [reviewForm, setReviewForm] = useState({ action: 'APPROVE' as 'APPROVE' | 'REJECT', rejectionReason: '' });
@@ -61,26 +69,29 @@ export default function TaskManagement() {
       const [slotsData, locationsData, tasksData] = await Promise.all([
         managerApi.getSlots().catch(() => []),
         managerApi.getLocations().catch(() => []),
-        taskApi.getAllTasks().catch(() => []) // Gọi API lấy Task
+        taskApi.getAllTasks().catch(() => [])
       ]);
 
       setSlots(slotsData);
       setLocations(locationsData);
-      if (locationsData.length > 0) {
+      if (locationsData.length > 0 && !selectedLocationId) {
         const target = user?.locationId ? locationsData.find((l: any) => l.id === user.locationId) || locationsData[0] : locationsData[0];
         setSelectedLocationId(String(target.id));
       }
 
-      // 🌟 MAP (CHUYỂN ĐỔI) DỮ LIỆU TỪ API ĐỂ KHỚP VỚI INTERFACE CỦA GIAO DIỆN
+      // Map dữ liệu từ API để khớp với UI
       const formattedTasks = tasksData.map((t: any) => ({
         id: t.id,
-        name: t.taskName,              // API trả taskName -> UI cần name
-        description: t.description,
-        type: t.taskType,              // API trả taskType -> UI cần type
-        status: t.status,
-        slotId: t.targetSlotId,        // API trả targetSlotId -> UI cần slotId
-        assigneeName: t.assignedStaffName, // API trả assignedStaffName -> UI cần assigneeName
-        evidenceImageUrl: t.evidenceImageUrl
+        name: t.taskName,
+        description: t.description || '',
+        type: t.taskType || 'MAINTENANCE',
+        status: t.status || 'PENDING',
+        slotId: t.targetSlotId,
+        slotNumber: t.targetSlotNumber || (t.targetSlotId ? `#${t.targetSlotId}` : 'N/A'),
+        assigneeName: t.assignedStaffName,
+        evidenceImageUrl: t.evidenceImageUrl || '',
+        rejectionReason: t.rejectionReason || '',
+        createdAt: t.createdAt || ''
       }));
 
       setTasks(formattedTasks); 
@@ -114,17 +125,16 @@ export default function TaskManagement() {
     fetchStaffs();
   }, [selectedLocationId]);
 
-  // Hành động mở Modal
+  // Modal Handlers
   const handleOpenCreateModal = () => {
-    setCreateForm({ taskName: '', description: '', taskType: 'MAINTENANCE', targetSlotId: '' });
+    setCreateForm({ taskName: '', description: '', taskType: 'MAINTENANCE', targetSlotId: '', evidenceImageUrl: '' });
     setModalType('CREATE');
   };
 
   const handleOpenAssignModal = (task: Task) => {
     setSelectedTask(task);
-    setSelectedLocationId(''); // Reset bộ lọc location
+    setSelectedLocationId(user?.locationId ? String(user.locationId) : '');
     setAssignForm({ staffId: '' });
-    setFilteredStaffs([]);
     setModalType('ASSIGN');
   };
 
@@ -134,12 +144,72 @@ export default function TaskManagement() {
     setModalType('REVIEW');
   };
 
+  const handleOpenDetailModal = (task: Task) => {
+    setSelectedTask(task);
+    setModalType('DETAIL');
+  };
+
+  const handleOpenImagePreview = (url: string) => {
+    setPreviewImageUrl(url);
+    setModalType('IMAGE_PREVIEW');
+  };
+
   const handleCloseModal = () => {
     setModalType('NONE');
     setSelectedTask(null);
+    setPreviewImageUrl('');
   };
 
-  // 👉 HÀM 1: CHỈ XỬ LÝ TẠO TASK MỚI
+  // Upload hình ảnh khi tạo task (hỗ trợ mọi dung lượng)
+  const handleCreateImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setIsUploadingImage(true);
+      try {
+        const url = await taskApi.uploadEvidenceImage(file);
+        setCreateForm(prev => ({ ...prev, evidenceImageUrl: url }));
+      } catch (error) {
+        console.error('Lỗi upload ảnh:', error);
+        alert('Tải ảnh thất bại. Vui lòng thử lại.');
+      } finally {
+        setIsUploadingImage(false);
+      }
+    }
+  };
+
+  // Upload/cập nhật ảnh bằng chứng trực tiếp trong Detail Modal
+  const [detailFile, setDetailFile] = useState<File | null>(null);
+  const [detailFilePreview, setDetailFilePreview] = useState<string | null>(null);
+  const [isUpdatingDetailImage, setIsUpdatingDetailImage] = useState(false);
+
+  const handleDetailFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setDetailFile(file);
+      setDetailFilePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSaveDetailImage = async () => {
+    if (!selectedTask || !detailFile) return;
+    setIsUpdatingDetailImage(true);
+    try {
+      const publicUrl = await taskApi.uploadEvidenceImage(detailFile);
+      await taskApi.updateTaskEvidence(selectedTask.id, publicUrl);
+      setSelectedTask({ ...selectedTask, evidenceImageUrl: publicUrl });
+      setTasks(prev => prev.map(t => t.id === selectedTask.id ? { ...t, evidenceImageUrl: publicUrl } : t));
+      setDetailFile(null);
+      setDetailFilePreview(null);
+      alert('Đã cập nhật ảnh thực tế thành công!');
+    } catch (e: any) {
+      console.error(e);
+      alert('Lỗi cập nhật ảnh: ' + (e.response?.data?.message || e.message));
+    } finally {
+      setIsUpdatingDetailImage(false);
+    }
+  };
+
+  // Submit tạo task
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!createForm.taskName || !createForm.targetSlotId) {
@@ -152,7 +222,8 @@ export default function TaskManagement() {
         taskName: createForm.taskName,
         description: createForm.description,
         taskType: createForm.taskType,
-        targetSlotId: Number(createForm.targetSlotId)
+        targetSlotId: Number(createForm.targetSlotId),
+        evidenceImageUrl: createForm.evidenceImageUrl || undefined
       };
       await taskApi.createTask(payload);
       alert('Tạo công việc thành công! Task đang ở trạng thái chờ phân công.');
@@ -166,8 +237,7 @@ export default function TaskManagement() {
     }
   };
 
-  // 👉 HÀM 2: CHỈ XỬ LÝ GÁN TASK CHO NHÂN VIÊN
-// 👉 HÀM 2: CHỈ XỬ LÝ GÁN TASK CHO NHÂN VIÊN
+  // Submit gán nhân viên
   const handleAssignSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assignForm.staffId || !selectedTask) {
@@ -178,26 +248,20 @@ export default function TaskManagement() {
     try {
       const taskId = selectedTask.id;
       const staffId = Number(assignForm.staffId);
-      
-      // 🌟 KIỂM TRA LOG Ở CONSOLE TRÌNH DUYỆT
-      console.log(`🚀 Đang gửi Request gán việc: POST /api/tasks/${taskId}/assign/${staffId}`);
-
       await taskApi.assignTask(taskId, staffId);
       alert('Giao việc thành công!');
       handleCloseModal();
       fetchData(); 
     } catch (error: any) {
       console.error('Lỗi giao việc:', error);
-      
-      // Bắt lỗi chi tiết từ Backend trả về để dễ debug
       const errorMsg = error.response?.data?.message || error.message;
-      alert(`Giao việc thất bại (Mã lỗi: ${error.response?.status}). Lý do: ${errorMsg}`);
-      
+      alert(`Giao việc thất bại. Lý do: ${errorMsg}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Submit duyệt / từ chối task
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTask) return;
@@ -205,7 +269,7 @@ export default function TaskManagement() {
     setIsSubmitting(true);
     try {
       await taskApi.reviewTask(selectedTask.id, reviewForm);
-      alert('Đã lưu đánh giá công việc!');
+      alert(reviewForm.action === 'APPROVE' ? 'Đã duyệt hoàn thành công việc!' : 'Đã từ chối công việc (yêu cầu làm lại)!');
       handleCloseModal();
       fetchData();
     } catch (error: any) {
@@ -217,7 +281,13 @@ export default function TaskManagement() {
     }
   };
 
-  const filteredTasks = tasks.filter(t => t.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredTasks = tasks.filter(t => {
+    const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || 
+      (t.slotNumber && t.slotNumber.toLowerCase().includes(search.toLowerCase())) ||
+      (t.assigneeName && t.assigneeName.toLowerCase().includes(search.toLowerCase()));
+    const matchStatus = statusFilter === 'ALL' || t.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Công việc">
@@ -225,19 +295,34 @@ export default function TaskManagement() {
         
         {/* Header Control */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Tìm tên công việc..." 
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-sm outline-none transition" 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-2xl">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input 
+                type="text" 
+                placeholder="Tìm tên công việc, ô vườn, nhân viên..." 
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-sm outline-none transition" 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+              />
+            </div>
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+            >
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="PENDING">Chờ gán / Chờ xử lý</option>
+              <option value="IN_PROGRESS">Đang thực hiện</option>
+              <option value="PENDING_APPROVAL">Chờ duyệt (Có ảnh)</option>
+              <option value="COMPLETED">Đã hoàn thành</option>
+              <option value="REJECTED">Bị từ chối</option>
+            </select>
           </div>
+
           <button 
             onClick={handleOpenCreateModal} 
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition text-sm shadow-sm shadow-green-600/20"
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-medium flex items-center justify-center gap-2 transition text-sm shadow-sm shadow-green-600/20"
           >
             <Plus className="w-4 h-4" /> 
             Tạo công việc mới
@@ -246,80 +331,142 @@ export default function TaskManagement() {
 
         {/* Bảng Danh sách Task */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-            <ClipboardList className="w-5 h-5 text-gray-600" />
-            <h2 className="font-semibold text-gray-800 text-sm">Danh sách công việc & Nhân viên phụ trách</h2>
+          <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-gray-600" />
+              <h2 className="font-semibold text-gray-800 text-sm">Danh sách công việc & Hình ảnh minh chứng</h2>
+            </div>
+            <span className="text-xs text-gray-500 font-medium">Tổng số: {filteredTasks.length} công việc</span>
           </div>
-          <table className="w-full text-left border-collapse text-sm">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="p-4 font-semibold text-gray-600">ID</th>
-                <th className="p-4 font-semibold text-gray-600">Tên công việc</th>
-                <th className="p-4 font-semibold text-gray-600">Loại</th>
-                <th className="p-4 font-semibold text-gray-600">Trạng thái</th>
-                <th className="p-4 font-semibold text-gray-600">Người thực hiện</th>
-                <th className="p-4 font-semibold text-gray-600 text-right">Hành động</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {isLoading ? (
-                <tr><td colSpan={6} className="p-8 text-center text-gray-500">Đang tải dữ liệu...</td></tr>
-              ) : filteredTasks.length === 0 ? (
-                <tr><td colSpan={6} className="p-8 text-center text-gray-500">Chưa có công việc nào.</td></tr>
-              ) : (
-                filteredTasks.map((task) => (
-                  <tr key={task.id} className="hover:bg-gray-50 transition">
-                    <td className="p-4 text-gray-500 font-mono">#{task.id}</td>
-                    <td className="p-4 text-gray-900 font-medium">{task.name}</td>
-                    <td className="p-4 text-gray-600">{task.type}</td>
-                    <td className="p-4">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                        task.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 
-                        task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 
-                        task.status === 'PENDING_APPROVAL' ? 'bg-purple-100 text-purple-700' :
-                        task.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
-                        'bg-green-100 text-green-700'
-                      }`}>
-                        {task.status || 'Chưa gán'}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      {task.assigneeName ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xs">
-                            {task.assigneeName.charAt(0)}
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="p-4 font-semibold text-gray-600">ID</th>
+                  <th className="p-4 font-semibold text-gray-600">Tên công việc</th>
+                  <th className="p-4 font-semibold text-gray-600">Ô vườn</th>
+                  <th className="p-4 font-semibold text-gray-600">Loại</th>
+                  <th className="p-4 font-semibold text-gray-600">Trạng thái</th>
+                  <th className="p-4 font-semibold text-gray-600 text-center">Hình ảnh</th>
+                  <th className="p-4 font-semibold text-gray-600">Người thực hiện</th>
+                  <th className="p-4 font-semibold text-gray-600 text-right">Hành động</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {isLoading ? (
+                  <tr><td colSpan={8} className="p-8 text-center text-gray-500"><Loader2 className="w-6 h-6 animate-spin text-green-600 mx-auto mb-2" />Đang tải dữ liệu...</td></tr>
+                ) : filteredTasks.length === 0 ? (
+                  <tr><td colSpan={8} className="p-8 text-center text-gray-500">Chưa có công việc nào phù hợp.</td></tr>
+                ) : (
+                  filteredTasks.map((task) => (
+                    <tr key={task.id} className="hover:bg-gray-50 transition">
+                      <td className="p-4 text-gray-500 font-mono">#{task.id}</td>
+                      <td className="p-4">
+                        <div className="font-medium text-gray-900">{task.name}</div>
+                        {task.description ? (
+                          <div className="text-xs text-gray-400 truncate max-w-xs">{task.description}</div>
+                        ) : null}
+                      </td>
+                      <td className="p-4 font-medium text-green-700">{task.slotNumber}</td>
+                      <td className="p-4 text-gray-600 text-xs">
+                        <span className="bg-gray-100 px-2 py-1 rounded">{task.type}</span>
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          task.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 
+                          task.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 
+                          task.status === 'PENDING_APPROVAL' ? 'bg-purple-100 text-purple-700' :
+                          task.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {task.status === 'PENDING' ? 'Chờ gán' :
+                           task.status === 'IN_PROGRESS' ? 'Đang làm' :
+                           task.status === 'PENDING_APPROVAL' ? 'Chờ duyệt' :
+                           task.status === 'REJECTED' ? 'Bị từ chối' :
+                           'Hoàn thành'}
+                        </span>
+                      </td>
+
+                      {/* Cột Hình ảnh Bằng chứng */}
+                      <td className="p-4 text-center">
+                        {task.evidenceImageUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenImagePreview(task.evidenceImageUrl!)}
+                            className="group relative inline-block rounded-lg overflow-hidden border border-green-300 shadow-sm hover:ring-2 hover:ring-green-500 transition"
+                            title="Bấm để xem ảnh phóng to"
+                          >
+                            <img
+                              src={task.evidenceImageUrl}
+                              alt="Bằng chứng"
+                              className="w-12 h-12 object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Ảnh';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white">
+                              <Eye className="w-4 h-4" />
+                            </div>
+                          </button>
+                        ) : (
+                          <span className="text-xs text-gray-300 italic flex items-center justify-center gap-1">
+                            <ImageIcon className="w-3.5 h-3.5 text-gray-300" /> Chưa có
+                          </span>
+                        )}
+                      </td>
+
+                      <td className="p-4">
+                        {task.assigneeName ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-xs">
+                              {task.assigneeName.charAt(0)}
+                            </div>
+                            <span className="text-gray-700 font-medium text-xs">{task.assigneeName}</span>
                           </div>
-                          <span className="text-gray-700 font-medium">{task.assigneeName}</span>
+                        ) : (
+                          <span className="text-gray-400 italic text-xs">Chưa phân công</span>
+                        )}
+                      </td>
+
+                      <td className="p-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-2">
+                          {/* Nút Xem chi tiết mọi Task */}
+                          <button
+                            onClick={() => handleOpenDetailModal(task)}
+                            className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 px-2.5 py-1.5 rounded-lg transition text-xs font-medium"
+                            title="Xem chi tiết thông tin & ảnh"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Chi tiết
+                          </button>
+
+                          {/* Gán nhân viên khi task PENDING và chưa có người làm */}
+                          {task.status === 'PENDING' && !task.assigneeName && (
+                            <button
+                              onClick={() => handleOpenAssignModal(task)}
+                              className="inline-flex items-center gap-1 bg-green-50 border border-green-200 hover:bg-green-100 text-green-700 px-2.5 py-1.5 rounded-lg transition text-xs font-medium"
+                            >
+                              <UserPlus className="w-3.5 h-3.5" /> Gán
+                            </button>
+                          )}
+                          
+                          {/* Duyệt khi task PENDING_APPROVAL */}
+                          {task.status === 'PENDING_APPROVAL' && (
+                            <button
+                              onClick={() => handleOpenReviewModal(task)}
+                              className="inline-flex items-center gap-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg transition text-xs font-semibold shadow-sm"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" /> Duyệt task
+                            </button>
+                          )}
                         </div>
-                      ) : (
-                        <span className="text-gray-400 italic">Chưa phân công</span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right">
-                      {/* Chỉ hiện nút Gán nhân viên khi task đang PENDING và chưa có người làm */}
-                      {task.status === 'PENDING' && !task.assigneeName && (
-                        <button
-                          onClick={() => handleOpenAssignModal(task)}
-                          className="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-green-50 hover:text-green-600 hover:border-green-200 text-gray-700 px-3 py-1.5 rounded-lg transition shadow-sm"
-                        >
-                          <UserPlus className="w-4 h-4" /> Gán nhân viên
-                        </button>
-                      )}
-                      
-                      {task.status === 'PENDING_APPROVAL' && (
-                        <button
-                          onClick={() => handleOpenReviewModal(task)}
-                          className="inline-flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 text-gray-700 px-3 py-1.5 rounded-lg transition shadow-sm ml-2"
-                        >
-                          <ClipboardList className="w-4 h-4" /> Duyệt
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* =========================================
@@ -327,7 +474,7 @@ export default function TaskManagement() {
         ========================================= */}
         {modalType === 'CREATE' && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative max-h-[90vh] overflow-y-auto">
               <button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5" />
               </button>
@@ -342,7 +489,7 @@ export default function TaskManagement() {
                 <div>
                   <label className="block font-medium text-gray-700 mb-1.5">Mô tả chi tiết</label>
                   <textarea className="w-full border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 p-2.5 outline-none" 
-                    rows={3} value={createForm.description} onChange={e => setCreateForm({...createForm, description: e.target.value})} placeholder="Ghi chú thêm..." />
+                    rows={3} value={createForm.description} onChange={e => setCreateForm({...createForm, description: e.target.value})} placeholder="Ghi chú hướng dẫn cho nhân viên..." />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -362,9 +509,35 @@ export default function TaskManagement() {
                     </select>
                   </div>
                 </div>
+
+                {/* Upload ảnh hướng dẫn tùy chọn */}
+                <div>
+                  <label className="block font-medium text-gray-700 mb-1.5">Ảnh hướng dẫn đính kèm (Tùy chọn)</label>
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={handleCreateImageUpload}
+                      className="block w-full text-xs text-gray-500
+                        file:mr-3 file:py-1.5 file:px-3
+                        file:rounded-lg file:border-0
+                        file:text-xs file:font-semibold
+                        file:bg-green-50 file:text-green-700
+                        hover:file:bg-green-100 cursor-pointer border border-gray-200 rounded-xl p-1"
+                    />
+                    {isUploadingImage && <Loader2 className="w-4 h-4 animate-spin text-green-600 flex-shrink-0" />}
+                  </div>
+                  {createForm.evidenceImageUrl && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <img src={createForm.evidenceImageUrl} alt="Preview" className="w-12 h-12 object-cover rounded-lg border" />
+                      <span className="text-xs text-green-700 font-medium">Đã tải ảnh lên</span>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
                   <button type="button" onClick={handleCloseModal} disabled={isSubmitting} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium">Hủy</button>
-                  <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium disabled:opacity-50 flex items-center gap-1.5">
+                  <button type="submit" disabled={isSubmitting || isUploadingImage} className="px-5 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium disabled:opacity-50 flex items-center gap-1.5 shadow-sm shadow-green-600/20">
                     <Plus className="w-4 h-4" /> {isSubmitting ? 'Đang tạo...' : 'Lưu công việc'}
                   </button>
                 </div>
@@ -385,13 +558,12 @@ export default function TaskManagement() {
               
               <h2 className="text-xl font-bold mb-5 text-gray-900">Phân công nhân viên</h2>
               
-              {/* Tóm tắt task */}
               <div className="bg-green-50/60 border border-green-100 p-4 rounded-xl mb-5">
                 <p className="font-semibold text-gray-900 text-base">{selectedTask.name}</p>
                 <div className="flex gap-4 mt-2 text-xs font-medium text-green-700 bg-white inline-flex px-3 py-1.5 rounded-lg border border-green-200">
                   <span>Loại: {selectedTask.type}</span>
                   <span className="w-px bg-green-200"></span>
-                  <span>Slot ID: #{selectedTask.slotId}</span>
+                  <span>Ô vườn: {selectedTask.slotNumber}</span>
                 </div>
               </div>
 
@@ -403,7 +575,7 @@ export default function TaskManagement() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1.5">1. Chọn Cơ sở / Chi nhánh</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1.5">1. Cơ sở / Chi nhánh</label>
                     <select value={selectedLocationId} onChange={(e) => { setSelectedLocationId(e.target.value); setAssignForm({ staffId: '' }); }}
                       className="w-full border border-gray-300 rounded-lg shadow-sm focus:border-green-500 p-2.5 bg-white outline-none">
                       <option value="">-- Chọn cơ sở để lọc nhân viên --</option>
@@ -441,7 +613,7 @@ export default function TaskManagement() {
         )}
 
         {/* =========================================
-            MODAL 3: DUYỆT CÔNG VIỆC
+            MODAL 3: DUYỆT CÔNG VIỆC (REVIEW)
         ========================================= */}
         {modalType === 'REVIEW' && selectedTask && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
@@ -456,27 +628,51 @@ export default function TaskManagement() {
                 <p className="font-semibold text-gray-900 text-base">{selectedTask.name}</p>
                 <div className="flex flex-wrap gap-2 mt-2 text-xs font-medium text-purple-700">
                   <span className="bg-white px-2 py-1 rounded border border-purple-200">Loại: {selectedTask.type}</span>
-                  <span className="bg-white px-2 py-1 rounded border border-purple-200">Slot ID: #{selectedTask.slotId}</span>
-                  <span className="bg-white px-2 py-1 rounded border border-purple-200">Nhân viên: {selectedTask.assigneeName}</span>
+                  <span className="bg-white px-2 py-1 rounded border border-purple-200">Ô vườn: {selectedTask.slotNumber}</span>
+                  <span className="bg-white px-2 py-1 rounded border border-purple-200">Nhân viên: {selectedTask.assigneeName || 'Chưa gán'}</span>
                 </div>
               </div>
 
-              {selectedTask.evidenceImageUrl && (
-                <div className="mb-5">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Ảnh Bằng Chứng</label>
-                  <img 
-                    src={selectedTask.evidenceImageUrl} 
-                    alt="Bằng chứng công việc" 
-                    className="w-full h-auto max-h-64 object-contain rounded-lg border border-gray-200 bg-gray-50"
-                  />
-                </div>
-              )}
+              {/* Hiển thị Ảnh Bằng Chứng Rõ Ràng */}
+              <div className="mb-5">
+                <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
+                  <span>📸 Ảnh Bằng Chứng Hoàn Thành</span>
+                  {selectedTask.evidenceImageUrl && (
+                    <a 
+                      href={selectedTask.evidenceImageUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-purple-600 hover:text-purple-700 flex items-center gap-1 font-normal"
+                    >
+                      Mở toàn màn hình <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </label>
+                
+                {selectedTask.evidenceImageUrl ? (
+                  <div className="rounded-xl overflow-hidden border-2 border-purple-200 bg-gray-900 flex items-center justify-center min-h-[220px]">
+                    <img 
+                      src={selectedTask.evidenceImageUrl} 
+                      alt="Bằng chứng công việc" 
+                      className="w-full max-h-80 object-contain cursor-pointer hover:opacity-95 transition"
+                      onClick={() => handleOpenImagePreview(selectedTask.evidenceImageUrl!)}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Lỗi+hiển+thị+ảnh';
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-xl text-center text-yellow-800 text-sm">
+                    ⚠️ Nhân viên chưa đính kèm ảnh bằng chứng.
+                  </div>
+                )}
+              </div>
 
               <form onSubmit={handleReviewSubmit} className="space-y-4 text-sm">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Quyết định</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Quyết định phê duyệt</label>
                   <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-xl flex-1 hover:bg-green-50/50 transition">
                       <input 
                         type="radio" 
                         name="reviewStatus" 
@@ -485,9 +681,9 @@ export default function TaskManagement() {
                         onChange={() => setReviewForm({ ...reviewForm, action: 'APPROVE' })}
                         className="w-4 h-4 text-green-600 focus:ring-green-500"
                       />
-                      <span className="font-medium text-green-700">Duyệt (Hoàn thành)</span>
+                      <span className="font-semibold text-green-700">Duyệt (Hoàn thành)</span>
                     </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-xl flex-1 hover:bg-red-50/50 transition">
                       <input 
                         type="radio" 
                         name="reviewStatus" 
@@ -496,7 +692,7 @@ export default function TaskManagement() {
                         onChange={() => setReviewForm({ ...reviewForm, action: 'REJECT' })}
                         className="w-4 h-4 text-red-600 focus:ring-red-500"
                       />
-                      <span className="font-medium text-red-700">Từ chối (Yêu cầu làm lại)</span>
+                      <span className="font-semibold text-red-700">Từ chối (Làm lại)</span>
                     </label>
                   </div>
                 </div>
@@ -510,7 +706,7 @@ export default function TaskManagement() {
                       rows={3} 
                       value={reviewForm.rejectionReason} 
                       onChange={e => setReviewForm({...reviewForm, rejectionReason: e.target.value})} 
-                      placeholder="Nhập lý do nhân viên cần làm lại..." 
+                      placeholder="Nhập lý do nhân viên cần làm lại (VD: Cây tỉa chưa sạch, góc chụp mờ...)" 
                     />
                   </div>
                 )}
@@ -518,10 +714,207 @@ export default function TaskManagement() {
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
                   <button type="button" onClick={handleCloseModal} disabled={isSubmitting} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium">Hủy</button>
                   <button type="submit" disabled={isSubmitting} className={`px-5 py-2.5 text-white rounded-xl font-medium disabled:opacity-50 flex items-center gap-1.5 shadow-sm ${reviewForm.action === 'APPROVE' ? 'bg-green-600 hover:bg-green-700 shadow-green-600/20' : 'bg-red-600 hover:bg-red-700 shadow-red-600/20'}`}>
-                    <ClipboardList className="w-4 h-4" /> {isSubmitting ? 'Đang xử lý...' : (reviewForm.action === 'APPROVE' ? 'Duyệt Task' : 'Từ chối Task')}
+                    <CheckCircle className="w-4 h-4" /> {isSubmitting ? 'Đang xử lý...' : (reviewForm.action === 'APPROVE' ? 'Xác nhận duyệt' : 'Xác nhận từ chối')}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================
+            MODAL 4: XEM CHI TIẾT TASK (DETAIL)
+        ========================================= */}
+        {modalType === 'DETAIL' && selectedTask && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
+              <button onClick={handleCloseModal} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+              
+              <h2 className="text-xl font-bold mb-4 text-gray-900 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-green-600" />
+                Chi tiết công việc #{selectedTask.id}
+              </h2>
+
+              <div className="space-y-4 text-sm">
+                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2.5">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-bold text-gray-900 text-base">{selectedTask.name}</h3>
+                      <p className="text-xs text-gray-500">Ô vườn: <span className="font-semibold text-green-700">{selectedTask.slotNumber}</span> · Loại: <span className="font-medium text-gray-700">{selectedTask.type}</span></p>
+                    </div>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                      selectedTask.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 
+                      selectedTask.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 
+                      selectedTask.status === 'PENDING_APPROVAL' ? 'bg-purple-100 text-purple-700' :
+                      selectedTask.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                      'bg-green-100 text-green-700'
+                    }`}>
+                      {selectedTask.status}
+                    </span>
+                  </div>
+
+                  {selectedTask.description && (
+                    <div className="text-gray-700 text-xs bg-white p-3 rounded-lg border border-gray-200">
+                      <span className="font-semibold block mb-1">Mô tả:</span>
+                      {selectedTask.description}
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center text-xs text-gray-600 pt-1">
+                    <span>Nhân viên: <strong className="text-gray-900">{selectedTask.assigneeName || 'Chưa phân công'}</strong></span>
+                    {selectedTask.createdAt && (
+                      <span className="flex items-center gap-1 text-gray-400">
+                        <Calendar className="w-3.5 h-3.5" />
+                        {new Date(selectedTask.createdAt).toLocaleDateString('vi-VN')}
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedTask.rejectionReason && (
+                    <div className="text-xs text-red-700 bg-red-50 p-3 rounded-lg border border-red-200">
+                      <span className="font-bold block mb-1">⚠️ Lý do từ chối:</span>
+                      {selectedTask.rejectionReason}
+                    </div>
+                  )}
+                </div>
+
+                {/* Phần Hình ảnh Minh chứng */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="font-semibold text-gray-800 text-sm flex items-center gap-1.5">
+                      <ImageIcon className="w-4 h-4 text-green-600" />
+                      Hình ảnh bằng chứng / Thực tế
+                    </label>
+                    {selectedTask.evidenceImageUrl && !selectedTask.evidenceImageUrl.includes('placehold.co') && (
+                      <a
+                        href={selectedTask.evidenceImageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-green-600 hover:text-green-700 flex items-center gap-1 font-medium"
+                      >
+                        Mở ảnh gốc <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+
+                  {selectedTask.evidenceImageUrl ? (
+                    <div className="space-y-2">
+                      <div className="rounded-xl overflow-hidden border border-gray-200 bg-gray-900 flex items-center justify-center min-h-[200px] relative">
+                        <img
+                          src={selectedTask.evidenceImageUrl}
+                          alt="Bằng chứng công việc"
+                          className="w-full max-h-80 object-contain cursor-pointer hover:opacity-95 transition"
+                          onClick={() => handleOpenImagePreview(selectedTask.evidenceImageUrl!)}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Lỗi+tải+ảnh';
+                          }}
+                        />
+                        {selectedTask.evidenceImageUrl.includes('placehold.co') && (
+                          <div className="absolute top-2 right-2 bg-amber-500 text-white font-bold px-2.5 py-1 rounded-lg text-xs shadow-md">
+                            ⚠️ Ảnh mẫu giả lập cũ
+                          </div>
+                        )}
+                      </div>
+                      {selectedTask.evidenceImageUrl.includes('placehold.co') && (
+                        <p className="text-xs text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                          📌 <strong>Ghi chú:</strong> Đây là ảnh mẫu cũ do hệ thống tạo lúc trước khi chưa kết nối lưu trữ cục bộ. Hãy chọn file bên dưới để tải lên ảnh thực tế mới!
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-8 bg-gray-50 border border-dashed border-gray-200 rounded-xl text-center text-gray-400 text-xs">
+                      <ImageIcon className="w-8 h-8 mx-auto mb-2 opacity-40 text-gray-400" />
+                      Chưa có hình ảnh bằng chứng cho công việc này.
+                    </div>
+                  )}
+
+                  {/* Khu vực Tải lên / Cập nhật ảnh mới */}
+                  <div className="mt-3 p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+                    <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+                      <Upload className="w-3.5 h-3.5 text-green-600" />
+                      Tải lên / Thay thế bằng ảnh thực tế:
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleDetailFileChange}
+                        className="text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-green-100 file:text-green-800 hover:file:bg-green-200 cursor-pointer flex-1 bg-white p-1 rounded-lg border border-gray-200"
+                      />
+                      {detailFile && (
+                        <button
+                          type="button"
+                          onClick={handleSaveDetailImage}
+                          disabled={isUpdatingDetailImage}
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
+                        >
+                          {isUpdatingDetailImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                          Lưu ảnh này
+                        </button>
+                      )}
+                    </div>
+                    {detailFilePreview && (
+                      <div className="mt-2 text-xs text-green-700 font-medium flex items-center gap-1">
+                        <span>Đã chọn: <strong>{detailFile?.name}</strong> ({( (detailFile?.size || 0) / 1024 / 1024).toFixed(2)} MB)</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                  <button type="button" onClick={handleCloseModal} className="px-5 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium">
+                    Đóng
+                  </button>
+                  {selectedTask.status === 'PENDING_APPROVAL' && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenReviewModal(selectedTask)}
+                      className="px-5 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 font-medium flex items-center gap-1.5 shadow-sm"
+                    >
+                      <CheckCircle className="w-4 h-4" /> Duyệt công việc
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =========================================
+            MODAL 5: PHÓNG TO HÌNH ẢNH (LIGHTBOX)
+        ========================================= */}
+        {modalType === 'IMAGE_PREVIEW' && previewImageUrl && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in duration-150 backdrop-blur-sm"
+            onClick={handleCloseModal}
+          >
+            <div className="relative max-w-4xl max-h-[90vh] bg-transparent p-2" onClick={e => e.stopPropagation()}>
+              <button 
+                onClick={handleCloseModal} 
+                className="absolute -top-10 right-0 text-white hover:text-gray-300 p-1.5 bg-white/20 hover:bg-white/30 rounded-full transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <img 
+                src={previewImageUrl} 
+                alt="Phóng to" 
+                className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/20 bg-gray-900"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://placehold.co/800x600?text=Lỗi+tải+ảnh';
+                }}
+              />
+              <div className="text-center mt-3">
+                <a 
+                  href={previewImageUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="inline-flex items-center gap-1.5 text-xs text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Mở trong tab mới
+                </a>
+              </div>
             </div>
           </div>
         )}
