@@ -63,6 +63,8 @@ export interface RentalHistoryDTO {
   treeName?: string;
   harvestNotifiedAt?: string;
   harvestDecision?: string;
+  plantedAt?: string;
+  expectedHarvestAt?: string;
 }
 
 export interface BookingHistory {
@@ -83,6 +85,8 @@ export interface BookingHistory {
   treeName?: string;
   harvestNotifiedAt?: string;
   harvestDecision?: string;
+  plantedAt?: string;
+  expectedHarvestAt?: string;
 }
 
 export interface ServiceRequest {
