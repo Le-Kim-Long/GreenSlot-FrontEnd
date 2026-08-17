@@ -29,12 +29,43 @@ export default function MyRentalsPage() {
   const [tab, setTab] = useState('all');
   const [extendModal, setExtendModal] = useState<BookingHistory | null>(null);
   const [extendMonths, setExtendMonths] = useState(1);
+  const [extendMonthsInput, setExtendMonthsInput] = useState('1');
+  const [extendMonthsError, setExtendMonthsError] = useState('');
   const [extending, setExtending] = useState(false);
   const [extendError, setExtendError] = useState('');
   const [payingId, setPayingId] = useState<number | null>(null);
   const [cancelModal, setCancelModal] = useState<BookingHistory | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState('');
+
+  const handleExtendMonthsChange = (rawVal: string) => {
+    // Chỉ giữ chữ số, loại bỏ âm (-), thập phân (., ,), chữ cái
+    const cleaned = rawVal.replace(/\D/g, '');
+    setExtendMonthsInput(cleaned);
+
+    if (!cleaned) {
+      setExtendMonths(0);
+      setExtendMonthsError('Vui lòng nhập số tháng gia hạn (tối thiểu 1 tháng).');
+      return;
+    }
+
+    const num = parseInt(cleaned, 10);
+    if (isNaN(num) || num < 1) {
+      setExtendMonths(0);
+      setExtendMonthsError('Số tháng gia hạn phải là số tự nhiên dương (tối thiểu 1 tháng).');
+      return;
+    }
+
+    if (num > 60) {
+      setExtendMonths(num);
+      setExtendMonthsError('Số tháng gia hạn tối đa là 60 tháng (5 năm).');
+      return;
+    }
+
+    setExtendMonths(num);
+    setExtendMonthsError('');
+    setExtendError('');
+  };
 
   // Báo cáo sự cố
   const [reportModal, setReportModal] = useState<BookingHistory | null>(null);
@@ -79,6 +110,14 @@ export default function MyRentalsPage() {
 
   const handleExtend = async () => {
     if (!extendModal) return;
+    if (!extendMonths || extendMonths < 1 || !Number.isInteger(extendMonths)) {
+      setExtendError('Số tháng gia hạn không hợp lệ: Vui lòng nhập số tự nhiên dương (tối thiểu 1 tháng).');
+      return;
+    }
+    if (extendMonths > 60) {
+      setExtendError('Số tháng gia hạn không được vượt quá 60 tháng.');
+      return;
+    }
     setExtending(true);
     setExtendError('');
     try {
@@ -250,16 +289,76 @@ export default function MyRentalsPage() {
 
       {extendModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <div className="flex justify-between mb-5">
-              <h2 className="text-xl font-bold">Gia hạn hợp đồng</h2>
-              <button onClick={() => setExtendModal(null)}><X className="w-5 h-5" /></button>
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <div className="flex justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Gia hạn hợp đồng</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Ô vườn: <span className="font-semibold text-green-700">{extendModal.slotNumber}</span></p>
+              </div>
+              <button onClick={() => { setExtendModal(null); setExtendMonthsError(''); setExtendError(''); }}>
+                <X className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+              </button>
             </div>
-            <select className="input mb-4" value={extendMonths} onChange={e => setExtendMonths(Number(e.target.value))}>
-              {[1, 2, 3, 6, 12].map(m => <option key={m} value={m}>{m} tháng</option>)}
-            </select>
+
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">Số tháng muốn gia hạn</label>
+                <span className="text-xs text-gray-500 font-medium">(Tối thiểu 1 tháng)</span>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  className={`input font-medium pr-16 ${extendMonthsError ? 'border-red-500 focus:ring-red-400' : ''}`}
+                  placeholder="Nhập số tháng gia hạn..."
+                  value={extendMonthsInput}
+                  onKeyDown={(e) => {
+                    if (['-', '+', 'e', 'E', '.', ','].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                  onChange={(e) => handleExtendMonthsChange(e.target.value)}
+                />
+                <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium pointer-events-none">
+                  tháng
+                </div>
+              </div>
+              {extendMonthsError && (
+                <p className="text-xs text-red-600 font-medium mt-1.5 flex items-center gap-1">
+                  ⚠️ {extendMonthsError}
+                </p>
+              )}
+              {/* Gợi ý chọn nhanh */}
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {[1, 3, 6, 12, 24].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => {
+                      setExtendMonthsInput(m.toString());
+                      setExtendMonths(m);
+                      setExtendMonthsError('');
+                      setExtendError('');
+                    }}
+                    className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                      extendMonths === m && !extendMonthsError
+                        ? 'bg-green-600 text-white shadow-sm ring-1 ring-green-600'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {m} tháng {m >= 3 ? '(-5%)' : ''}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {extendError && <div className="text-red-600 text-sm mb-3">{extendError}</div>}
-            <button onClick={handleExtend} disabled={extending} className="btn-primary w-full">
+            <button
+              onClick={handleExtend}
+              disabled={extending || !extendMonths || extendMonths < 1 || Boolean(extendMonthsError)}
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {extending ? 'Đang xử lý...' : 'Xác nhận & Thanh toán VNPay'}
             </button>
           </div>
