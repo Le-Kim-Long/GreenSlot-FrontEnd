@@ -1,9 +1,28 @@
 import { useState, useEffect } from 'react';
-import { Users, Search, ChevronLeft, ChevronRight, Shield, Loader2, MapPin } from 'lucide-react';
+import { Users, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Shield, Loader2, MapPin } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { adminApi } from '../../api/adminApi';
 import type { UserAdmin } from '../../types/api';
-import { roleLabel } from '../../utils/roleMap';
+import { roleLabel, mapBackendRolesToFrontend, type FrontendRole } from '../../utils/roleMap';
+
+const ROLE_ORDER: FrontendRole[] = ['admin', 'manager', 'location_manager', 'garden_staff', 'customer'];
+
+// Trả về danh sách số trang hiển thị quanh trang hiện tại, chèn '...' khi có khoảng cách
+function getPageNumbers(currentPage1Based: number, totalPages: number): (number | 'ellipsis')[] {
+  const delta = 1;
+  const left = Math.max(1, currentPage1Based - delta);
+  const right = Math.min(totalPages, currentPage1Based + delta);
+  const pages: (number | 'ellipsis')[] = [1];
+
+  if (left > 2) pages.push('ellipsis');
+  for (let i = left; i <= right; i++) {
+    if (i !== 1 && i !== totalPages) pages.push(i);
+  }
+  if (right < totalPages - 1) pages.push('ellipsis');
+  if (totalPages > 1) pages.push(totalPages);
+
+  return pages;
+}
 
 const navItems = [
   { label: 'Tổng quan', path: '/dashboard/admin', icon: <Shield className="w-full h-full" /> },
@@ -64,11 +83,14 @@ export default function UserManagementPage() {
 
   useEffect(() => { fetchUsers(page); }, [page]);
 
-  const filtered = users.filter(u => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return u.fullName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.username?.toLowerCase().includes(q);
-  });
+  const filtered = users
+    .filter(u => {
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return u.fullName?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.username?.toLowerCase().includes(q);
+    })
+    .slice()
+    .sort((a, b) => ROLE_ORDER.indexOf(mapBackendRolesToFrontend(a.roles)) - ROLE_ORDER.indexOf(mapBackendRolesToFrontend(b.roles)));
 
   const openEditRoles = (user: UserAdmin) => {
     setEditingUser(user);
@@ -197,10 +219,29 @@ export default function UserManagementPage() {
             </tbody>
           </table>
           <div className="px-4 py-3 border-t flex items-center justify-between text-sm text-gray-500">
-            <span>Trang {page + 1} / {Math.max(totalPages, 1)}</span>
-            <div className="flex gap-1">
-              <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="p-1 border rounded disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
-              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="p-1 border rounded disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
+            <span>Trang {page + 1} / {Math.max(totalPages, 1)} · {totalElements} tài khoản</span>
+            <div className="flex items-center gap-1">
+              <button disabled={page === 0} onClick={() => setPage(0)} className="p-1 border rounded disabled:opacity-40" title="Trang đầu"><ChevronsLeft className="w-4 h-4" /></button>
+              <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="p-1 border rounded disabled:opacity-40" title="Trang trước"><ChevronLeft className="w-4 h-4" /></button>
+              {totalPages > 1 && getPageNumbers(page + 1, totalPages).map((p, idx) =>
+                p === 'ellipsis' ? (
+                  <span key={`ellipsis-${idx}`} className="px-1.5 text-gray-400">…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p - 1)}
+                    className={`w-7 h-7 text-xs rounded border ${
+                      p === page + 1
+                        ? 'bg-green-600 text-white border-green-600 font-semibold'
+                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+              <button disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} className="p-1 border rounded disabled:opacity-40" title="Trang sau"><ChevronRight className="w-4 h-4" /></button>
+              <button disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} className="p-1 border rounded disabled:opacity-40" title="Trang cuối"><ChevronsRight className="w-4 h-4" /></button>
             </div>
           </div>
         </div>
