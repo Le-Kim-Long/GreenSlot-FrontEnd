@@ -1,8 +1,11 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, Wifi, Users, Star, ArrowRight, CheckCircle, Sprout, ShieldCheck, BarChart3, Droplets, Thermometer, Sun, MapPin, ChevronRight, Play, Zap, Heart, ArrowDown, Quote } from 'lucide-react';
+import { Leaf, Wifi, Users, Star, ArrowRight, CheckCircle, Sprout, ShieldCheck, BarChart3, Droplets, Thermometer, Sun, MapPin, ChevronRight, Play, Zap, Heart, ArrowDown, Quote, Grid3X3, Loader2 } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import { useScrollReveal, useCounter } from '../../hooks/useScrollReveal';
+import { bookingApi, type AvailableSlot } from '../../api/bookingApi';
+import { formatFirebaseUrl } from '../../utils/firebaseUrl';
 import clsx from 'clsx';
 
 function RevealSection({ children, className = '', delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -70,11 +73,16 @@ function StatCard({ value, suffix, label, icon, isActive, delay }: { value: numb
 }
 
 export default function LandingPage() {
-  const featuredGardens = [
-    { id: '1', name: 'Vườn Xanh Quận 1', address: '12 Nguyễn Huệ, Bến Nghé', district: 'Quận 1', area: 25, pricePerMonth: 2500000, hasIoT: true, rating: 4.8, plantTypes: ['Rau muống', 'Cải xanh', 'Mồng tơi'], description: 'Không gian canh tác thẳng đứng hiện đại tại trung tâm thành phố. Phù hợp trồng rau sạch, cây dược liệu và cây cảnh mini.', images: ['https://images.unsplash.com/photo-1585320806297-9794b3e4ce88?q=80&w=2938&auto=format&fit=crop'] },
-    { id: '2', name: 'Nông trại thông minh Phú Mỹ Hưng', address: '105 Tôn Dật Tiên, Tân Phú', district: 'Quận 7', area: 50, pricePerMonth: 4000000, hasIoT: true, rating: 4.9, plantTypes: ['Dưa lưới', 'Cà chua bi', 'Dâu tây'], description: 'Hệ thống thủy canh tuần hoàn khép kín công nghệ Israel. Bao gồm hệ thống đèn LED chuyên dụng và tự động hóa toàn diện.', images: ['https://images.unsplash.com/photo-1530836369250-ef71a3f5e9cb?q=80&w=2940&auto=format&fit=crop'] },
-    { id: '3', name: 'Vườn sinh thái Thảo Điền', address: '42 Quốc Hương, Thảo Điền', district: 'Quận 2', area: 30, pricePerMonth: 3200000, hasIoT: false, rating: 4.6, plantTypes: ['Rau thơm', 'Xà lách', 'Cải thảo'], description: 'Vườn hữu cơ truyền thống trên sân thượng với hệ thống tưới nhỏ giọt tự động. View sông Sài Gòn tuyệt đẹp.', images: ['https://images.unsplash.com/photo-1595955615714-3d0cf3b12384?q=80&w=2942&auto=format&fit=crop'] }
-  ];
+  const [featuredSlots, setFeaturedSlots] = useState<AvailableSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(true);
+
+  useEffect(() => {
+    bookingApi.getAvailableSlots()
+      .then(data => setFeaturedSlots(Array.isArray(data) ? data.slice(0, 3) : []))
+      .catch(() => setFeaturedSlots([]))
+      .finally(() => setSlotsLoading(false));
+  }, []);
+
   const statsReveal = useScrollReveal(0.1);
 
   const howItWorks = [
@@ -253,52 +261,64 @@ export default function LandingPage() {
             </div>
           </RevealSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featuredGardens.map((garden, i) => (
-              <RevealItem key={garden.id} delay={i * 200}>
-                <Link to={`/gardens/${garden.id}`} className="group bg-white rounded-3xl overflow-hidden border border-green-100 hover:shadow-2xl hover:shadow-green-200/50 hover:-translate-y-3 transition-all duration-700 block hover:border-green-300">
-                  <div className="relative h-56 overflow-hidden">
-                    <img src={garden.images[0]} alt={garden.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-                    <div className="absolute top-4 left-4 flex gap-2">
-                      <span className="bg-white/90 backdrop-blur-sm text-green-700 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">{garden.district}</span>
-                      {garden.hasIoT && (
-                        <span className="bg-green-500/90 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
-                          <Wifi className="w-3 h-3" /> IoT
-                        </span>
-                      )}
-                    </div>
-                    <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
-                      <div>
-                        <span className="text-2xl font-black text-white drop-shadow-lg">{garden.pricePerMonth.toLocaleString('vi-VN')}đ</span>
-                        <span className="text-white/70 text-sm">/tháng</span>
+          {slotsLoading ? (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+              <p className="text-sm font-medium">Đang tải danh sách ô vườn...</p>
+            </div>
+          ) : featuredSlots.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-gray-400 bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
+              <Grid3X3 className="w-16 h-16 mx-auto mb-3 text-gray-300" />
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Hiện chưa có ô vườn trống</h3>
+              <p className="text-sm text-gray-500 text-center max-w-sm">Vui lòng quay lại sau hoặc xem toàn bộ hệ thống cơ sở.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredSlots.map((slot, i) => {
+                const imageUrl = formatFirebaseUrl(slot.imageUrl);
+                return (
+                  <RevealItem key={slot.id} delay={i * 200}>
+                    <Link to={`/gardens/slot/${slot.id}`} className="group bg-white rounded-3xl overflow-hidden border border-green-100 hover:shadow-2xl hover:shadow-green-200/50 hover:-translate-y-3 transition-all duration-700 block hover:border-green-300">
+                      <div className="relative h-56 overflow-hidden bg-gradient-to-br from-green-100 to-emerald-50">
+                        {imageUrl ? (
+                          <img src={imageUrl} alt={`Ô ${slot.slotNumber}`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Sprout className="w-16 h-16 text-green-300" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
+                        <div className="absolute top-4 left-4 flex gap-2">
+                          <span className="bg-white/90 backdrop-blur-sm text-green-700 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">{slot.locationName}</span>
+                          <span className="bg-green-500/90 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm">
+                            <CheckCircle className="w-3 h-3" /> Trống
+                          </span>
+                        </div>
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <span className="text-2xl font-black text-white drop-shadow-lg">{slot.price.toLocaleString('vi-VN')}đ</span>
+                          <span className="text-white/70 text-sm">/tháng</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm text-white text-sm px-2.5 py-1 rounded-full">
-                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                        <span className="font-semibold">{garden.rating}</span>
+                      <div className="p-6">
+                        <h3 className="font-bold text-gray-900 text-lg mb-2 group-hover:text-green-600 transition-colors">Ô {slot.slotNumber}</h3>
+                        {slot.pillarCode && (
+                          <p className="text-xs font-semibold text-gray-500 mb-3">
+                            Trụ trồng: <span className="text-gray-800">{slot.pillarCode}</span>
+                          </p>
+                        )}
+                        {slot.locationAddress && (
+                          <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+                            <MapPin className="w-4 h-4 text-gray-500 shrink-0" />
+                            {slot.locationAddress}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </div>
-                  <div className="p-6">
-                    <h3 className="font-bold text-gray-900 text-lg mb-2 group-hover:text-green-600 transition-colors">{garden.name}</h3>
-                    <div className="flex items-center gap-1.5 text-gray-500 text-sm mb-3">
-                      <MapPin className="w-4 h-4 text-gray-500" />
-                      {garden.address}
-                    </div>
-                    <p className="text-gray-500 text-sm line-clamp-2 mb-4">{garden.description}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-wrap gap-1.5">
-                        {garden.plantTypes.slice(0, 3).map(p => (
-                          <span key={p} className="text-xs bg-green-50 text-green-700 px-2.5 py-1 rounded-full font-medium">{p}</span>
-                        ))}
-                      </div>
-                      <span className="text-xs text-gray-500">{garden.area}m²</span>
-                    </div>
-                  </div>
-                </Link>
-              </RevealItem>
-            ))}
-          </div>
+                    </Link>
+                  </RevealItem>
+                );
+              })}
+            </div>
+          )}
 
           <div className="mt-8 text-center sm:hidden">
             <Link to="/gardens" className="inline-flex items-center gap-2 text-green-600 font-semibold hover:text-green-700">
