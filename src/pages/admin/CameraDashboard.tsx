@@ -1,14 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Users, TrendingUp, RefreshCw, AlertCircle, Video, Camera as CameraIcon } from 'lucide-react';
+import { RefreshCw, AlertCircle, Video, Camera as CameraIcon } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { CameraDTO, getActiveCameras } from '../../api/cameraApi';
-
-// Cấu hình menu sidebar đồng bộ với các trang admin khác
-const navItems = [
-  { label: 'Tổng quan', path: '/dashboard/admin', icon: <TrendingUp className="w-full h-full" /> },
-  { label: 'Người dùng', path: '/dashboard/admin/users', icon: <Users className="w-full h-full" /> },
-  { label: 'Camera IoT', path: '/dashboard/admin/cameras', icon: <ShieldCheck className="w-full h-full" /> },
-];
+import { staffNavItems } from '../manager/staffNav';
 
 export default function CameraDashboard() {
   const [cameras, setCameras] = useState<CameraDTO[]>([]);
@@ -45,7 +39,7 @@ export default function CameraDashboard() {
   };
 
   return (
-    <DashboardLayout navItems={navItems} title="Hệ thống Camera IoT">
+    <DashboardLayout navItems={staffNavItems} title="Hệ thống Camera IoT">
       {/* Tiêu đề trang tương tự Audit Logs */}
       <div className="mb-6 flex items-center justify-between">
         <div>

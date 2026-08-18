@@ -137,10 +137,14 @@ function AppRoutes() {
       {/* Admin */}
       <Route path="/dashboard/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagementPage /></ProtectedRoute>} />
-      <Route path="/dashboard/admin/cameras" element={<ProtectedRoute allowedRoles={['admin']}><CameraDashboard /></ProtectedRoute>} />
       {/* Legacy owner routes → redirect */}
       <Route path="/dashboard/owner/*" element={<Navigate to="/gardens" replace />} />
-      <Route path="/dashboard/admin/cameras/all" element={<ProtectedRoute allowedRoles={['admin']}><CameraAllPage /></ProtectedRoute>} />
+
+      {/* Camera – mọi role trừ admin. Manager xem đầy đủ danh sách + luồng tổng; các role còn lại chỉ xem luồng tổng */}
+      <Route path="/dashboard/staff/cameras" element={<ProtectedRoute allowedRoles={['manager']}><CameraDashboard /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/cameras/all" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><CameraAllPage /></ProtectedRoute>} />
+      <Route path="/dashboard/customer/cameras" element={<ProtectedRoute allowedRoles={['customer']}><CameraAllPage /></ProtectedRoute>} />
+      <Route path="/dashboard/garden-staff/cameras" element={<ProtectedRoute allowedRoles={['garden_staff']}><CameraAllPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

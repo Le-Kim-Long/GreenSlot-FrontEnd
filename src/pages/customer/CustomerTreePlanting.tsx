@@ -65,6 +65,83 @@ function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn'
   );
 }
 
+// Dropdown chọn giống cây có kèm ảnh minh hoạ (giống cách hiển thị bên trang quản lý giống cây)
+function TreeSelectDropdown({ trees, value, onChange, loading }: { trees: Tree[]; value: any; onChange: (id: number) => void; loading: boolean }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) setIsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedTree = trees.find(t => String(t.id) === String(value));
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className={clsx(
+          "w-full flex items-center gap-2 border rounded-xl p-2 pl-2.5 cursor-pointer select-none transition-all bg-white",
+          isOpen ? "border-green-500 ring-2 ring-green-500/10" : "border-gray-300 hover:border-green-500/50"
+        )}
+      >
+        <div className="w-7 h-7 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 shrink-0 overflow-hidden">
+          {selectedTree?.imageUrl ? (
+            <img src={selectedTree.imageUrl} alt={selectedTree.treeName} className="w-full h-full object-cover" />
+          ) : (
+            <Sprout className="w-3.5 h-3.5" />
+          )}
+        </div>
+        <span className={clsx("flex-1 font-medium text-sm truncate text-left", selectedTree ? "text-green-700" : "text-gray-400")}>
+          {selectedTree ? `${selectedTree.treeName} (${selectedTree.harvestDays} ngày sinh trưởng)` : '-- Chọn giống cây --'}
+        </span>
+        <ChevronDown className={clsx("w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0", isOpen && "rotate-180 text-green-600")} />
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full mt-1.5 w-full bg-white border border-gray-100 rounded-xl shadow-xl py-1.5 z-50 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+          {loading ? (
+            <div className="px-3.5 py-3 text-xs text-gray-400 text-center">Đang tải danh sách cây...</div>
+          ) : trees.length === 0 ? (
+            <div className="px-3.5 py-3 text-xs text-gray-400 text-center">Chưa có giống cây nào</div>
+          ) : (
+            trees.map(tree => {
+              const isSelected = String(tree.id) === String(value);
+              return (
+                <div
+                  key={tree.id}
+                  onClick={() => { onChange(tree.id); setIsOpen(false); }}
+                  className={clsx(
+                    "px-3 py-2 flex items-center gap-2.5 cursor-pointer transition-colors",
+                    isSelected ? "bg-green-50" : "hover:bg-gray-50"
+                  )}
+                >
+                  <div className="w-9 h-9 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 shrink-0 overflow-hidden">
+                    {tree.imageUrl ? (
+                      <img src={tree.imageUrl} alt={tree.treeName} className="w-full h-full object-cover" />
+                    ) : (
+                      <Sprout className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className={clsx("text-sm font-semibold truncate", isSelected ? "text-green-700" : "text-gray-700")}>{tree.treeName}</div>
+                    <div className="text-[11px] text-gray-400">{tree.harvestDays} ngày sinh trưởng</div>
+                  </div>
+                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-green-600 shrink-0" />}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const initialForm: CreateTreePlantingPayload = {
   rentalId: '' as any,
   newTreeId: '' as any,
@@ -430,7 +507,7 @@ export default function CustomerTreePlanting() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
-                    Hợp Đồng / Ô Vườn Thuê <span className="text-red-500">*</span>
+                    Ô Vườn Thuê <span className="text-red-500">*</span>
                   </label>
                   <select
                     required
@@ -438,7 +515,7 @@ export default function CustomerTreePlanting() {
                     value={formData.rentalId || ''}
                     onChange={e => setFormData({ ...formData, rentalId: Number(e.target.value) })}
                   >
-                    <option value="">-- Chọn hợp đồng ô đất --</option>
+                    <option value="">-- Chọn ô đất --</option>
                     {myRentals.map(rental => {
                       const days = getRemainingDays(rental.endTime || rental.endDate);
                       return (
@@ -461,19 +538,12 @@ export default function CustomerTreePlanting() {
                   <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
                     Giống Cây Trồng <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    required
-                    className="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition font-medium text-green-700 bg-white"
-                    value={formData.newTreeId || ''}
-                    onChange={e => setFormData({ ...formData, newTreeId: Number(e.target.value) })}
-                  >
-                    <option value="">-- Chọn giống cây --</option>
-                    {availableTrees.map(tree => (
-                      <option key={tree.id} value={tree.id}>
-                        {tree.treeName} ({tree.harvestDays} ngày sinh trưởng)
-                      </option>
-                    ))}
-                  </select>
+                  <TreeSelectDropdown
+                    trees={availableTrees}
+                    value={formData.newTreeId}
+                    onChange={(id) => setFormData({ ...formData, newTreeId: id })}
+                    loading={loadingResources}
+                  />
                   <span className="text-[11px] text-gray-400 mt-1 block">
                     {loadingResources
                       ? 'Đang tải danh sách cây...'

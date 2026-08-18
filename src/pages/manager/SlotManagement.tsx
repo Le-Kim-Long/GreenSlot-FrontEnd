@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Grid3X3, Plus, Edit2, X, Search, DollarSign, Trash2, Loader2 } from 'lucide-react';
+import { Grid3X3, Plus, Edit2, X, Search, DollarSign, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
+import { formatFirebaseUrl } from '../../utils/firebaseUrl';
 import clsx from 'clsx';
 
 interface Slot {
@@ -11,6 +12,7 @@ interface Slot {
   status: string;
   price: number;
   pillarId: number;
+  imageUrl?: string;
 }
 
 interface Pillar {
@@ -19,7 +21,7 @@ interface Pillar {
   locationId: number;
 }
 
-const emptyForm = { slotNumber: '', status: 'AVAILABLE', price: 0, pillarId: 0 };
+const emptyForm = { slotNumber: '', status: 'AVAILABLE', price: 0, pillarId: 0, imageUrl: '' };
 
 export default function SlotManagement() {
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -69,11 +71,12 @@ export default function SlotManagement() {
       const freshSlot = await managerApi.getSlot(s.id);
       
       setEditing(freshSlot);
-      setForm({ 
-        slotNumber: freshSlot.slotNumber, 
-        status: freshSlot.status, 
-        price: freshSlot.price, 
-        pillarId: freshSlot.pillarId 
+      setForm({
+        slotNumber: freshSlot.slotNumber,
+        status: freshSlot.status,
+        price: freshSlot.price,
+        pillarId: freshSlot.pillarId,
+        imageUrl: freshSlot.imageUrl || '',
       });
     } catch (err) {
       setError('Không thể tải thông tin chi tiết mới nhất từ máy chủ.');
@@ -162,7 +165,15 @@ export default function SlotManagement() {
           {filtered.map(s => {
             const st = statusConfig[s.status] || statusConfig.INACTIVE;
             return (
-              <div key={s.id} className="card hover:border-green-200 transition-colors">
+              <div key={s.id} className="card hover:border-green-200 transition-colors overflow-hidden">
+                {s.imageUrl && (
+                  <img
+                    src={formatFirebaseUrl(s.imageUrl)}
+                    alt={s.slotNumber}
+                    className="w-full h-32 object-cover rounded-xl mb-3 -mt-1"
+                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                )}
                 <div className="flex items-start justify-between mb-3">
                   <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                     <Grid3X3 className="w-5 h-5 text-blue-600" />
@@ -259,6 +270,23 @@ export default function SlotManagement() {
                     <option value="MAINTENANCE">Bảo trì</option>
                     <option value="INACTIVE">Ngưng</option>
                   </select>
+                </div>
+                <div>
+                  <label className="label flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Ảnh ô vườn (URL)</label>
+                  <input
+                    className="input"
+                    value={form.imageUrl}
+                    onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
+                    placeholder="Dán link ảnh (vd: từ Google Drive, Imgur...)"
+                  />
+                  {form.imageUrl && (
+                    <img
+                      src={formatFirebaseUrl(form.imageUrl)}
+                      alt="Xem trước"
+                      className="mt-2 w-full h-32 object-cover rounded-xl border border-gray-100"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1 py-2.5">
