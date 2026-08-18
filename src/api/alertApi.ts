@@ -85,6 +85,18 @@ export const alertApi = {
     return response.data;
   },
 
+  // Lấy cảnh báo theo cây trồng cụ thể
+  getAlertsByTree: async (treeId: number): Promise<AlertDTO[]> => {
+    const response = await apiClient.get(`/alerts/tree/${treeId}`);
+    return response.data;
+  },
+
+  // Lấy cảnh báo theo ô đất cụ thể
+  getAlertsBySlot: async (slotId: number): Promise<AlertDTO[]> => {
+    const response = await apiClient.get(`/alerts/slot/${slotId}`);
+    return response.data;
+  },
+
   // Lấy lịch sử các lần xử lý của 1 alert cụ thể
   getAlertProcessingLogs: async (alertId: number): Promise<AlertProcessingLogDTO[]> => {
     const response = await apiClient.get(`/alerts/${alertId}/logs`);
