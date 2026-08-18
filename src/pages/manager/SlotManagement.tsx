@@ -51,10 +51,20 @@ export default function SlotManagement() {
 
   useEffect(() => { fetchData(); }, []);
 
+  // Mỗi trụ chỉ được gán tối đa 1 ô vườn
+  const occupiedPillarIds = new Set(
+    slots.filter(s => !editing || s.id !== editing.id).map(s => s.pillarId)
+  );
+  const availablePillars = pillars.filter(p => !occupiedPillarIds.has(p.id));
+
   const openCreate = () => {
+    if (availablePillars.length === 0) {
+      setError('Tất cả các trụ đã có ô vườn. Vui lòng thêm trụ mới trước khi tạo ô vườn.');
+      return;
+    }
     setEditing(null);
     setError('');
-    setForm({ ...emptyForm, pillarId: pillars[0]?.id || 0 });
+    setForm({ ...emptyForm, pillarId: availablePillars[0]?.id || 0 });
     setShowForm(true);
   };
 
@@ -89,6 +99,10 @@ export default function SlotManagement() {
   const handleSubmit = async () => {
     if (!form.slotNumber?.trim() || !form.pillarId || form.pillarId === 0) {
       setError('Vui lòng nhập đầy đủ Mã ô vườn và chọn Trụ.');
+      return;
+    }
+    if (occupiedPillarIds.has(form.pillarId)) {
+      setError('Trụ này đã có ô vườn khác. Mỗi trụ chỉ được gán 1 ô vườn.');
       return;
     }
     if (isNaN(form.price) || form.price < 1000 || form.price % 1000 !== 0) {
@@ -244,8 +258,9 @@ export default function SlotManagement() {
                   <label className="label">Trụ *</label>
                   <select className="input" value={form.pillarId} onChange={e => setForm(f => ({ ...f, pillarId: Number(e.target.value) }))}>
                     <option value={0} disabled>Chọn trụ</option>
-                    {pillars.map(p => <option key={p.id} value={p.id}>{p.pillarCode}</option>)}
+                    {availablePillars.map(p => <option key={p.id} value={p.id}>{p.pillarCode}</option>)}
                   </select>
+                  <p className="text-xs text-gray-400 mt-1">Chỉ hiển thị các trụ chưa có ô vườn (1 trụ = 1 ô vườn).</p>
                 </div>
                 <div>
                   <label className="label flex justify-between items-center">
