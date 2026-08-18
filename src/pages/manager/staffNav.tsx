@@ -14,6 +14,8 @@ import {
   AlertTriangle,
   ShieldAlert,
   History,
+  Video,
+  Camera,
 } from 'lucide-react';
 
 export const staffNavItems = [
@@ -26,6 +28,8 @@ export const staffNavItems = [
   { label: 'Công việc', path: '/dashboard/staff/tasks', icon: <ClipboardList className="w-full h-full" /> }, // Đã thêm mục Quản lý Task
   { label: 'Nhân viên', path: '/dashboard/staff/staffs', icon: <Users className="w-full h-full" /> },
   { label: 'Doanh thu', path: '/dashboard/staff/revenue', icon: <DollarSign className="w-full h-full" />, roles: ['manager'] },
+  { label: 'Camera IoT', path: '/dashboard/staff/cameras', icon: <Video className="w-full h-full" />, roles: ['manager'] },
+  { label: 'Camera Tổng', path: '/dashboard/staff/cameras/all', icon: <Camera className="w-full h-full" /> },
   { label: 'Thống kê Cảnh báo', path: '/dashboard/staff/alert-analytics', icon: <AlertTriangle className="w-full h-full" /> },
   { label: 'Xử lý Cảnh báo', path: '/dashboard/staff/alert-processing', icon: <ShieldAlert className="w-full h-full" /> },
   { label: 'Lịch sử Cảnh báo', path: '/dashboard/staff/alert-history', icon: <History className="w-full h-full" /> },

@@ -1,17 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Users, TrendingUp, ShieldCheck, Camera } from 'lucide-react';
+import { ClipboardList, Calendar, Wifi, ShieldAlert, CheckCircle, History, Camera } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import { staffNavItems } from '../manager/staffNav';
+import { customerNavItems } from '../customer/customerNavItems';
 
-const navItems = [
-  { label: 'Tổng quan', path: '/dashboard/admin', icon: <TrendingUp className="w-full h-full" /> },
-  { label: 'Người dùng', path: '/dashboard/admin/users', icon: <Users className="w-full h-full" /> },
-  { label: 'Camera IoT', path: '/dashboard/admin/cameras', icon: <ShieldCheck className="w-full h-full" /> },
-  { label: 'Camera All', path: '/dashboard/admin/cameras/all', icon: <Camera className="w-full h-full" /> }
+// Garden-staff không có file nav dùng chung — giữ đồng bộ với navItems cục bộ trong các trang garden-staff khác
+const gardenStaffNavItems = [
+  { label: 'Công việc', path: '/dashboard/garden-staff', icon: <ClipboardList className="w-full h-full" /> },
+  { label: 'Lịch trực', path: '/dashboard/garden-staff/schedules', icon: <Calendar className="w-full h-full" /> },
+  { label: 'Giám sát IoT', path: '/dashboard/garden-staff/monitoring', icon: <Wifi className="w-full h-full" /> },
+  { label: 'Cảnh báo IoT', path: '/dashboard/garden-staff/alerts', icon: <ShieldAlert className="w-full h-full" /> },
+  { label: 'Điều khiển máy bơm', path: '/dashboard/garden-staff/pump-control', icon: <CheckCircle className="w-full h-full" /> },
+  { label: 'Camera', path: '/dashboard/garden-staff/cameras', icon: <Camera className="w-full h-full" /> },
+  { label: 'Lịch sử thu hoạch', path: '/dashboard/garden-staff/harvest-history', icon: <History className="w-full h-full" /> },
 ];
 
 export default function CameraAllPage() {
+  const path = window.location.pathname;
+  const navItems = path.startsWith('/dashboard/customer')
+    ? customerNavItems
+    : path.startsWith('/dashboard/garden-staff')
+    ? gardenStaffNavItems
+    : staffNavItems;
+
   const [cameraSrc, setCameraSrc] = useState("");
-  
+
   const rawApiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
   const BACKEND_URL = rawApiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
   useEffect(() => {
