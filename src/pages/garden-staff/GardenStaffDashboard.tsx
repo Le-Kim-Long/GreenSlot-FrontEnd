@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   ClipboardList, Wifi, CheckCircle, AlertTriangle,
   Loader2, ShieldAlert, Upload, Calendar, Bell, Eye,
-  Image as ImageIcon, X, ExternalLink, Sprout, Zap, History
+  Image as ImageIcon, X, ExternalLink, Sprout, Zap, History, Wrench
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { taskApi, EligibleHarvestRental } from '../../api/taskApi';
@@ -26,6 +26,33 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
   COMPLETED: { label: 'Hoàn thành', cls: 'bg-green-100 text-green-700' },
   CANCELLED: { label: 'Đã hủy (khách tự thu hoạch)', cls: 'bg-gray-100 text-gray-600' },
 };
+
+// Phân loại công việc để hiển thị theo từng nhóm thay vì gộp chung 1 danh sách dài
+type TaskCategoryKey = 'ISSUE' | 'NEW_PLANTING' | 'HARVEST' | 'SERVICE_REQUEST' | 'MAINTENANCE';
+
+const categoryConfig: Record<TaskCategoryKey, { label: string; icon: JSX.Element; badgeCls: string; cardCls: string }> = {
+  ISSUE: { label: 'Báo cáo sự cố', icon: <AlertTriangle className="w-4 h-4" />, badgeCls: 'bg-red-100 text-red-700', cardCls: 'border-red-200 bg-red-50/50' },
+  NEW_PLANTING: { label: 'Cây mới trồng', icon: <Sprout className="w-4 h-4" />, badgeCls: 'bg-green-100 text-green-700', cardCls: 'border-green-200 bg-green-50/50' },
+  HARVEST: { label: 'Thu hoạch', icon: <Zap className="w-4 h-4" />, badgeCls: 'bg-amber-100 text-amber-700', cardCls: 'border-amber-200 bg-amber-50/50' },
+  SERVICE_REQUEST: { label: 'Dịch vụ khách yêu cầu', icon: <ClipboardList className="w-4 h-4" />, badgeCls: 'bg-indigo-100 text-indigo-700', cardCls: 'border-indigo-200 bg-indigo-50/50' },
+  MAINTENANCE: { label: 'Bảo trì & vệ sinh', icon: <Wrench className="w-4 h-4" />, badgeCls: 'bg-gray-100 text-gray-700', cardCls: 'border-gray-200 bg-gray-50/50' },
+};
+
+const CATEGORY_ORDER: TaskCategoryKey[] = ['ISSUE', 'NEW_PLANTING', 'HARVEST', 'SERVICE_REQUEST', 'MAINTENANCE'];
+
+function getTaskCategory(task: GardeningTask): TaskCategoryKey {
+  if (task.taskType === 'HARVEST') return 'HARVEST';
+  if (task.taskType === 'SERVICE_REQUEST') return 'SERVICE_REQUEST';
+  if (task.taskName?.startsWith('ISSUE REPORT:')) return 'ISSUE';
+  if (task.taskName?.startsWith('Kiểm tra & chăm sóc cây mới trồng')) return 'NEW_PLANTING';
+  return 'MAINTENANCE';
+}
+
+function groupTasksByCategory(tasks: GardeningTask[]): { key: TaskCategoryKey; items: GardeningTask[] }[] {
+  return CATEGORY_ORDER
+    .map(key => ({ key, items: tasks.filter(t => getTaskCategory(t) === key) }))
+    .filter(group => group.items.length > 0);
+}
 
 export default function GardenStaffDashboard() {
   const [tasks, setTasks] = useState<GardeningTask[]>([]);
@@ -143,28 +170,38 @@ export default function GardenStaffDashboard() {
       )}
 
       {availableTasks.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+        <div className="mb-6 space-y-4">
+          <h3 className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
             <Bell className="w-4 h-4 text-amber-500" /> Công việc chưa ai nhận ({availableTasks.length})
           </h3>
-          <div className="space-y-2">
-            {availableTasks.map(task => (
-              <div key={task.id} className="card border-amber-200 bg-amber-50/50 flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-bold text-gray-900">{task.taskName}</div>
-                  <div className="text-sm text-gray-500">{task.targetSlotNumber} · {task.taskType}</div>
+          {groupTasksByCategory(availableTasks).map(group => {
+            const cat = categoryConfig[group.key];
+            return (
+              <div key={group.key}>
+                <div className={clsx('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold mb-2', cat.badgeCls)}>
+                  {cat.icon} {cat.label} ({group.items.length})
                 </div>
-                <button
-                  disabled={claimingId === task.id}
-                  onClick={() => handleClaim(task.id)}
-                  className="btn-primary text-xs py-1.5 px-3 whitespace-nowrap"
-                >
-                  {claimingId === task.id ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : null}
-                  Nhận việc
-                </button>
+                <div className="space-y-2">
+                  {group.items.map(task => (
+                    <div key={task.id} className={clsx('card flex items-center justify-between gap-3', cat.cardCls)}>
+                      <div>
+                        <div className="font-bold text-gray-900">{task.taskName}</div>
+                        <div className="text-sm text-gray-500">{task.targetSlotNumber}</div>
+                      </div>
+                      <button
+                        disabled={claimingId === task.id}
+                        onClick={() => handleClaim(task.id)}
+                        className="btn-primary text-xs py-1.5 px-3 whitespace-nowrap"
+                      >
+                        {claimingId === task.id ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : null}
+                        Nhận việc
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
 
@@ -176,8 +213,16 @@ export default function GardenStaffDashboard() {
           <p>Chưa có công việc được phân công</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {tasks.map(task => {
+        <div className="space-y-6">
+          {groupTasksByCategory(tasks).map(group => {
+            const cat = categoryConfig[group.key];
+            return (
+              <div key={group.key}>
+                <div className={clsx('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold mb-2', cat.badgeCls)}>
+                  {cat.icon} {cat.label} ({group.items.length})
+                </div>
+                <div className="space-y-3">
+                  {group.items.map(task => {
             const st = statusConfig[task.status] || { label: task.status, cls: 'badge-gray' };
             return (
               <div key={task.id} className="card shadow-sm border border-gray-100">
@@ -188,7 +233,7 @@ export default function GardenStaffDashboard() {
                       <div className="font-bold text-gray-900 text-base">{task.taskName}</div>
                     </div>
                     <div className="text-xs font-medium text-green-700 mt-0.5">
-                      Ô vườn: {task.targetSlotNumber || 'N/A'} · Loại: {task.taskType}
+                      Ô vườn: {task.targetSlotNumber || 'N/A'}
                     </div>
                     {task.description && (
                       <div className="text-xs text-gray-600 mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
@@ -243,6 +288,10 @@ export default function GardenStaffDashboard() {
                 {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL' && task.status !== 'CANCELLED') && (
                   <TaskActions task={task} onUpdated={fetchTasks} />
                 )}
+              </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
