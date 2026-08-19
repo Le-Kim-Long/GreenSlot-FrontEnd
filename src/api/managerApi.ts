@@ -100,7 +100,7 @@ export interface SlotItem {
 export interface SlotFormData {
   slotNumber: string;
   status: string;
-  price: number;
+  price?: number;
   area: number;
   locationId?: number;
   pillarIds: number[];

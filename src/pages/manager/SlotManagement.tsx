@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Grid3X3, Plus, Edit2, X, Search, DollarSign, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle, Filter } from 'lucide-react';
+import { Grid3X3, Plus, Edit2, X, Search, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle, Filter } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi, type SlotItem, type PillarItem, type LocationItem, type SlotFormData } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
@@ -9,7 +9,7 @@ import clsx from 'clsx';
 const emptyForm: SlotFormData = {
   slotNumber: '',
   status: 'AVAILABLE',
-  price: 500000,
+  price: 0,
   area: 3.0,
   locationId: undefined,
   pillarIds: [],
@@ -56,7 +56,7 @@ export default function SlotManagement() {
     fetchData();
   }, []);
 
-  // Tính toán diện tích yêu cầu, tổng số hốc và tổng giá từ các trụ đã chọn
+  // Tính toán diện tích yêu cầu và tổng số hốc từ các trụ đã chọn
   const selectedPillarsDetails = useMemo(() => {
     return pillars.filter(p => form.pillarIds.includes(p.id));
   }, [pillars, form.pillarIds]);
@@ -72,13 +72,6 @@ export default function SlotManagement() {
     return selectedPillarsDetails.reduce((sum, p) => {
       const holes = p.capacityHoles || (p.pillarType === 'LARGE' ? 48 : p.pillarType === 'SMALL' ? 24 : 36);
       return sum + holes;
-    }, 0);
-  }, [selectedPillarsDetails]);
-
-  const autoCalculatedPrice = useMemo(() => {
-    return selectedPillarsDetails.reduce((sum, p) => {
-      const price = p.price || (p.pillarType === 'LARGE' ? 300000 : p.pillarType === 'SMALL' ? 150000 : 200000);
-      return sum + price;
     }, 0);
   }, [selectedPillarsDetails]);
 
@@ -137,7 +130,7 @@ export default function SlotManagement() {
       setForm({
         slotNumber: freshSlot.slotNumber,
         status: freshSlot.status || 'AVAILABLE',
-        price: freshSlot.price || 500000,
+        price: 0,
         area: freshSlot.area || 3.0,
         locationId: freshSlot.locationId || locations[0]?.id,
         pillarIds: pIds,
@@ -180,13 +173,6 @@ export default function SlotManagement() {
     }));
   };
 
-  const applyAutoPrice = () => {
-    if (autoCalculatedPrice > 0) {
-      setForm(f => ({ ...f, price: autoCalculatedPrice }));
-      setFormError('');
-    }
-  };
-
   const handleSubmit = async () => {
     if (!form.slotNumber?.trim()) {
       setFormError('Vui lòng nhập Mã ô vườn.');
@@ -202,10 +188,6 @@ export default function SlotManagement() {
     }
     if (totalRequiredArea > form.area) {
       setFormError(`Ô vườn diện tích ${form.area} m² không đủ chỗ cho các trụ đã chọn (cần tối thiểu ${totalRequiredArea.toFixed(1)} m² theo quy chuẩn không gian từng loại trụ: Nhỏ 1.0 m², Vừa 1.5 m², Lớn 2.0 m²).`);
-      return;
-    }
-    if (isNaN(form.price) || form.price < 1000 || form.price % 1000 !== 0) {
-      setFormError('Giá thuê không hợp lệ: Tối thiểu 1.000 VNĐ và phải là bội số của 1.000.');
       return;
     }
 
@@ -381,11 +363,9 @@ export default function SlotManagement() {
                 </div>
 
                 <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center text-emerald-700 font-bold text-base">
-                    <DollarSign className="w-4 h-4 -mr-0.5" />
-                    {Number(s.price || 0).toLocaleString('vi-VN')}đ
-                    <span className="text-xs text-gray-400 font-normal ml-0.5">/tháng</span>
-                  </div>
+                  <span className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+                    <Maximize2 className="w-3.5 h-3.5 text-emerald-600" /> Sức chứa: {slotArea} m²
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => openEdit(s)}
@@ -516,7 +496,7 @@ export default function SlotManagement() {
                 {/* Chọn nhiều Trụ */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="label mb-0 font-medium text-gray-700">Chọn các Trụ canh tác *</label>
+                    <label className="label mb-0 font-medium text-gray-700">Chọn các Trụ canh tác mẫu *</label>
                     <span className={clsx(
                       'text-xs font-bold px-2.5 py-1 rounded-lg border',
                       totalRequiredArea > form.area
@@ -576,7 +556,7 @@ export default function SlotManagement() {
                               </div>
                             </div>
                             <span className="text-[11px] font-bold text-emerald-700 shrink-0">
-                              +{price.toLocaleString('vi-VN')}đ
+                              {price.toLocaleString('vi-VN')}đ/th
                             </span>
                           </div>
                         );
@@ -585,52 +565,18 @@ export default function SlotManagement() {
                   )}
                 </div>
 
-                {/* Tự động tính giá và áp dụng */}
-                {selectedPillarsDetails.length > 0 && (
-                  <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs">
-                    <div>
-                      <span className="text-blue-900 font-bold block">Tổng giá trụ gợi ý:</span>
-                      <span className="text-blue-700">{selectedPillarsDetails.length} trụ = <strong>{autoCalculatedPrice.toLocaleString('vi-VN')} VNĐ/tháng</strong> ({totalHoles} hốc rau)</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={applyAutoPrice}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xs transition-colors shrink-0"
-                    >
-                      Áp dụng giá này
-                    </button>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="label font-medium text-gray-700">Giá thuê Ô Vườn (VNĐ/tháng) *</label>
-                    <input
-                      type="number"
-                      min={1000}
-                      step={1000}
-                      className="input rounded-xl font-bold text-green-700"
-                      value={form.price || ''}
-                      onChange={e => {
-                        setForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }));
-                        setFormError('');
-                      }}
-                      placeholder="VD: 500000"
-                    />
-                  </div>
-                  <div>
-                    <label className="label font-medium text-gray-700">Trạng thái</label>
-                    <select
-                      className="input rounded-xl"
-                      value={form.status}
-                      onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
-                    >
-                      <option value="AVAILABLE">Trống (Sẵn sàng)</option>
-                      <option value="RENTED">Đang thuê</option>
-                      <option value="MAINTENANCE">Bảo trì</option>
-                      <option value="INACTIVE">Ngưng hoạt động</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="label font-medium text-gray-700">Trạng thái hoạt động</label>
+                  <select
+                    className="input rounded-xl"
+                    value={form.status}
+                    onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                  >
+                    <option value="AVAILABLE">Trống (Sẵn sàng)</option>
+                    <option value="RENTED">Đang thuê</option>
+                    <option value="MAINTENANCE">Bảo trì</option>
+                    <option value="INACTIVE">Ngưng hoạt động</option>
+                  </select>
                 </div>
 
                 <div>
