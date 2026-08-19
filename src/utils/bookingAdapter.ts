@@ -29,6 +29,8 @@ export function mapRentalHistory(dto: RentalHistoryDTO): BookingHistory {
     slotId: dto.slotId,
     slotNumber: dto.slotNumber,
     pillarCode: dto.pillarCode,
+    pillarCodes: dto.pillarCodes,
+    pillars: dto.pillars,
     locationName: dto.locationName,
     locationAddress: dto.locationAddress,
     startDate: formatDate(dto.startTime),

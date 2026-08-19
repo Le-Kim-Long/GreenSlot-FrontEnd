@@ -178,12 +178,14 @@ export default function GardenDetailPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {slot.pillarCode && (
-                  <div className="p-3 bg-gray-50 rounded-xl">
-                    <div className="text-xs text-gray-500">Trụ</div>
-                    <div className="text-sm font-semibold text-gray-900">{slot.pillarCode}</div>
+                <div className="p-3 bg-gray-50 rounded-xl">
+                  <div className="text-xs text-gray-500">Các trụ bên trong</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {slot.pillarCodes && slot.pillarCodes.length > 0
+                      ? slot.pillarCodes.join(', ')
+                      : (slot.pillarCode || 'Chưa gán')}
                   </div>
-                )}
+                </div>
                 {slot.locationName && (
                   <div className="p-3 bg-gray-50 rounded-xl">
                     <div className="text-xs text-gray-500">Vị trí</div>

@@ -253,7 +253,22 @@ export default function MyRentalsPage() {
                     <Leaf className="w-8 h-8 text-green-400" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold">{rental.slotNumber}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-lg font-bold">{rental.slotNumber}</h3>
+                      {rental.pillars && rental.pillars.length > 0 ? (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {rental.pillars.map(p => (
+                            <span key={p.id || p.pillarCode} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              Trụ: {p.pillarCode}
+                            </span>
+                          ))}
+                        </div>
+                      ) : rental.pillarCode && rental.pillarCode !== 'N/A' ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Trụ: {rental.pillarCode}
+                        </span>
+                      ) : null}
+                    </div>
                     {rental.locationName && <div className="text-sm text-gray-500">{rental.locationName}</div>}
                     <div className="flex flex-wrap gap-2 mt-2">
                       <span className={st.cls}>{st.label}</span>

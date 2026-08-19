@@ -12,12 +12,22 @@ export interface JwtResponse {
   locationName?: string;
 }
 
+export interface PillarInfo {
+  id: number;
+  pillarCode: string;
+  status: string;
+  cameraStreamUrl?: string;
+  cameraStatus?: string;
+}
+
 export interface AvailableSlotDTO {
   id: number;
   slotNumber: string;
   price: number;
   status: string;
   pillarCode: string;
+  pillarCodes?: string[];
+  pillarCount?: number;
   locationName: string;
   locationId?: number;
   locationAddress?: string;
@@ -54,6 +64,8 @@ export interface RentalHistoryDTO {
   slotId: number;
   slotNumber: string;
   pillarCode?: string;
+  pillarCodes?: string[];
+  pillars?: PillarInfo[];
   locationName?: string;
   locationAddress?: string;
   startTime: string;
@@ -72,6 +84,8 @@ export interface BookingHistory {
   slotId: number;
   slotNumber: string;
   pillarCode?: string;
+  pillarCodes?: string[];
+  pillars?: PillarInfo[];
   locationName?: string;
   locationAddress?: string;
   startDate: string;
