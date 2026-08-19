@@ -284,9 +284,15 @@ export default function GardenListPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filtered.map(slot => {
-              const pCount = slot.pillars?.length || slot.pillarCodes?.length || 1;
+              const allPillars = slot.pillars || [];
+              const availablePillars = allPillars.filter(p => !p.isRented && p.status !== 'RENTED');
+              const pCount = allPillars.length || slot.pillarCodes?.length || 1;
+              const availCount = allPillars.length > 0 ? availablePillars.length : pCount;
               const holes = slot.totalHoles || (pCount * 36);
               const slotArea = slot.area || 3.0;
+              const startingPrice = availablePillars.length > 0 
+                ? availablePillars.reduce((sum, p) => sum + (p.price || 0), 0)
+                : (slot.calculatedPillarsPrice || slot.price || 0);
 
               return (
                 <Link
@@ -299,9 +305,14 @@ export default function GardenListPage() {
                       <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center border border-emerald-100 group-hover:scale-105 transition-transform text-emerald-700">
                         <Grid3X3 className="w-6 h-6" />
                       </div>
-                      <span className="text-xs px-3 py-1 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200/60 flex items-center gap-1">
+                      <span className={clsx(
+                        "text-xs px-3 py-1 rounded-full font-bold border flex items-center gap-1",
+                        availCount > 0
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-200/60"
+                          : "bg-gray-100 text-gray-700 border-gray-200"
+                      )}>
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Trống
+                        {availCount > 0 ? `${availCount}/${pCount} trụ trống` : 'Hết trụ'}
                       </span>
                     </div>
 
@@ -310,7 +321,7 @@ export default function GardenListPage() {
                     </h3>
 
                     {/* Badge năng suất & diện tích */}
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
                         🌱 {holes} hốc rau
                       </span>
@@ -332,9 +343,9 @@ export default function GardenListPage() {
                   <div className="p-5 pt-0">
                     <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
                       <div>
-                        <div className="text-[11px] font-medium text-gray-400">Giá thuê chỉ từ</div>
+                        <div className="text-[11px] font-medium text-gray-400">Giá thuê trọn gói từ</div>
                         <div className="text-lg font-black text-emerald-700">
-                          {slot.price.toLocaleString('vi-VN')}đ
+                          {startingPrice.toLocaleString('vi-VN')}đ
                           <span className="text-gray-400 text-xs font-normal">/tháng</span>
                         </div>
                       </div>

@@ -243,6 +243,11 @@ export default function CustomerTreePlanting() {
     selectedRental && selectedTree && growthDays > 0 && growthDays > remainingDays
   );
 
+  const pillarCount = selectedRental?.pillars?.length || selectedRental?.pillarCodes?.length || 1;
+  const estimatedTreeCost = (selectedRental?.pillars && selectedRental.pillars.length > 0)
+    ? selectedRental.pillars.reduce((acc, p) => acc + ((selectedTree?.price || 0) * ((p.capacityHoles || 24) / 24.0)), 0)
+    : (selectedTree?.price || 0) * pillarCount;
+
   // Gửi Form tạo mới (POST /api/tree-planting)
   const handleSubmitCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -260,9 +265,9 @@ export default function CustomerTreePlanting() {
     }
 
     const confirmed = await toast.confirm({
-      title: 'Xác nhận yêu cầu trồng cây',
-      message: `Bạn chắc chắn muốn trồng "${selectedTree?.treeName}" tại ô ${selectedRental?.slotNumber}?\n\nLưu ý: Sau khi được chấp thuận, bạn sẽ KHÔNG thể đổi sang giống cây khác cho đến khi thu hoạch xong.`,
-      confirmText: 'Gửi yêu cầu',
+      title: 'Xác nhận mua giống & yêu cầu gieo trồng',
+      message: `Bạn chắc chắn muốn trồng "${selectedTree?.treeName}" tại ô ${selectedRental?.slotNumber}?\n\nChi phí phôi giống: ${Math.round(estimatedTreeCost).toLocaleString('vi-VN')} VNĐ (${pillarCount} trụ).\n\nSau khi bấm xác nhận, hệ thống sẽ chuyển sang cổng VNPay để bạn thanh toán tiền phôi giống.`,
+      confirmText: 'Thanh toán & Gửi yêu cầu',
       cancelText: 'Hủy bỏ',
       type: 'warning',
     });
@@ -270,12 +275,17 @@ export default function CustomerTreePlanting() {
 
     setIsSubmitting(true);
     try {
-      await treePlantingApi.createRequest({
+      const res = await treePlantingApi.createRequest({
         rentalId: Number(formData.rentalId),
         newTreeId: Number(formData.newTreeId),
         reason: formData.reason.trim(),
         notes: formData.notes?.trim() || '',
       });
+      if (res?.paymentUrl) {
+        toast.success('Đang chuyển tiếp sang cổng thanh toán VNPay...');
+        window.location.href = res.paymentUrl;
+        return;
+      }
       toast.success('🎉 Đã gửi yêu cầu trồng cây thành công! Hệ thống nhà vườn sẽ sớm kiểm tra và phản hồi.');
       setIsCreateModalOpen(false);
       fetchMyRequests();
@@ -597,6 +607,21 @@ export default function CustomerTreePlanting() {
                       </span>
                     </div>
                   )}
+
+                  {/* BẢNG TÍNH TIỀN PHÔI GIỐNG RAU */}
+                  <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/80 text-xs flex justify-between items-center">
+                    <div>
+                      <span className="font-bold text-gray-900 block">Chi phí phôi giống đợt mới:</span>
+                      <span className="text-[11px] text-gray-500">
+                        {selectedTree.treeName} ({pillarCount} trụ canh tác)
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-black text-emerald-700">
+                        {Math.round(estimatedTreeCost).toLocaleString('vi-VN')} VNĐ
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )}
 

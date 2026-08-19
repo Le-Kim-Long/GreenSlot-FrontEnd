@@ -31,6 +31,8 @@ export interface PillarDetail {
   locationName?: string;
   slotId?: number;
   slotNumber?: string;
+  isRented?: boolean;
+  isAvailable?: boolean;
 }
 
 export type PillarInfo = PillarDetail;
@@ -60,6 +62,7 @@ export interface BookingRequest {
   durationInMonths: number;
   startTime: string;
   treeId?: number;
+  pillarIds?: number[];
   isMobile?: boolean;
 }
 

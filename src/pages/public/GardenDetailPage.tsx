@@ -17,6 +17,7 @@ export default function GardenDetailPage() {
   const [slot, setSlot] = useState<AvailableSlot | null>(null);
   const [trees, setTrees] = useState<Tree[]>([]);
   const [selectedTreeId, setSelectedTreeId] = useState<number | null>(null);
+  const [selectedPillarIds, setSelectedPillarIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -69,36 +70,58 @@ export default function GardenDetailPage() {
           const activeTrees = Array.isArray(treesData) ? treesData.filter(t => t.isActive) : [];
           setTrees(activeTrees);
 
-          // Kiểm tra nếu các trụ có gán giống mặc định
-          const firstDefaultTreeId = found.pillars?.find(p => p.defaultTreeId)?.defaultTreeId;
+          // Select all available (unrented) pillars by default
+          const availablePillars = (found.pillars || []).filter(p => !p.isRented && p.status !== 'RENTED');
+          setSelectedPillarIds(availablePillars.map(p => p.id));
+
+          // Check if default tree is set on first available pillar
+          const firstDefaultTreeId = availablePillars.find(p => p.defaultTreeId)?.defaultTreeId;
           if (firstDefaultTreeId) {
             setSelectedTreeId(firstDefaultTreeId);
           } else if (activeTrees.length > 0) {
             setSelectedTreeId(activeTrees[0].id);
           }
         } else {
-          setError('Không tìm thấy ô vườn này hoặc đã được thuê');
+          setError('Không tìm thấy ô vườn này hoặc ô vườn không khả dụng');
         }
       })
       .catch(() => setError('Không thể tải thông tin ô vườn'))
       .finally(() => setLoading(false));
   }, [id]);
 
+  const togglePillar = (pillarId: number) => {
+    setSelectedPillarIds(prev =>
+      prev.includes(pillarId) ? prev.filter(pId => pId !== pillarId) : [...prev, pillarId]
+    );
+    setBookingError('');
+  };
+
   const selectedTree = trees.find(t => t.id === selectedTreeId) || null;
-  const pillarCount = slot ? (slot.pillars?.length || (slot.pillarCodes?.length || 1)) : 1;
-  const slotRentTotal = slot ? slot.price * bookingMonths : 0;
-  const treeCostPerPillar = selectedTree ? selectedTree.price : 0;
-  const treeTotal = treeCostPerPillar * pillarCount;
+  const allSlotPillars = slot?.pillars || [];
+  const chosenPillars = allSlotPillars.filter(p => selectedPillarIds.includes(p.id));
+  const chosenPillarCount = chosenPillars.length;
+
+  // Monthly pillar rent = sum of selected pillars' monthly prices (Slot has no base fee)
+  const pillarsMonthlyPrice = chosenPillars.reduce((acc, p) => acc + (p.price || 0), 0);
+  const slotRentTotal = pillarsMonthlyPrice * bookingMonths;
+
+  // Tree cost scaled by hole capacity (Option 1: price * holes / 24.0)
+  const treeTotal = chosenPillars.reduce((acc, p) => {
+    if (!selectedTree || !selectedTree.price) return acc;
+    const scale = (p.capacityHoles || 24) / 24.0;
+    return acc + (selectedTree.price * scale);
+  }, 0);
+
   const finalPrice = slotRentTotal + treeTotal;
 
-  const totalHoles = slot ? (
-    slot.totalHoles ||
-    (slot.pillars?.reduce((acc, p) => acc + (p.capacityHoles || 36), 0)) ||
-    (pillarCount * 36)
-  ) : 0;
+  const totalHoles = chosenPillars.reduce((acc, p) => acc + (p.capacityHoles || 36), 0);
 
   const handleBook = () => {
     if (!isAuthenticated) { navigate('/login'); return; }
+    if (chosenPillarCount === 0) {
+      setBookingError('Vui lòng tích chọn ít nhất 1 trụ canh tác còn trống để thuê.');
+      return;
+    }
     if (!startDate) { setBookingError('Vui lòng chọn ngày bắt đầu'); return; }
     const chosenDate = new Date(`${startDate}T00:00:00`);
     const today = new Date();
@@ -134,6 +157,7 @@ export default function GardenDetailPage() {
         durationInMonths: bookingMonths,
         startTime: startTimeIso,
         treeId: selectedTreeId || undefined,
+        pillarIds: selectedPillarIds,
       });
       cacheSlotId(slot.slotNumber, slot.id);
       if (result.paymentUrl) {
@@ -207,8 +231,8 @@ export default function GardenDetailPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-400 font-medium">Giá thuê ô vườn</div>
-                  <div className="text-2xl font-black text-emerald-700">{slot.price.toLocaleString('vi-VN')}đ<span className="text-xs text-gray-400 font-normal">/tháng</span></div>
+                  <div className="text-xs text-gray-400 font-medium">Giá thuê trụ đã chọn</div>
+                  <div className="text-2xl font-black text-emerald-700">{pillarsMonthlyPrice.toLocaleString('vi-VN')}đ<span className="text-xs text-gray-400 font-normal">/tháng</span></div>
                 </div>
               </div>
 
@@ -222,9 +246,9 @@ export default function GardenDetailPage() {
                 </div>
                 <div className="p-3.5 bg-emerald-50/70 rounded-2xl border border-emerald-100">
                   <div className="text-[11px] text-emerald-700 flex items-center gap-1 font-medium">
-                    <Layers className="w-3 h-3 text-emerald-600" /> Năng suất
+                    <Layers className="w-3 h-3 text-emerald-600" /> Năng suất đã chọn
                   </div>
-                  <div className="text-sm font-black text-emerald-800 mt-1">{totalHoles} hốc rau</div>
+                  <div className="text-sm font-black text-emerald-800 mt-1">{totalHoles} hốc rau ({chosenPillarCount}/{allSlotPillars.length} trụ)</div>
                 </div>
                 <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
                   <div className="text-[11px] text-gray-400 flex items-center gap-1">
@@ -234,34 +258,74 @@ export default function GardenDetailPage() {
                 </div>
               </div>
 
-              {/* Danh sách chi tiết các trụ bên trong */}
+              {/* Danh sách chi tiết các trụ bên trong kèm Checkbox chọn trụ */}
               <div>
-                <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-emerald-600" /> Cấu hình các Trụ Canh Tác ({pillarCount} trụ)
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-emerald-600" /> Chọn Các Trụ Canh Tác Để Thuê ({chosenPillarCount}/{allSlotPillars.length} trụ)
+                  </h3>
+                  <span className="text-xs text-gray-500">Tích chọn trụ bạn muốn thuê</span>
+                </div>
                 <div className="space-y-2.5">
-                  {slot.pillars && slot.pillars.length > 0 ? (
-                    slot.pillars.map(p => {
+                  {allSlotPillars.length > 0 ? (
+                    allSlotPillars.map(p => {
                       const isLarge = p.pillarType === 'LARGE';
                       const isSmall = p.pillarType === 'SMALL';
+                      const isRented = Boolean(p.isRented || p.status === 'RENTED');
+                      const isChecked = selectedPillarIds.includes(p.id);
+                      const scale = (p.capacityHoles || 24) / 24.0;
+                      const treeCostForP = selectedTree && selectedTree.price ? Math.round(selectedTree.price * scale) : 0;
+
                       return (
-                        <div key={p.id} className="p-3 rounded-2xl border border-gray-100 bg-gray-50/60 flex items-center justify-between">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-gray-900 text-sm">{p.pillarCode}</span>
-                              <span className={clsx(
-                                'text-[10px] px-2 py-0.5 rounded-full font-bold',
-                                isLarge ? 'bg-purple-100 text-purple-700' :
-                                isSmall ? 'bg-emerald-100 text-emerald-700' :
-                                'bg-blue-100 text-blue-700'
-                              )}>
-                                {p.pillarTypeName || (isLarge ? 'Trụ Lớn' : isSmall ? 'Trụ Nhỏ' : 'Trụ Vừa')} ({p.capacityHoles || 36} hốc)
-                              </span>
+                        <div
+                          key={p.id}
+                          onClick={() => !isRented && togglePillar(p.id)}
+                          className={clsx(
+                            "p-3.5 rounded-2xl border transition-all flex items-center justify-between select-none",
+                            isRented
+                              ? "bg-gray-100/80 border-gray-200 opacity-60 cursor-not-allowed"
+                              : isChecked
+                              ? "bg-emerald-50/90 border-emerald-500 shadow-xs cursor-pointer ring-1 ring-emerald-500/20"
+                              : "bg-gray-50/60 border-gray-200 hover:border-emerald-300 hover:bg-white cursor-pointer"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              disabled={isRented}
+                              onChange={() => {}}
+                              className={clsx(
+                                "w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500",
+                                isRented ? "cursor-not-allowed opacity-40" : "cursor-pointer"
+                              )}
+                            />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-gray-900 text-sm">{p.pillarCode}</span>
+                                <span className={clsx(
+                                  'text-[10px] px-2 py-0.5 rounded-full font-bold',
+                                  isLarge ? 'bg-purple-100 text-purple-700' :
+                                  isSmall ? 'bg-emerald-100 text-emerald-700' :
+                                  'bg-blue-100 text-blue-700'
+                                )}>
+                                  {p.pillarTypeName || (isLarge ? 'Trụ Lớn' : isSmall ? 'Trụ Nhỏ' : 'Trụ Vừa')} ({p.capacityHoles || 36} hốc)
+                                </span>
+                                {isRented ? (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-700 flex items-center gap-0.5">
+                                    🔒 Đã được thuê
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-700">
+                                    🟢 Khả dụng
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-gray-500 mt-0.5">
+                                Diện tích: {p.requiredArea || (isLarge ? 2.0 : isSmall ? 1.0 : 1.5)} m² • Thuê: {(p.price || 200000).toLocaleString('vi-VN')} đ/tháng
+                                {selectedTree && ` • Giống rau: ${treeCostForP.toLocaleString('vi-VN')}đ`}
+                              </p>
                             </div>
-                            <p className="text-[11px] text-gray-500 mt-0.5">
-                              Diện tích: {p.requiredArea || (isLarge ? 2.0 : isSmall ? 1.0 : 1.5)} m² • {p.price?.toLocaleString('vi-VN')} đ/tháng
-                              {p.defaultTreeName && ` • Khuyên trồng: ${p.defaultTreeName}`}
-                            </p>
                           </div>
                           <div className="text-right">
                             <span className="text-xs font-bold text-emerald-700">
@@ -287,11 +351,11 @@ export default function GardenDetailPage() {
                   <Sprout className="w-4 h-4 text-green-600" /> Chọn Giống Rau / Cây Trồng Thủy Canh
                 </h3>
                 <span className="text-xs text-green-600 font-medium bg-green-50 px-2.5 py-1 rounded-full">
-                  Đơn giá theo từng loại rau
+                  Tính theo kích thước từng trụ
                 </span>
               </div>
               <p className="text-xs text-gray-500 mb-4">
-                Mỗi loại rau có thời gian sinh trưởng, năng suất và chi phí hạt giống/dinh dưỡng thủy canh khác nhau. Phí giống được tính trên {pillarCount} trụ canh tác của ô vườn.
+                Mỗi loại rau có thời gian sinh trưởng và lượng phôi hạt giống khác nhau theo từng kích thước trụ ({chosenPillarCount} trụ đã chọn).
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -315,7 +379,7 @@ export default function GardenDetailPage() {
                         <div className="font-bold text-xs text-gray-900 truncate">{t.treeName}</div>
                         <div className="text-[11px] text-gray-500 mt-0.5">Thu hoạch: ~{t.harvestDays} ngày</div>
                         <div className="text-xs font-black text-emerald-700 mt-1">
-                          +{t.price?.toLocaleString('vi-VN')}đ / trụ
+                          Từ {t.price?.toLocaleString('vi-VN')}đ (24 hốc)
                         </div>
                       </div>
                       {isSelected && (
@@ -331,7 +395,7 @@ export default function GardenDetailPage() {
           {/* Booking card */}
           <div className="lg:col-span-5">
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 sticky top-24">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Đặt thuê Ô Vườn</h2>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Hóa Đơn Thuê Canh Tác</h2>
 
               <div className="space-y-4 mb-5">
                 <div>
@@ -394,18 +458,18 @@ export default function GardenDetailPage() {
                 {/* Bảng chi tiết tính giá minh bạch */}
                 <div className="bg-emerald-50/80 border border-emerald-100 rounded-2xl p-4 space-y-2.5 text-xs">
                   <div className="flex justify-between text-gray-600">
-                    <span>Thuê ô vườn ({slot.slotNumber}):</span>
-                    <span className="font-semibold text-gray-900">{slot.price.toLocaleString('vi-VN')}đ × {bookingMonths} th = {slotRentTotal.toLocaleString('vi-VN')}đ</span>
+                    <span>Thuê {chosenPillarCount} trụ ({chosenPillars.map(p => p.pillarCode).join(', ') || 'Chưa chọn'}):</span>
+                    <span className="font-semibold text-gray-900">{pillarsMonthlyPrice.toLocaleString('vi-VN')}đ × {bookingMonths} th = {slotRentTotal.toLocaleString('vi-VN')}đ</span>
                   </div>
                   {selectedTree && (
                     <div className="flex justify-between text-gray-600">
                       <span>Cây giống ({selectedTree.treeName}):</span>
-                      <span className="font-semibold text-gray-900">{selectedTree.price.toLocaleString('vi-VN')}đ × {pillarCount} trụ = {treeTotal.toLocaleString('vi-VN')}đ</span>
+                      <span className="font-semibold text-gray-900">{Math.round(treeTotal).toLocaleString('vi-VN')}đ ({chosenPillarCount} trụ)</span>
                     </div>
                   )}
                   <div className="border-t border-emerald-200/80 pt-2 flex justify-between font-black text-sm text-emerald-950">
                     <span>Tổng thanh toán</span>
-                    <span className="text-emerald-700 text-base">{finalPrice.toLocaleString('vi-VN')} VNĐ</span>
+                    <span className="text-emerald-700 text-base">{Math.round(finalPrice).toLocaleString('vi-VN')} VNĐ</span>
                   </div>
                 </div>
               </div>
@@ -437,14 +501,15 @@ export default function GardenDetailPage() {
             <p className="text-gray-500 text-xs mb-5">Hệ thống sẽ chuyển tiếp đến cổng thanh toán VNPay</p>
             
             <div className="space-y-3 mb-6 bg-gray-50 p-4 rounded-2xl border border-gray-100 text-xs">
-              <div className="flex justify-between"><span className="text-gray-500">Mã ô vườn:</span><span className="font-bold text-gray-900">{slot.slotNumber} ({pillarCount} trụ - {totalHoles} hốc)</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Mã ô vườn:</span><span className="font-bold text-gray-900">{slot.slotNumber}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Các trụ đã chọn:</span><span className="font-bold text-emerald-700">{chosenPillars.map(p => p.pillarCode).join(', ')} ({chosenPillarCount} trụ - {totalHoles} hốc)</span></div>
               {slot.locationName && <div className="flex justify-between"><span className="text-gray-500">Cơ sở:</span><span className="font-semibold text-gray-900">{slot.locationName}</span></div>}
               {selectedTree && <div className="flex justify-between"><span className="text-gray-500">Giống rau chọn:</span><span className="font-bold text-emerald-700">{selectedTree.treeName}</span></div>}
               <div className="flex justify-between"><span className="text-gray-500">Ngày bắt đầu:</span><span className="font-semibold text-gray-900">{startDate}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Thời gian thuê:</span><span className="font-semibold text-gray-900">{bookingMonths} tháng</span></div>
               <div className="border-t border-gray-200 pt-2 flex justify-between text-sm font-black text-emerald-900">
                 <span>Tổng chi phí:</span>
-                <span className="text-emerald-700 text-base">{finalPrice.toLocaleString('vi-VN')} VNĐ</span>
+                <span className="text-emerald-700 text-base">{Math.round(finalPrice).toLocaleString('vi-VN')} VNĐ</span>
               </div>
             </div>
 
