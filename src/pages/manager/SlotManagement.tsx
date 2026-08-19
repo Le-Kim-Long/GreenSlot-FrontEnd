@@ -1,115 +1,200 @@
-import { useState, useEffect } from 'react';
-import { Grid3X3, Plus, Edit2, X, Search, DollarSign, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Grid3X3, Plus, Edit2, X, Search, DollarSign, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
-import { managerApi } from '../../api/managerApi';
+import { managerApi, type SlotItem, type PillarItem, type LocationItem, type SlotFormData } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
 import clsx from 'clsx';
 
-interface Slot {
-  id: number;
-  slotNumber: string;
-  status: string;
-  price: number;
-  pillarId: number;
-  imageUrl?: string;
-}
-
-interface Pillar {
-  id: number;
-  pillarCode: string;
-  locationId: number;
-}
-
-const emptyForm = { slotNumber: '', status: 'AVAILABLE', price: 0, pillarId: 0, imageUrl: '' };
+const emptyForm: SlotFormData = {
+  slotNumber: '',
+  status: 'AVAILABLE',
+  price: 500000,
+  area: 3.0,
+  locationId: undefined,
+  pillarIds: [],
+  imageUrl: '',
+};
 
 export default function SlotManagement() {
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [pillars, setPillars] = useState<Pillar[]>([]);
+  const [slots, setSlots] = useState<SlotItem[]>([]);
+  const [pillars, setPillars] = useState<PillarItem[]>([]);
+  const [locations, setLocations] = useState<LocationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [locationFilter, setLocationFilter] = useState<number | 'all'>('all');
+  
   const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState<Slot | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const [editing, setEditing] = useState<SlotItem | null>(null);
+  const [form, setForm] = useState<SlotFormData>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [loadingDetail, setLoadingDetail] = useState(false); // 👉 State loading lấy chi tiết
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState<Slot | null>(null);
+  const [formError, setFormError] = useState('');
+  
+  const [confirmDelete, setConfirmDelete] = useState<SlotItem | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [s, p] = await Promise.all([managerApi.getSlots(), managerApi.getPillars()]);
-      setSlots(s);
-      setPillars(p);
+      const [s, p, l] = await Promise.all([
+        managerApi.getSlots(),
+        managerApi.getPillars(),
+        managerApi.getLocations(),
+      ]);
+      setSlots(Array.isArray(s) ? s : []);
+      setPillars(Array.isArray(p) ? p : []);
+      setLocations(Array.isArray(l) ? l : []);
     } catch {
-      setError('Không thể tải dữ liệu');
+      setError('Không thể tải dữ liệu ô vườn hoặc trụ');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    fetchData();
+  }, []);
 
-  // Mỗi trụ chỉ được gán tối đa 1 ô vườn
-  const occupiedPillarIds = new Set(
-    slots.filter(s => !editing || s.id !== editing.id).map(s => s.pillarId)
-  );
-  const availablePillars = pillars.filter(p => !occupiedPillarIds.has(p.id));
+  // Tính số trụ tối đa theo diện tích (quy chuẩn nông nghiệp thẳng đứng 1.5 m² / trụ)
+  const calcMaxPillars = (area: number): number => {
+    if (!area || area <= 0) return 1;
+    return Math.max(1, Math.floor(area / 1.5));
+  };
+
+  const currentMaxPillars = calcMaxPillars(form.area);
+
+  // Tập hợp các ID trụ đã bị chiếm bởi các ô vườn khác
+  const occupiedPillarIds = useMemo(() => {
+    const set = new Set<number>();
+    slots.forEach(s => {
+      // Nếu đang chỉnh sửa thì bỏ qua các trụ của chính ô vườn đang sửa
+      if (editing && s.id === editing.id) return;
+      if (s.pillarIds && Array.isArray(s.pillarIds)) {
+        s.pillarIds.forEach(id => set.add(id));
+      } else if (s.pillarId) {
+        set.add(s.pillarId);
+      }
+    });
+    return set;
+  }, [slots, editing]);
+
+  // Danh sách các trụ hợp lệ có thể chọn cho ô vườn hiện tại
+  const availablePillarsForForm = useMemo(() => {
+    return pillars.filter(p => {
+      // Nếu ô vườn đã chọn cơ sở -> chỉ hiện trụ thuộc cơ sở đó
+      if (form.locationId && p.locationId && p.locationId !== form.locationId) {
+        return false;
+      }
+      // Loại bỏ các trụ đã thuộc về ô vườn khác
+      return !occupiedPillarIds.has(p.id);
+    });
+  }, [pillars, form.locationId, occupiedPillarIds]);
 
   const openCreate = () => {
-    if (availablePillars.length === 0) {
-      setError('Tất cả các trụ đã có ô vườn. Vui lòng thêm trụ mới trước khi tạo ô vườn.');
-      return;
-    }
     setEditing(null);
     setError('');
-    setForm({ ...emptyForm, pillarId: availablePillars[0]?.id || 0 });
+    setFormError('');
+    const defaultLocId = locations[0]?.id;
+    setForm({
+      ...emptyForm,
+      locationId: defaultLocId,
+      pillarIds: [],
+    });
     setShowForm(true);
   };
 
-  // 👉 Cập nhật openEdit thành async để gọi API getSlot
-  const openEdit = async (s: Slot) => {
+  const openEdit = async (s: SlotItem) => {
     setError('');
-    setEditing(s); // Set tạm để Modal hiện đúng tiêu đề
-    setForm(emptyForm); // Reset form
+    setFormError('');
+    setEditing(s);
     setShowForm(true);
     setLoadingDetail(true);
 
     try {
-      // 💥 Kéo dữ liệu mới nhất của ô vườn từ server
-      const freshSlot = await managerApi.getSlot(s.id);
-      
+      const freshSlot: SlotItem = await managerApi.getSlot(s.id);
       setEditing(freshSlot);
+
+      const pIds = freshSlot.pillarIds && freshSlot.pillarIds.length > 0
+        ? freshSlot.pillarIds
+        : (freshSlot.pillarId ? [freshSlot.pillarId] : []);
+
       setForm({
         slotNumber: freshSlot.slotNumber,
-        status: freshSlot.status,
-        price: freshSlot.price,
-        pillarId: freshSlot.pillarId,
+        status: freshSlot.status || 'AVAILABLE',
+        price: freshSlot.price || 500000,
+        area: freshSlot.area || 3.0,
+        locationId: freshSlot.locationId || locations[0]?.id,
+        pillarIds: pIds,
         imageUrl: freshSlot.imageUrl || '',
       });
-    } catch (err) {
-      setError('Không thể tải thông tin chi tiết mới nhất từ máy chủ.');
-      setShowForm(false); // Đóng modal nếu lỗi
+    } catch {
+      setError('Không thể tải thông tin chi tiết ô vườn từ máy chủ.');
+      setShowForm(false);
     } finally {
       setLoadingDetail(false);
     }
   };
 
+  const togglePillarSelection = (pillarId: number) => {
+    setFormError('');
+    setForm(prev => {
+      const exists = prev.pillarIds.includes(pillarId);
+      if (exists) {
+        return { ...prev, pillarIds: prev.pillarIds.filter(id => id !== pillarId) };
+      } else {
+        const max = calcMaxPillars(prev.area);
+        if (prev.pillarIds.length >= max) {
+          setFormError(`Diện tích ô vườn ${prev.area} m² chỉ chứa tối đa ${max} trụ canh tác (quy chuẩn 1.5 m²/trụ). Vui lòng tăng diện tích ô vườn nếu muốn chọn thêm trụ.`);
+          return prev;
+        }
+        return { ...prev, pillarIds: [...prev.pillarIds, pillarId] };
+      }
+    });
+  };
+
+  const handleAreaChange = (val: number) => {
+    setFormError('');
+    const validArea = Math.max(0.5, Number(val) || 1.0);
+    const newMax = calcMaxPillars(validArea);
+    setForm(prev => {
+      let updatedPillarIds = prev.pillarIds;
+      if (prev.pillarIds.length > newMax) {
+        updatedPillarIds = prev.pillarIds.slice(0, newMax);
+        setFormError(`Diện tích giảm xuống ${validArea} m² (chứa tối đa ${newMax} trụ). Đã tự động giữ lại ${newMax} trụ đầu tiên.`);
+      }
+      return {
+        ...prev,
+        area: validArea,
+        pillarIds: updatedPillarIds,
+      };
+    });
+  };
+
   const handleSubmit = async () => {
-    if (!form.slotNumber?.trim() || !form.pillarId || form.pillarId === 0) {
-      setError('Vui lòng nhập đầy đủ Mã ô vườn và chọn Trụ.');
+    if (!form.slotNumber?.trim()) {
+      setFormError('Vui lòng nhập Mã ô vườn.');
       return;
     }
-    if (occupiedPillarIds.has(form.pillarId)) {
-      setError('Trụ này đã có ô vườn khác. Mỗi trụ chỉ được gán 1 ô vườn.');
+    if (!form.area || form.area <= 0) {
+      setFormError('Diện tích ô vườn phải lớn hơn 0 m².');
+      return;
+    }
+    if (form.pillarIds.length === 0) {
+      setFormError('Vui lòng chọn ít nhất 1 trụ canh tác cho ô vườn này.');
+      return;
+    }
+    const maxAllowed = calcMaxPillars(form.area);
+    if (form.pillarIds.length > maxAllowed) {
+      setFormError(`Ô vườn diện tích ${form.area} m² chỉ được gán tối đa ${maxAllowed} trụ. Bạn đang chọn ${form.pillarIds.length} trụ.`);
       return;
     }
     if (isNaN(form.price) || form.price < 1000 || form.price % 1000 !== 0) {
-      setError('Giá thuê không hợp lệ: Tối thiểu 1.000 VNĐ và phải là bội số của 1.000 (không chấp nhận số lẻ hoặc số âm).');
+      setFormError('Giá thuê không hợp lệ: Tối thiểu 1.000 VNĐ và phải là bội số của 1.000.');
       return;
     }
-    setError('');
+
+    setFormError('');
     setSaving(true);
     try {
       if (editing) {
@@ -119,8 +204,9 @@ export default function SlotManagement() {
       }
       setShowForm(false);
       fetchData();
-    } catch {
-      setError('Lưu thất bại');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setFormError(msg || 'Lưu ô vườn thất bại. Vui lòng kiểm tra lại thông tin.');
     } finally {
       setSaving(false);
     }
@@ -129,18 +215,19 @@ export default function SlotManagement() {
   const handleDelete = async () => {
     if (!confirmDelete) return;
     setDeleting(true);
+    setError('');
     try {
       await managerApi.deleteSlot(confirmDelete.id);
       setConfirmDelete(null);
       fetchData();
-    } catch {
-      setError('Xóa thất bại. Ô vườn có thể đang được thuê.');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg || 'Xóa thất bại. Ô vườn có thể đang có hợp đồng thuê hoạt động.');
+      setConfirmDelete(null);
     } finally {
       setDeleting(false);
     }
   };
-
-  const getPillarCode = (id: number) => pillars.find(p => p.id === id)?.pillarCode || `#${id}`;
 
   const statusConfig: Record<string, { label: string; cls: string }> = {
     AVAILABLE: { label: 'Trống', cls: 'bg-green-100 text-green-700' },
@@ -149,64 +236,157 @@ export default function SlotManagement() {
     INACTIVE: { label: 'Ngưng', cls: 'bg-gray-100 text-gray-600' },
   };
 
-  const filtered = slots.filter(s =>
-    s.slotNumber.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = slots.filter(s => {
+    const matchSearch = s.slotNumber.toLowerCase().includes(search.toLowerCase()) ||
+      (s.locationName && s.locationName.toLowerCase().includes(search.toLowerCase())) ||
+      (s.pillarCodes && s.pillarCodes.some(c => c.toLowerCase().includes(search.toLowerCase())));
+    const matchLoc = locationFilter === 'all' || s.locationId === locationFilter;
+    return matchSearch && matchLoc;
+  });
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Ô vườn">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" placeholder="Tìm ô vườn..." className="input pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+        <div className="flex flex-col sm:flex-row gap-3 flex-1 max-w-2xl">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Tìm theo mã ô, mã trụ, cơ sở..."
+              className="input pl-10"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          {locations.length > 1 && (
+            <select
+              className="input sm:w-48"
+              value={locationFilter}
+              onChange={e => setLocationFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+            >
+              <option value="all">Tất cả cơ sở</option>
+              {locations.map(l => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+          )}
         </div>
-        <button onClick={openCreate} className="btn-primary flex items-center gap-2">
+        <button onClick={openCreate} className="btn-primary flex items-center gap-2 flex-shrink-0">
           <Plus className="w-4 h-4" /> Thêm ô vườn
         </button>
       </div>
 
-      {error && <div className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-5 text-sm flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Đang tải...</div>
+        <div className="text-center py-16 text-gray-400 flex flex-col items-center gap-2">
+          <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+          <span>Đang tải danh sách ô vườn...</span>
+        </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
+        <div className="card text-center py-16 text-gray-400">
           <Grid3X3 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>Chưa có ô vườn nào</p>
+          <p className="font-medium text-gray-600">Không tìm thấy ô vườn nào</p>
+          <p className="text-xs text-gray-400 mt-1">Bấm "Thêm ô vườn" để tạo mới hoặc chọn bộ lọc khác.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map(s => {
             const st = statusConfig[s.status] || statusConfig.INACTIVE;
+            const slotArea = s.area || 3.0;
+            const slotMaxPillars = s.maxPillars || calcMaxPillars(slotArea);
+            const codes = s.pillarCodes && s.pillarCodes.length > 0
+              ? s.pillarCodes
+              : (s.pillarId ? [`#${s.pillarId}`] : []);
+
             return (
-              <div key={s.id} className="card hover:border-green-200 transition-colors overflow-hidden">
-                {s.imageUrl && (
-                  <img
-                    src={formatFirebaseUrl(s.imageUrl)}
-                    alt={s.slotNumber}
-                    className="w-full h-32 object-cover rounded-xl mb-3 -mt-1"
-                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                  />
-                )}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                    <Grid3X3 className="w-5 h-5 text-blue-600" />
+              <div key={s.id} className="card hover:border-green-300 transition-all shadow-sm hover:shadow-md flex flex-col justify-between overflow-hidden">
+                <div>
+                  {s.imageUrl && (
+                    <img
+                      src={formatFirebaseUrl(s.imageUrl)}
+                      alt={s.slotNumber}
+                      className="w-full h-32 object-cover rounded-xl mb-3 -mt-1"
+                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  )}
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700">
+                      <Grid3X3 className="w-5 h-5" />
+                    </div>
+                    <span className={clsx('text-xs px-2.5 py-0.5 rounded-full font-medium', st.cls)}>{st.label}</span>
                   </div>
-                  <span className={clsx('text-xs px-2 py-1 rounded-full font-medium', st.cls)}>{st.label}</span>
+
+                  <h3 className="font-bold text-gray-900 text-lg">{s.slotNumber}</h3>
+                  {s.locationName && (
+                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3 h-3 text-gray-400" /> {s.locationName}
+                    </p>
+                  )}
+
+                  {/* Diện tích & Sức chứa */}
+                  <div className="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-gray-100 text-xs">
+                    <div className="bg-gray-50 p-2 rounded-lg">
+                      <span className="text-gray-400 block">Diện tích</span>
+                      <span className="font-semibold text-gray-700 flex items-center gap-1 mt-0.5">
+                        <Maximize2 className="w-3 h-3 text-emerald-600" /> {slotArea} m²
+                      </span>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded-lg">
+                      <span className="text-gray-400 block">Sức chứa</span>
+                      <span className="font-semibold text-gray-700 flex items-center gap-1 mt-0.5">
+                        <Layers className="w-3 h-3 text-blue-600" /> {codes.length} / {slotMaxPillars} trụ
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Danh sách các Trụ */}
+                  <div className="mt-3">
+                    <span className="text-xs text-gray-400 block mb-1">Các trụ canh tác:</span>
+                    {codes.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {codes.map((code, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200"
+                          >
+                            {code}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">Chưa gán trụ nào</span>
+                    )}
+                  </div>
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1">{s.slotNumber}</h3>
-                <p className="text-sm text-gray-500 mb-2">Trụ: {getPillarCode(s.pillarId)}</p>
-                <div className="flex items-center gap-1 text-green-600 font-bold mb-3">
-                  <DollarSign className="w-4 h-4" />
-                  {s.price.toLocaleString('vi-VN')}đ
-                </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={() => openEdit(s)} className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1">
-                    <Edit2 className="w-3.5 h-3.5" /> Chỉnh sửa
-                  </button>
-                  <button onClick={() => setConfirmDelete(s)} className="text-sm text-red-500 hover:text-red-600 font-medium flex items-center gap-1">
-                    <Trash2 className="w-3.5 h-3.5" /> Xóa
-                  </button>
+
+                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center text-emerald-700 font-bold text-base">
+                    <DollarSign className="w-4 h-4 -mr-0.5" />
+                    {Number(s.price || 0).toLocaleString('vi-VN')}đ
+                    <span className="text-xs text-gray-400 font-normal ml-0.5">/tháng</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => openEdit(s)}
+                      className="p-1.5 hover:bg-emerald-50 text-emerald-700 rounded-lg transition-colors"
+                      title="Chỉnh sửa"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(s)}
+                      className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                      title="Xóa"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -214,19 +394,25 @@ export default function SlotManagement() {
         </div>
       )}
 
+      {/* Modal Xác nhận Xóa */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-6 h-6 text-red-600" />
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+              <Trash2 className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-center mb-2">Xóa ô vườn?</h3>
             <p className="text-sm text-gray-500 text-center mb-6">
-              Bạn có chắc muốn xóa ô vườn <span className="font-semibold text-gray-900">"{confirmDelete.slotNumber}"</span>? Hành động này không thể hoàn tác.
+              Bạn có chắc muốn xóa ô vườn <span className="font-semibold text-gray-900">"{confirmDelete.slotNumber}"</span>? Các trụ bên trong sẽ được tự động giải phóng để dùng cho ô khác.
             </p>
             <div className="flex gap-3">
-              <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl transition-colors">
-                {deleting ? 'Đang xóa...' : 'Xóa'}
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {deleting ? 'Đang xóa...' : 'Xóa ô vườn'}
               </button>
               <button onClick={() => setConfirmDelete(null)} className="flex-1 btn-secondary">Hủy</button>
             </div>
@@ -234,15 +420,17 @@ export default function SlotManagement() {
         </div>
       )}
 
+      {/* Modal Tạo / Sửa Ô Vườn */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-xl font-bold">{editing ? 'Sửa ô vườn' : 'Thêm ô vườn mới'}</h2>
-              <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl my-8">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+              <h2 className="text-xl font-bold text-gray-900">{editing ? 'Sửa ô vườn' : 'Thêm ô vườn mới'}</h2>
+              <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            
-            {/* 👉 UI Loading cho trạng thái tải chi tiết */}
+
             {loadingDetail ? (
               <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
                 <Loader2 className="w-8 h-8 animate-spin text-green-600" />
@@ -250,64 +438,178 @@ export default function SlotManagement() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div>
-                  <label className="label">Mã ô vườn *</label>
-                  <input className="input" value={form.slotNumber} onChange={e => setForm(f => ({ ...f, slotNumber: e.target.value }))} placeholder="VD: S-Q1-01-A" />
+                {formError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-3.5 py-2.5 text-xs flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Mã ô vườn *</label>
+                    <input
+                      className="input"
+                      value={form.slotNumber}
+                      onChange={e => { setForm(f => ({ ...f, slotNumber: e.target.value })); setFormError(''); }}
+                      placeholder="VD: S-Q1-03"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Cơ sở *</label>
+                    <select
+                      className="input"
+                      value={form.locationId || locations[0]?.id}
+                      onChange={e => {
+                        const newLocId = Number(e.target.value);
+                        setForm(f => ({ ...f, locationId: newLocId, pillarIds: [] }));
+                        setFormError('');
+                      }}
+                      disabled={!!editing}
+                    >
+                      {locations.map(l => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="label">Trụ *</label>
-                  <select className="input" value={form.pillarId} onChange={e => setForm(f => ({ ...f, pillarId: Number(e.target.value) }))}>
-                    <option value={0} disabled>Chọn trụ</option>
-                    {availablePillars.map(p => <option key={p.id} value={p.id}>{p.pillarCode}</option>)}
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">Chỉ hiển thị các trụ chưa có ô vườn (1 trụ = 1 ô vườn).</p>
-                </div>
-                <div>
-                  <label className="label flex justify-between items-center">
-                    <span>Giá thuê (VNĐ) *</span>
-                    <span className="text-xs font-normal text-gray-400">Tối thiểu 1.000đ, bội số 1.000đ</span>
-                  </label>
-                  <input 
-                    type="number" 
-                    min={1000} 
-                    step={1000} 
-                    className="input" 
-                    value={form.price || ''} 
-                    onChange={e => setForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }))} 
-                    placeholder="VD: 150000 (150 nghìn VNĐ)"
+
+                {/* Diện tích & Quy tắc sức chứa */}
+                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3.5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                      <Maximize2 className="w-4 h-4 text-emerald-700" /> Diện tích ô vườn (m²) *
+                    </label>
+                    <span className="text-xs font-semibold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                      Sức chứa: Tối đa {currentMaxPillars} trụ
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min={0.5}
+                    step={0.5}
+                    className="input bg-white"
+                    value={form.area || ''}
+                    onChange={e => handleAreaChange(parseFloat(e.target.value))}
+                    placeholder="VD: 5.0 (m²)"
                   />
+                  <p className="text-[11px] text-emerald-700 mt-1.5">
+                    💡 Quy chuẩn: 1.5 m² / 1 trụ khí canh thẳng đứng. Diện tích {form.area || 0} m² cho phép gán tối đa <strong>{currentMaxPillars} trụ</strong>.
+                  </p>
                 </div>
+
+                {/* Chọn nhiều Trụ */}
                 <div>
-                  <label className="label">Trạng thái</label>
-                  <select className="input" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                    <option value="AVAILABLE">Trống</option>
-                    <option value="RENTED">Đang thuê</option>
-                    <option value="MAINTENANCE">Bảo trì</option>
-                    <option value="INACTIVE">Ngưng</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="label mb-0">Chọn các Trụ canh tác *</label>
+                    <span className={clsx(
+                      'text-xs font-semibold px-2 py-0.5 rounded',
+                      form.pillarIds.length > currentMaxPillars
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                    )}>
+                      Đã chọn: {form.pillarIds.length} / {currentMaxPillars} trụ
+                    </span>
+                  </div>
+
+                  {availablePillarsForForm.length === 0 ? (
+                    <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-4 text-center text-xs text-gray-400">
+                      Không có trụ trống nào thuộc cơ sở này. Vui lòng thêm trụ mới ở mục Quản lý Trụ trước.
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-xl p-3 max-h-40 overflow-y-auto space-y-2 bg-gray-50/50">
+                      {availablePillarsForForm.map(p => {
+                        const isSelected = form.pillarIds.includes(p.id);
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => togglePillarSelection(p.id)}
+                            className={clsx(
+                              'flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all border text-xs',
+                              isSelected
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold shadow-xs'
+                                : 'bg-white border-gray-200 hover:border-emerald-200 text-gray-700'
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              {isSelected ? (
+                                <CheckSquare className="w-4 h-4 text-emerald-600" />
+                              ) : (
+                                <Square className="w-4 h-4 text-gray-400" />
+                              )}
+                              <span>Mã trụ: <strong>{p.pillarCode}</strong></span>
+                            </div>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-normal">
+                              {p.status || 'ACTIVE'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="label">Giá thuê (VNĐ/tháng) *</label>
+                    <input
+                      type="number"
+                      min={1000}
+                      step={1000}
+                      className="input"
+                      value={form.price || ''}
+                      onChange={e => {
+                        setForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }));
+                        setFormError('');
+                      }}
+                      placeholder="VD: 500000"
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Trạng thái</label>
+                    <select
+                      className="input"
+                      value={form.status}
+                      onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                    >
+                      <option value="AVAILABLE">Trống (Sẵn sàng)</option>
+                      <option value="RENTED">Đang thuê</option>
+                      <option value="MAINTENANCE">Bảo trì</option>
+                      <option value="INACTIVE">Ngưng hoạt động</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
-                  <label className="label flex items-center gap-1.5"><ImageIcon className="w-3.5 h-3.5" /> Ảnh ô vườn (URL)</label>
+                  <label className="label flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5" /> Ảnh ô vườn (URL)
+                  </label>
                   <input
                     className="input"
                     value={form.imageUrl}
                     onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
-                    placeholder="Dán link ảnh (vd: từ Google Drive, Imgur...)"
+                    placeholder="Dán URL hình ảnh..."
                   />
                   {form.imageUrl && (
                     <img
                       src={formatFirebaseUrl(form.imageUrl)}
                       alt="Xem trước"
-                      className="mt-2 w-full h-32 object-cover rounded-xl border border-gray-100"
+                      className="mt-2 w-full h-28 object-cover rounded-xl border border-gray-100"
                       onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     />
                   )}
                 </div>
-                <div className="flex gap-3 pt-2">
-                  <button onClick={handleSubmit} disabled={saving} className="btn-primary flex-1 py-2.5">
-                    {saving ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}
+
+                <div className="flex gap-3 pt-3 border-t border-gray-100">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={saving}
+                    className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 font-semibold"
+                  >
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                    {saving ? 'Đang lưu...' : editing ? 'Cập nhật ô vườn' : 'Tạo ô vườn'}
                   </button>
-                  <button onClick={() => setShowForm(false)} className="btn-secondary px-4">Hủy</button>
+                  <button onClick={() => setShowForm(false)} className="btn-secondary px-5">Hủy</button>
                 </div>
               </div>
             )}

@@ -49,6 +49,39 @@ export interface LocationItem {
   status?: string;
 }
 
+export interface PillarItem {
+  id: number;
+  pillarCode: string;
+  status: string;
+  locationId: number;
+  slotId?: number;
+}
+
+export interface SlotItem {
+  id: number;
+  slotNumber: string;
+  status: string;
+  price: number;
+  area?: number;
+  maxPillars?: number;
+  locationId?: number;
+  locationName?: string;
+  pillarId?: number;
+  pillarIds?: number[];
+  pillarCodes?: string[];
+  imageUrl?: string;
+}
+
+export interface SlotFormData {
+  slotNumber: string;
+  status: string;
+  price: number;
+  area: number;
+  locationId?: number;
+  pillarIds: number[];
+  imageUrl?: string;
+}
+
 export interface GardenStaff {
   id: number;
   fullName: string;

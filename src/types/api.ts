@@ -24,6 +24,8 @@ export interface AvailableSlotDTO {
   id: number;
   slotNumber: string;
   price: number;
+  area?: number;
+  maxPillars?: number;
   status: string;
   pillarCode: string;
   pillarCodes?: string[];
