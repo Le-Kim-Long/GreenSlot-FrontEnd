@@ -75,6 +75,7 @@ export interface PillarFormData {
   capacityHoles?: number;
   price?: number;
   defaultTreeId?: number | null;
+  slotId?: number | null;
   imageUrl?: string;
 }
 

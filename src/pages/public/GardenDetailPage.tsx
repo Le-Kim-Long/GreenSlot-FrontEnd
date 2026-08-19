@@ -116,6 +116,14 @@ export default function GardenDetailPage() {
 
   const totalHoles = chosenPillars.reduce((acc, p) => acc + (p.capacityHoles || 36), 0);
 
+  const maxRentalDays = bookingMonths * 30;
+  const isHarvestExceeded = Boolean(
+    selectedTree && selectedTree.harvestDays && selectedTree.harvestDays > maxRentalDays
+  );
+  const minRequiredMonths = selectedTree && selectedTree.harvestDays 
+    ? Math.ceil(selectedTree.harvestDays / 30) 
+    : 1;
+
   const handleBook = () => {
     if (!isAuthenticated) { navigate('/login'); return; }
     if (chosenPillarCount === 0) {
@@ -136,6 +144,12 @@ export default function GardenDetailPage() {
     }
     if (bookingMonths > 120) {
       setBookingError('Số tháng thuê không được vượt quá 120 tháng (10 năm).');
+      return;
+    }
+    if (isHarvestExceeded && selectedTree) {
+      setBookingError(
+        `Thời hạn thuê (${bookingMonths} tháng = ${maxRentalDays} ngày) không đủ để giống rau "${selectedTree.treeName}" sinh trưởng và thu hoạch (cần ~${selectedTree.harvestDays} ngày). Vui lòng tăng thời gian thuê lên tối thiểu ${minRequiredMonths} tháng hoặc chọn giống rau ngắn ngày hơn.`
+      );
       return;
     }
     setBookingError('');
@@ -336,8 +350,13 @@ export default function GardenDetailPage() {
                       );
                     })
                   ) : (
-                    <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-xl">
-                      Mã các trụ: <strong>{slot.pillarCodes?.join(', ') || slot.pillarCode}</strong>
+                    <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center">
+                      <p className="text-xs font-semibold text-amber-800">
+                        Chưa có trụ khả dụng tại cơ sở này
+                      </p>
+                      <p className="text-[11px] text-amber-600 mt-1">
+                        Hiện tại chưa có trụ khả dụng hoặc tất cả các trụ đã được thuê. Vui lòng quay lại sau hoặc chọn ô vườn khác.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -361,29 +380,56 @@ export default function GardenDetailPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {trees.map(t => {
                   const isSelected = selectedTreeId === t.id;
+                  const isTreeExceeded = Boolean(t.harvestDays && t.harvestDays > maxRentalDays);
+                  const treeMinMonths = t.harvestDays ? Math.ceil(t.harvestDays / 30) : 1;
+
                   return (
                     <div
                       key={t.id}
-                      onClick={() => setSelectedTreeId(t.id)}
+                      onClick={() => {
+                        setSelectedTreeId(t.id);
+                        if (isTreeExceeded) {
+                          setBookingError(`⚠️ Lưu ý: Giống rau "${t.treeName}" cần ~${t.harvestDays} ngày sinh trưởng. Bạn nên chọn thời gian thuê từ ${treeMinMonths} tháng trở lên.`);
+                        } else {
+                          setBookingError('');
+                        }
+                      }}
                       className={clsx(
                         'p-3.5 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 relative',
                         isSelected
-                          ? 'bg-emerald-50/80 border-emerald-500 shadow-sm ring-1 ring-emerald-500/20'
+                          ? isTreeExceeded
+                            ? 'bg-amber-50/80 border-amber-500 shadow-sm ring-1 ring-amber-500/20'
+                            : 'bg-emerald-50/80 border-emerald-500 shadow-sm ring-1 ring-emerald-500/20'
+                          : isTreeExceeded
+                          ? 'bg-amber-50/30 border-amber-200 hover:bg-amber-50/60'
                           : 'bg-gray-50/50 border-gray-200 hover:border-emerald-200 hover:bg-white'
                       )}
                     >
-                      <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
+                      <div className={clsx(
+                        "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                        isTreeExceeded ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                      )}>
                         <Sprout className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-xs text-gray-900 truncate">{t.treeName}</div>
                         <div className="text-[11px] text-gray-500 mt-0.5">Thu hoạch: ~{t.harvestDays} ngày</div>
+                        {isTreeExceeded && (
+                          <div className="mt-1">
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200 inline-block">
+                              ⚠️ Cần thuê ≥ {treeMinMonths} tháng
+                            </span>
+                          </div>
+                        )}
                         <div className="text-xs font-black text-emerald-700 mt-1">
                           Từ {t.price?.toLocaleString('vi-VN')}đ (24 hốc)
                         </div>
                       </div>
                       {isSelected && (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 absolute top-3 right-3" />
+                        <CheckCircle2 className={clsx(
+                          "w-4 h-4 absolute top-3 right-3",
+                          isTreeExceeded ? "text-amber-600" : "text-emerald-600"
+                        )} />
                       )}
                     </div>
                   );

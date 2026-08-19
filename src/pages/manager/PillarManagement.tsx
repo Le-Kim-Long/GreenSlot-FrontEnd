@@ -31,6 +31,7 @@ export default function PillarManagement() {
   const [pillars, setPillars] = useState<PillarItem[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [trees, setTrees] = useState<Tree[]>([]);
+  const [slots, setSlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
@@ -44,14 +45,16 @@ export default function PillarManagement() {
 
   const fetchData = async () => {
     try {
-      const [p, l, t] = await Promise.all([
+      const [p, l, t, s] = await Promise.all([
         managerApi.getPillars(),
         managerApi.getLocations(),
         treeApi.getTrees().catch(() => []),
+        managerApi.getSlots().catch(() => []),
       ]);
-      setPillars(p);
-      setLocations(l);
-      setTrees(t.filter(item => item.isActive));
+      setPillars(Array.isArray(p) ? p : []);
+      setLocations(Array.isArray(l) ? l : []);
+      setTrees(Array.isArray(t) ? t.filter((item: Tree) => item.isActive) : []);
+      setSlots(Array.isArray(s) ? s : []);
     } catch {
       setError('Không thể tải dữ liệu');
     } finally {
@@ -77,6 +80,7 @@ export default function PillarManagement() {
     setForm({
       ...emptyForm,
       locationId: locations[0]?.id || 0,
+      slotId: null,
     });
     setShowForm(true);
   };
@@ -94,6 +98,7 @@ export default function PillarManagement() {
         pillarCode: freshPillar.pillarCode,
         status: freshPillar.status,
         locationId: freshPillar.locationId,
+        slotId: freshPillar.slotId || null,
         pillarType: freshPillar.pillarType || 'MEDIUM',
         capacityHoles: freshPillar.capacityHoles || 36,
         price: freshPillar.price || 200000,
@@ -372,10 +377,32 @@ export default function PillarManagement() {
 
                 <div>
                   <label className="label font-medium text-gray-700">Cơ sở *</label>
-                  <select className="input rounded-xl" value={form.locationId} onChange={e => setForm(f => ({ ...f, locationId: Number(e.target.value) }))}>
+                  <select className="input rounded-xl" value={form.locationId} onChange={e => setForm(f => ({ ...f, locationId: Number(e.target.value), slotId: null }))}>
                     <option value={0} disabled>Chọn cơ sở</option>
                     {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
+                </div>
+
+                <div>
+                  <label className="label font-medium text-gray-700">Gán vào Ô Vườn Cụ Thể (Tùy chọn)</label>
+                  <select
+                    className="input rounded-xl"
+                    value={form.slotId || 0}
+                    onChange={e => {
+                      const val = Number(e.target.value);
+                      setForm(f => ({ ...f, slotId: val > 0 ? val : null }));
+                    }}
+                  >
+                    <option value={0}>-- Để chung tại cơ sở (Tất cả ô trong cơ sở đều có thể chọn) --</option>
+                    {slots
+                      .filter(s => !form.locationId || s.locationId === form.locationId)
+                      .map(s => (
+                        <option key={s.id} value={s.id}>
+                          Ô {s.slotNumber} (Diện tích {s.area || 3.0} m²)
+                        </option>
+                      ))}
+                  </select>
+                  <p className="text-[11px] text-gray-400 mt-1">Nếu không gán ô cụ thể, trụ sẽ khả dụng chung cho khách hàng khi thuê ô vườn tại cơ sở này.</p>
                 </div>
 
                 <div>
