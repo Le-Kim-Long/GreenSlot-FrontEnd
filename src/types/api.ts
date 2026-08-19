@@ -63,6 +63,9 @@ export interface BookingRequest {
   startTime: string;
   treeId?: number;
   pillarIds?: number[];
+  smallPillarsCount?: number;
+  mediumPillarsCount?: number;
+  largePillarsCount?: number;
   isMobile?: boolean;
 }
 
