@@ -55,6 +55,27 @@ export interface PillarItem {
   status: string;
   locationId: number;
   slotId?: number;
+  slotNumber?: string;
+  pillarType?: 'SMALL' | 'MEDIUM' | 'LARGE' | string;
+  pillarTypeName?: string;
+  capacityHoles?: number;
+  price?: number;
+  requiredArea?: number;
+  defaultTreeId?: number;
+  defaultTreeName?: string;
+  defaultTreePrice?: number;
+  imageUrl?: string;
+}
+
+export interface PillarFormData {
+  pillarCode: string;
+  status: string;
+  locationId: number;
+  pillarType?: string;
+  capacityHoles?: number;
+  price?: number;
+  defaultTreeId?: number | null;
+  imageUrl?: string;
 }
 
 export interface SlotItem {
@@ -69,6 +90,9 @@ export interface SlotItem {
   pillarId?: number;
   pillarIds?: number[];
   pillarCodes?: string[];
+  totalHoles?: number;
+  calculatedPillarsPrice?: number;
+  requiredArea?: number;
   imageUrl?: string;
 }
 

@@ -283,59 +283,69 @@ export default function GardenListPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filtered.map(slot => (
-              <Link
-                key={slot.id}
-                to={`/gardens/slot/${slot.id}`}
-                className="group bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-lg hover:border-green-300 transition-all duration-200 hover:-translate-y-1 flex flex-col justify-between"
-              >
-                <div className="p-5">
-                  <div className="flex items-start justify-between mb-3.5">
-                    <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center border border-green-100 group-hover:scale-105 transition-transform">
-                      <Grid3X3 className="w-6 h-6 text-green-600" />
-                    </div>
-                    <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-green-100 text-green-800 border border-green-200/60 flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Trống
-                    </span>
-                  </div>
+            {filtered.map(slot => {
+              const pCount = slot.pillars?.length || slot.pillarCodes?.length || 1;
+              const holes = slot.totalHoles || (pCount * 36);
+              const slotArea = slot.area || 3.0;
 
-                  <h3 className="font-black text-gray-900 text-lg mb-1 group-hover:text-green-600 transition-colors">
-                    Ô {slot.slotNumber}
-                  </h3>
-
-                  {slot.pillarCode && (
-                    <p className="text-xs font-semibold text-gray-500 mb-2">
-                      Trụ trồng: <span className="text-gray-800">{slot.pillarCode}</span>
-                    </p>
-                  )}
-
-                  {slot.locationName && (
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-3 bg-gray-50 p-2 rounded-xl border border-gray-100">
-                      <MapPin className="w-3.5 h-3.5 text-green-600 shrink-0" />
-                      <span className="font-semibold text-gray-800 truncate" title={slot.locationName}>
-                        {slot.locationName}
+              return (
+                <Link
+                  key={slot.id}
+                  to={`/gardens/slot/${slot.id}`}
+                  className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:border-emerald-300 transition-all duration-200 hover:-translate-y-1 flex flex-col justify-between"
+                >
+                  <div className="p-5">
+                    <div className="flex items-start justify-between mb-3.5">
+                      <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center border border-emerald-100 group-hover:scale-105 transition-transform text-emerald-700">
+                        <Grid3X3 className="w-6 h-6" />
+                      </div>
+                      <span className="text-xs px-3 py-1 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200/60 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Trống
                       </span>
                     </div>
-                  )}
-                </div>
 
-                <div className="p-5 pt-0">
-                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <div>
-                      <div className="text-[11px] font-medium text-gray-400">Giá thuê chỉ từ</div>
-                      <div className="text-lg font-black text-green-600">
-                        {slot.price.toLocaleString('vi-VN')}đ
-                        <span className="text-gray-400 text-xs font-normal">/tháng</span>
-                      </div>
+                    <h3 className="font-black text-gray-900 text-lg mb-1 group-hover:text-emerald-600 transition-colors">
+                      Ô {slot.slotNumber}
+                    </h3>
+
+                    {/* Badge năng suất & diện tích */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        🌱 {holes} hốc rau
+                      </span>
+                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-lg bg-gray-50 text-gray-600 border border-gray-100">
+                        {slotArea} m² ({pCount} trụ)
+                      </span>
                     </div>
-                    <span className="w-8 h-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center group-hover:bg-green-600 group-hover:text-white transition-colors">
-                      <ChevronRight className="w-4 h-4" />
-                    </span>
+
+                    {slot.locationName && (
+                      <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span className="font-semibold text-gray-800 truncate" title={slot.locationName}>
+                          {slot.locationName}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </Link>
-            ))}
+
+                  <div className="p-5 pt-0">
+                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                      <div>
+                        <div className="text-[11px] font-medium text-gray-400">Giá thuê chỉ từ</div>
+                        <div className="text-lg font-black text-emerald-700">
+                          {slot.price.toLocaleString('vi-VN')}đ
+                          <span className="text-gray-400 text-xs font-normal">/tháng</span>
+                        </div>
+                      </div>
+                      <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-xs">
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

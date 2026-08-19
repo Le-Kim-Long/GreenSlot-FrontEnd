@@ -12,13 +12,28 @@ export interface JwtResponse {
   locationName?: string;
 }
 
-export interface PillarInfo {
+export interface PillarDetail {
   id: number;
   pillarCode: string;
   status: string;
+  pillarType?: string;
+  pillarTypeName?: string;
+  capacityHoles?: number;
+  price?: number;
+  requiredArea?: number;
+  defaultTreeId?: number;
+  defaultTreeName?: string;
+  defaultTreePrice?: number;
+  defaultTreeImageUrl?: string;
   cameraStreamUrl?: string;
   cameraStatus?: string;
+  locationId?: number;
+  locationName?: string;
+  slotId?: number;
+  slotNumber?: string;
 }
+
+export type PillarInfo = PillarDetail;
 
 export interface AvailableSlotDTO {
   id: number;
@@ -34,12 +49,18 @@ export interface AvailableSlotDTO {
   locationId?: number;
   locationAddress?: string;
   imageUrl?: string;
+  pillars?: PillarDetail[];
+  totalHoles?: number;
+  calculatedPillarsPrice?: number;
+  calculatedTreesPrice?: number;
 }
 
 export interface BookingRequest {
   slotId: number;
   durationInMonths: number;
   startTime: string;
+  treeId?: number;
+  isMobile?: boolean;
 }
 
 export interface BookingResponse {

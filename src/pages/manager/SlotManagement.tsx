@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Grid3X3, Plus, Edit2, X, Search, DollarSign, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle } from 'lucide-react';
+import { Grid3X3, Plus, Edit2, X, Search, DollarSign, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle, Filter } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi, type SlotItem, type PillarItem, type LocationItem, type SlotFormData } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
@@ -56,19 +56,36 @@ export default function SlotManagement() {
     fetchData();
   }, []);
 
-  // Tính số trụ tối đa theo diện tích (quy chuẩn nông nghiệp thẳng đứng 1.5 m² / trụ)
-  const calcMaxPillars = (area: number): number => {
-    if (!area || area <= 0) return 1;
-    return Math.max(1, Math.floor(area / 1.5));
-  };
+  // Tính toán diện tích yêu cầu, tổng số hốc và tổng giá từ các trụ đã chọn
+  const selectedPillarsDetails = useMemo(() => {
+    return pillars.filter(p => form.pillarIds.includes(p.id));
+  }, [pillars, form.pillarIds]);
 
-  const currentMaxPillars = calcMaxPillars(form.area);
+  const totalRequiredArea = useMemo(() => {
+    return selectedPillarsDetails.reduce((sum, p) => {
+      const req = p.requiredArea || (p.pillarType === 'LARGE' ? 2.0 : p.pillarType === 'SMALL' ? 1.0 : 1.5);
+      return sum + req;
+    }, 0);
+  }, [selectedPillarsDetails]);
+
+  const totalHoles = useMemo(() => {
+    return selectedPillarsDetails.reduce((sum, p) => {
+      const holes = p.capacityHoles || (p.pillarType === 'LARGE' ? 48 : p.pillarType === 'SMALL' ? 24 : 36);
+      return sum + holes;
+    }, 0);
+  }, [selectedPillarsDetails]);
+
+  const autoCalculatedPrice = useMemo(() => {
+    return selectedPillarsDetails.reduce((sum, p) => {
+      const price = p.price || (p.pillarType === 'LARGE' ? 300000 : p.pillarType === 'SMALL' ? 150000 : 200000);
+      return sum + price;
+    }, 0);
+  }, [selectedPillarsDetails]);
 
   // Tập hợp các ID trụ đã bị chiếm bởi các ô vườn khác
   const occupiedPillarIds = useMemo(() => {
     const set = new Set<number>();
     slots.forEach(s => {
-      // Nếu đang chỉnh sửa thì bỏ qua các trụ của chính ô vườn đang sửa
       if (editing && s.id === editing.id) return;
       if (s.pillarIds && Array.isArray(s.pillarIds)) {
         s.pillarIds.forEach(id => set.add(id));
@@ -82,11 +99,9 @@ export default function SlotManagement() {
   // Danh sách các trụ hợp lệ có thể chọn cho ô vườn hiện tại
   const availablePillarsForForm = useMemo(() => {
     return pillars.filter(p => {
-      // Nếu ô vườn đã chọn cơ sở -> chỉ hiện trụ thuộc cơ sở đó
       if (form.locationId && p.locationId && p.locationId !== form.locationId) {
         return false;
       }
-      // Loại bỏ các trụ đã thuộc về ô vườn khác
       return !occupiedPillarIds.has(p.id);
     });
   }, [pillars, form.locationId, occupiedPillarIds]);
@@ -143,9 +158,12 @@ export default function SlotManagement() {
       if (exists) {
         return { ...prev, pillarIds: prev.pillarIds.filter(id => id !== pillarId) };
       } else {
-        const max = calcMaxPillars(prev.area);
-        if (prev.pillarIds.length >= max) {
-          setFormError(`Diện tích ô vườn ${prev.area} m² chỉ chứa tối đa ${max} trụ canh tác (quy chuẩn 1.5 m²/trụ). Vui lòng tăng diện tích ô vườn nếu muốn chọn thêm trụ.`);
+        const pillarToAdd = pillars.find(p => p.id === pillarId);
+        const addedArea = pillarToAdd ? (pillarToAdd.requiredArea || (pillarToAdd.pillarType === 'LARGE' ? 2.0 : pillarToAdd.pillarType === 'SMALL' ? 1.0 : 1.5)) : 1.5;
+        const currentReq = selectedPillarsDetails.reduce((sum, p) => sum + (p.requiredArea || 1.5), 0);
+        
+        if (currentReq + addedArea > prev.area) {
+          setFormError(`Ô vườn diện tích ${prev.area} m² không đủ chỗ cho trụ này (cần tối thiểu ${(currentReq + addedArea).toFixed(1)} m²). Vui lòng tăng diện tích ô vườn nếu muốn chọn thêm.`);
           return prev;
         }
         return { ...prev, pillarIds: [...prev.pillarIds, pillarId] };
@@ -156,19 +174,17 @@ export default function SlotManagement() {
   const handleAreaChange = (val: number) => {
     setFormError('');
     const validArea = Math.max(0.5, Number(val) || 1.0);
-    const newMax = calcMaxPillars(validArea);
-    setForm(prev => {
-      let updatedPillarIds = prev.pillarIds;
-      if (prev.pillarIds.length > newMax) {
-        updatedPillarIds = prev.pillarIds.slice(0, newMax);
-        setFormError(`Diện tích giảm xuống ${validArea} m² (chứa tối đa ${newMax} trụ). Đã tự động giữ lại ${newMax} trụ đầu tiên.`);
-      }
-      return {
-        ...prev,
-        area: validArea,
-        pillarIds: updatedPillarIds,
-      };
-    });
+    setForm(prev => ({
+      ...prev,
+      area: validArea,
+    }));
+  };
+
+  const applyAutoPrice = () => {
+    if (autoCalculatedPrice > 0) {
+      setForm(f => ({ ...f, price: autoCalculatedPrice }));
+      setFormError('');
+    }
   };
 
   const handleSubmit = async () => {
@@ -184,9 +200,8 @@ export default function SlotManagement() {
       setFormError('Vui lòng chọn ít nhất 1 trụ canh tác cho ô vườn này.');
       return;
     }
-    const maxAllowed = calcMaxPillars(form.area);
-    if (form.pillarIds.length > maxAllowed) {
-      setFormError(`Ô vườn diện tích ${form.area} m² chỉ được gán tối đa ${maxAllowed} trụ. Bạn đang chọn ${form.pillarIds.length} trụ.`);
+    if (totalRequiredArea > form.area) {
+      setFormError(`Ô vườn diện tích ${form.area} m² không đủ chỗ cho các trụ đã chọn (cần tối thiểu ${totalRequiredArea.toFixed(1)} m² theo quy chuẩn không gian từng loại trụ: Nhỏ 1.0 m², Vừa 1.5 m², Lớn 2.0 m²).`);
       return;
     }
     if (isNaN(form.price) || form.price < 1000 || form.price % 1000 !== 0) {
@@ -258,20 +273,21 @@ export default function SlotManagement() {
               onChange={e => setSearch(e.target.value)}
             />
           </div>
-          {locations.length > 1 && (
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
             <select
-              className="input sm:w-48"
+              className="input py-2 text-sm"
               value={locationFilter}
               onChange={e => setLocationFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
             >
-              <option value="all">Tất cả cơ sở</option>
+              <option value="all">Tất cả cơ sở ({locations.length})</option>
               {locations.map(l => (
                 <option key={l.id} value={l.id}>{l.name}</option>
               ))}
             </select>
-          )}
+          </div>
         </div>
-        <button onClick={openCreate} className="btn-primary flex items-center gap-2 flex-shrink-0">
+        <button onClick={openCreate} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Thêm ô vườn
         </button>
       </div>
@@ -299,7 +315,6 @@ export default function SlotManagement() {
           {filtered.map(s => {
             const st = statusConfig[s.status] || statusConfig.INACTIVE;
             const slotArea = s.area || 3.0;
-            const slotMaxPillars = s.maxPillars || calcMaxPillars(slotArea);
             const codes = s.pillarCodes && s.pillarCodes.length > 0
               ? s.pillarCodes
               : (s.pillarId ? [`#${s.pillarId}`] : []);
@@ -329,31 +344,31 @@ export default function SlotManagement() {
                     </p>
                   )}
 
-                  {/* Diện tích & Sức chứa */}
+                  {/* Diện tích & Năng suất hốc trồng */}
                   <div className="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-gray-100 text-xs">
-                    <div className="bg-gray-50 p-2 rounded-lg">
-                      <span className="text-gray-400 block">Diện tích</span>
-                      <span className="font-semibold text-gray-700 flex items-center gap-1 mt-0.5">
+                    <div className="bg-gray-50 p-2 rounded-xl">
+                      <span className="text-gray-400 block text-[11px]">Diện tích</span>
+                      <span className="font-semibold text-gray-800 flex items-center gap-1 mt-0.5">
                         <Maximize2 className="w-3 h-3 text-emerald-600" /> {slotArea} m²
                       </span>
                     </div>
-                    <div className="bg-gray-50 p-2 rounded-lg">
-                      <span className="text-gray-400 block">Sức chứa</span>
-                      <span className="font-semibold text-gray-700 flex items-center gap-1 mt-0.5">
-                        <Layers className="w-3 h-3 text-blue-600" /> {codes.length} / {slotMaxPillars} trụ
+                    <div className="bg-emerald-50/60 border border-emerald-100 p-2 rounded-xl">
+                      <span className="text-emerald-700 block text-[11px] font-medium">Năng suất</span>
+                      <span className="font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
+                        <Layers className="w-3 h-3 text-emerald-600" /> {s.totalHoles || (codes.length * 36)} hốc rau
                       </span>
                     </div>
                   </div>
 
                   {/* Danh sách các Trụ */}
                   <div className="mt-3">
-                    <span className="text-xs text-gray-400 block mb-1">Các trụ canh tác:</span>
+                    <span className="text-xs text-gray-400 block mb-1 font-medium">Trụ canh tác ({codes.length} trụ):</span>
                     {codes.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
                         {codes.map((code, idx) => (
                           <span
                             key={idx}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200"
+                            className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-xs"
                           >
                             {code}
                           </span>
@@ -397,8 +412,8 @@ export default function SlotManagement() {
       {/* Modal Xác nhận Xóa */}
       {confirmDelete && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-red-600">
               <Trash2 className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-center mb-2">Xóa ô vườn?</h3>
@@ -409,12 +424,12 @@ export default function SlotManagement() {
               <button
                 onClick={handleDelete}
                 disabled={deleting}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                 {deleting ? 'Đang xóa...' : 'Xóa ô vườn'}
               </button>
-              <button onClick={() => setConfirmDelete(null)} className="flex-1 btn-secondary">Hủy</button>
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 btn-secondary rounded-xl">Hủy</button>
             </div>
           </div>
         </div>
@@ -423,10 +438,10 @@ export default function SlotManagement() {
       {/* Modal Tạo / Sửa Ô Vườn */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl my-8">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl my-8 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900">{editing ? 'Sửa ô vườn' : 'Thêm ô vườn mới'}</h2>
-              <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+              <h2 className="text-xl font-bold text-gray-900">{editing ? 'Sửa Ô Vườn' : 'Thêm Ô Vườn Mới'}</h2>
+              <button onClick={() => setShowForm(false)} className="p-1.5 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-gray-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -439,26 +454,26 @@ export default function SlotManagement() {
             ) : (
               <div className="space-y-4">
                 {formError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-3.5 py-2.5 text-xs flex items-start gap-2">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-3.5 text-xs flex items-start gap-2.5 font-medium leading-relaxed shadow-xs">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-600" />
                     <span>{formError}</span>
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="label">Mã ô vườn *</label>
+                    <label className="label font-medium text-gray-700">Mã ô vườn *</label>
                     <input
-                      className="input"
+                      className="input rounded-xl"
                       value={form.slotNumber}
                       onChange={e => { setForm(f => ({ ...f, slotNumber: e.target.value })); setFormError(''); }}
                       placeholder="VD: S-Q1-03"
                     />
                   </div>
                   <div>
-                    <label className="label">Cơ sở *</label>
+                    <label className="label font-medium text-gray-700">Cơ sở *</label>
                     <select
-                      className="input"
+                      className="input rounded-xl"
                       value={form.locationId || locations[0]?.id}
                       onChange={e => {
                         const newLocId = Number(e.target.value);
@@ -475,72 +490,93 @@ export default function SlotManagement() {
                 </div>
 
                 {/* Diện tích & Quy tắc sức chứa */}
-                <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3.5">
+                <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-4">
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                    <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
                       <Maximize2 className="w-4 h-4 text-emerald-700" /> Diện tích ô vườn (m²) *
                     </label>
-                    <span className="text-xs font-semibold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200">
-                      Sức chứa: Tối đa {currentMaxPillars} trụ
+                    <span className="text-xs font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-200 shadow-xs">
+                      Diện tích hiện tại: {form.area || 0} m²
                     </span>
                   </div>
                   <input
                     type="number"
                     min={0.5}
                     step={0.5}
-                    className="input bg-white"
+                    className="input bg-white rounded-xl font-bold text-gray-900"
                     value={form.area || ''}
                     onChange={e => handleAreaChange(parseFloat(e.target.value))}
                     placeholder="VD: 5.0 (m²)"
                   />
-                  <p className="text-[11px] text-emerald-700 mt-1.5">
-                    💡 Quy chuẩn: 1.5 m² / 1 trụ khí canh thẳng đứng. Diện tích {form.area || 0} m² cho phép gán tối đa <strong>{currentMaxPillars} trụ</strong>.
+                  <p className="text-[11px] text-emerald-800 mt-2 font-medium">
+                    💡 Quy chuẩn không gian theo kích thước từng loại trụ: <strong>Trụ Nhỏ: 1.0 m² (24 hốc)</strong>, <strong>Trụ Vừa: 1.5 m² (36 hốc)</strong>, <strong>Trụ Lớn: 2.0 m² (48 hốc)</strong>.
                   </p>
                 </div>
 
                 {/* Chọn nhiều Trụ */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="label mb-0">Chọn các Trụ canh tác *</label>
+                    <label className="label mb-0 font-medium text-gray-700">Chọn các Trụ canh tác *</label>
                     <span className={clsx(
-                      'text-xs font-semibold px-2 py-0.5 rounded',
-                      form.pillarIds.length > currentMaxPillars
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-blue-50 text-blue-700 border border-blue-200'
+                      'text-xs font-bold px-2.5 py-1 rounded-lg border',
+                      totalRequiredArea > form.area
+                        ? 'bg-red-50 text-red-700 border-red-200'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                     )}>
-                      Đã chọn: {form.pillarIds.length} / {currentMaxPillars} trụ
+                      Cần: {totalRequiredArea.toFixed(1)} / {form.area} m² ({form.pillarIds.length} trụ - {totalHoles} hốc)
                     </span>
                   </div>
 
                   {availablePillarsForForm.length === 0 ? (
-                    <div className="bg-gray-50 border border-dashed border-gray-200 rounded-xl p-4 text-center text-xs text-gray-400">
+                    <div className="bg-gray-50 border border-dashed border-gray-200 rounded-2xl p-4 text-center text-xs text-gray-400">
                       Không có trụ trống nào thuộc cơ sở này. Vui lòng thêm trụ mới ở mục Quản lý Trụ trước.
                     </div>
                   ) : (
-                    <div className="border border-gray-200 rounded-xl p-3 max-h-40 overflow-y-auto space-y-2 bg-gray-50/50">
+                    <div className="border border-gray-200 rounded-2xl p-3 max-h-48 overflow-y-auto space-y-2 bg-gray-50/50">
                       {availablePillarsForForm.map(p => {
                         const isSelected = form.pillarIds.includes(p.id);
+                        const isSmall = p.pillarType === 'SMALL';
+                        const isLarge = p.pillarType === 'LARGE';
+                        const reqArea = p.requiredArea || (isLarge ? 2.0 : isSmall ? 1.0 : 1.5);
+                        const holes = p.capacityHoles || (isLarge ? 48 : isSmall ? 24 : 36);
+                        const price = p.price || (isLarge ? 300000 : isSmall ? 150000 : 200000);
+
                         return (
                           <div
                             key={p.id}
                             onClick={() => togglePillarSelection(p.id)}
                             className={clsx(
-                              'flex items-center justify-between p-2 rounded-lg cursor-pointer transition-all border text-xs',
+                              'flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-all border text-xs',
                               isSelected
-                                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold shadow-xs'
-                                : 'bg-white border-gray-200 hover:border-emerald-200 text-gray-700'
+                                ? 'bg-emerald-50/90 border-emerald-400 text-emerald-950 font-medium shadow-xs ring-1 ring-emerald-500/20'
+                                : 'bg-white border-gray-200 hover:border-emerald-300 text-gray-700'
                             )}
                           >
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2.5">
                               {isSelected ? (
-                                <CheckSquare className="w-4 h-4 text-emerald-600" />
+                                <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
                               ) : (
-                                <Square className="w-4 h-4 text-gray-400" />
+                                <Square className="w-4 h-4 text-gray-400 shrink-0" />
                               )}
-                              <span>Mã trụ: <strong>{p.pillarCode}</strong></span>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-gray-900">{p.pillarCode}</span>
+                                  <span className={clsx(
+                                    'text-[10px] px-1.5 py-0.2 rounded font-semibold',
+                                    isLarge ? 'bg-purple-100 text-purple-700' :
+                                    isSmall ? 'bg-emerald-100 text-emerald-700' :
+                                    'bg-blue-100 text-blue-700'
+                                  )}>
+                                    {p.pillarTypeName || (isLarge ? 'Trụ Lớn' : isSmall ? 'Trụ Nhỏ' : 'Trụ Vừa')} ({holes} hốc)
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-gray-500 mt-0.5">
+                                  Chiếm: {reqArea} m² • {price.toLocaleString('vi-VN')} đ/tháng {p.defaultTreeName && `• Giống: ${p.defaultTreeName}`}
+                                </div>
+                              </div>
                             </div>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-normal">
-                              {p.status || 'ACTIVE'}
+                            <span className="text-[11px] font-bold text-emerald-700 shrink-0">
+                              +{price.toLocaleString('vi-VN')}đ
                             </span>
                           </div>
                         );
@@ -549,14 +585,31 @@ export default function SlotManagement() {
                   )}
                 </div>
 
+                {/* Tự động tính giá và áp dụng */}
+                {selectedPillarsDetails.length > 0 && (
+                  <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs">
+                    <div>
+                      <span className="text-blue-900 font-bold block">Tổng giá trụ gợi ý:</span>
+                      <span className="text-blue-700">{selectedPillarsDetails.length} trụ = <strong>{autoCalculatedPrice.toLocaleString('vi-VN')} VNĐ/tháng</strong> ({totalHoles} hốc rau)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={applyAutoPrice}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xs transition-colors shrink-0"
+                    >
+                      Áp dụng giá này
+                    </button>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="label">Giá thuê (VNĐ/tháng) *</label>
+                    <label className="label font-medium text-gray-700">Giá thuê Ô Vườn (VNĐ/tháng) *</label>
                     <input
                       type="number"
                       min={1000}
                       step={1000}
-                      className="input"
+                      className="input rounded-xl font-bold text-green-700"
                       value={form.price || ''}
                       onChange={e => {
                         setForm(f => ({ ...f, price: Math.max(0, Math.floor(Number(e.target.value))) }));
@@ -566,9 +619,9 @@ export default function SlotManagement() {
                     />
                   </div>
                   <div>
-                    <label className="label">Trạng thái</label>
+                    <label className="label font-medium text-gray-700">Trạng thái</label>
                     <select
-                      className="input"
+                      className="input rounded-xl"
                       value={form.status}
                       onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
                     >
@@ -581,11 +634,11 @@ export default function SlotManagement() {
                 </div>
 
                 <div>
-                  <label className="label flex items-center gap-1.5">
+                  <label className="label flex items-center gap-1.5 font-medium text-gray-700">
                     <ImageIcon className="w-3.5 h-3.5" /> Ảnh ô vườn (URL)
                   </label>
                   <input
-                    className="input"
+                    className="input rounded-xl"
                     value={form.imageUrl}
                     onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
                     placeholder="Dán URL hình ảnh..."
@@ -594,7 +647,7 @@ export default function SlotManagement() {
                     <img
                       src={formatFirebaseUrl(form.imageUrl)}
                       alt="Xem trước"
-                      className="mt-2 w-full h-28 object-cover rounded-xl border border-gray-100"
+                      className="mt-2 w-full h-28 object-cover rounded-2xl border border-gray-100"
                       onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                     />
                   )}
@@ -603,11 +656,11 @@ export default function SlotManagement() {
                 <div className="flex gap-3 pt-3 border-t border-gray-100">
                   <button
                     onClick={handleSubmit}
-                    disabled={saving}
-                    className="btn-primary flex-1 py-2.5 flex items-center justify-center gap-2 font-semibold"
+                    disabled={saving || totalRequiredArea > form.area}
+                    className="btn-primary flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold shadow-md disabled:opacity-50"
                   >
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    {saving ? 'Đang lưu...' : editing ? 'Cập nhật ô vườn' : 'Tạo ô vườn'}
+                    {saving ? 'Đang lưu...' : editing ? 'Cập nhật Ô Vườn' : 'Tạo Ô Vườn'}
                   </button>
                   <button onClick={() => setShowForm(false)} className="btn-secondary px-5">Hủy</button>
                 </div>
