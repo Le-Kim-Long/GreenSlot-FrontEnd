@@ -510,6 +510,14 @@ export default function GardenDetailPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Ghi chú điều phối lắp đặt bổ sung */}
+                <div className="mt-4 p-3 bg-blue-50/80 border border-blue-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-blue-800">
+                  <span className="text-base shrink-0">💡</span>
+                  <div>
+                    <strong className="font-semibold">Lắp đặt linh hoạt theo nhu cầu:</strong> Bạn có thể tùy ý chọn loại trụ theo diện tích ô. Kỹ thuật viên của cơ sở sẽ tự động nhận lệnh kiểm tra và lắp đặt hoàn thiện đầy đủ {totalPillarsCount} trụ trước ngày bạn bắt đầu canh tác.
+                  </div>
+                </div>
               </div>
             </div>
 
