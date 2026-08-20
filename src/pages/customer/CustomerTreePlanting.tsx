@@ -6,7 +6,7 @@ import { treeApi, Tree } from '../../api/treeApi';
 import {
   Sprout, Plus, Search, Filter, Clock, CheckCircle2,
   XCircle, Calendar, FileText, MapPin, ChevronDown,
-  X, Eye, Loader2, AlertCircle, AlertTriangle, Sparkles
+  X, Eye, Loader2, AlertCircle, AlertTriangle, Sparkles, CreditCard
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useToast } from '../../context/ToastContext';
@@ -520,13 +520,24 @@ export default function CustomerTreePlanting() {
                     {getStatusBadge(item.status)}
                   </td>
                   <td className="p-4 text-right">
-                    <button
-                      onClick={() => setSelectedDetail(item)}
-                      className="px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:text-green-700 bg-gray-100/80 hover:bg-green-100/50 rounded-xl transition inline-flex items-center gap-1.5 border border-transparent hover:border-green-200"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Xem chi tiết</span>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      {item.status === 'PENDING' && item.paymentUrl && (
+                        <a
+                          href={item.paymentUrl}
+                          className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition inline-flex items-center gap-1 shadow-sm shadow-blue-600/20"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          <span>Thanh toán VNPay</span>
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setSelectedDetail(item)}
+                        className="px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:text-green-700 bg-gray-100/80 hover:bg-green-100/50 rounded-xl transition inline-flex items-center gap-1.5 border border-transparent hover:border-green-200"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Xem chi tiết</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -852,7 +863,16 @@ export default function CustomerTreePlanting() {
                 )}
               </div>
 
-              <div className="flex justify-end pt-3 border-t border-gray-100">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
+                {selectedDetail.status === 'PENDING' && selectedDetail.paymentUrl && (
+                  <a
+                    href={selectedDetail.paymentUrl}
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-sm inline-flex items-center gap-1.5 shadow-md shadow-blue-600/20"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Thanh toán VNPay ({selectedDetail.amount ? Math.round(Number(selectedDetail.amount)).toLocaleString('vi-VN') + ' VNĐ' : 'Thanh toán'})</span>
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedDetail(null)}
