@@ -21,7 +21,7 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <DashboardLayout navItems={navItems} title="Dashboard Admin">
+    <DashboardLayout navItems={navItems} title="Bảng điều khiển Quản trị viên">
       <div className="bg-gradient-to-r from-slate-800 to-slate-700 rounded-2xl p-6 text-white mb-6">
         <h2 className="text-xl font-bold mb-1">Bảng điều khiển GreenSlot</h2>
         <p className="text-slate-300 text-sm">Quản trị người dùng và hệ thống</p>

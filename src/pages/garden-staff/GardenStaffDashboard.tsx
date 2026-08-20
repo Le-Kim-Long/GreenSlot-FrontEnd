@@ -118,7 +118,7 @@ export default function GardenStaffDashboard() {
   const inProgress = tasks.filter(t => t.status === 'IN_PROGRESS');
 
   return (
-    <DashboardLayout navItems={navItems} title="Nhân viên vườn">
+    <DashboardLayout navItems={navItems} title="Bảng điều khiển Nhân viên vườn">
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="card"><div className="text-2xl font-black">{tasks.length}</div><div className="text-sm text-gray-500">Tổng công việc</div></div>
         <div className="card"><div className="text-2xl font-black text-yellow-600">{pending.length}</div><div className="text-sm text-gray-500">Chờ xử lý</div></div>
