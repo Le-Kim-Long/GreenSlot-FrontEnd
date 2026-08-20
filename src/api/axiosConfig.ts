@@ -4,7 +4,7 @@ function resolveApiBaseUrl(): string {
   if (import.meta.env.DEV) {
     return '/api';
   }
-  const raw = import.meta.env.VITE_API_URL || 'https://greenslot-backend.onrender.com/api';
+  const raw = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
   const trimmed = raw.replace(/\/$/, '');
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
 }
