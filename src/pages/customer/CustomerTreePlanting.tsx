@@ -253,6 +253,12 @@ export default function CustomerTreePlanting() {
   const isGrowthExceeded = Boolean(
     selectedRental && selectedTree && growthDays > 0 && growthDays > remainingDays
   );
+  const isPillarSelectionRequired = Boolean(
+    selectedRental?.treeName &&
+    !formData.targetPillarId &&
+    selectedRental?.pillars &&
+    selectedRental.pillars.length > 0
+  );
 
   const selectedPillar = selectedRental?.pillars?.find(p => p.id === Number(formData.targetPillarId));
   const pillarCount = selectedPillar ? 1 : (selectedRental?.pillars?.length || selectedRental?.pillarCodes?.length || 1);
@@ -686,6 +692,19 @@ export default function CustomerTreePlanting() {
                 </div>
               )}
 
+              {/* HƯỚNG DẪN CHỌN TRỤ NẾU Ô ĐÃ CÓ CÂY */}
+              {isPillarSelectionRequired && (
+                <div className="bg-blue-50 border border-blue-200 p-3.5 rounded-2xl text-xs text-blue-900 flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold mb-0.5">Ô vườn này đang có giống cây ({selectedRental?.treeName})</p>
+                    <p>
+                      Để trồng thêm rau mới trên trụ còn trống, vui lòng chọn một <strong>Trụ canh tác cụ thể</strong> ở mục chọn trụ phía trên.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
                   Lý Do Trồng <span className="text-red-500">*</span>
@@ -737,7 +756,7 @@ export default function CustomerTreePlanting() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || isGrowthExceeded || !formData.rentalId || !formData.newTreeId || !formData.reason.trim()}
+                  disabled={isSubmitting || isGrowthExceeded || isPillarSelectionRequired || !formData.rentalId || !formData.newTreeId || !formData.reason.trim()}
                   className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition shadow-md shadow-green-600/20 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sprout className="w-4 h-4" />}
