@@ -62,6 +62,7 @@ export interface BookingRequest {
   durationInMonths: number;
   startTime: string;
   treeId?: number;
+  treeIds?: number[];
   pillarIds?: number[];
   smallPillarsCount?: number;
   mediumPillarsCount?: number;
