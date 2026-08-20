@@ -386,58 +386,63 @@ export default function IoTMonitoringPage() {
         </div>
       )}
 
-      {/* THẺ SỐ LIỆU TỨC THỜI (REALTIME GAUGES) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
-        {sensorTypes.map(st => {
-          const val = latestData[st.name];
-          return (
-            <div key={st.name} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
-              <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center mb-3 text-green-600">
-                {SENSOR_ICONS[st.name] || <Activity className="w-5 h-5" />}
-              </div>
-              <div className="text-2xl font-black text-gray-900 tracking-tight">
-                {val != null ? `${val} ${st.unit}` : '--'}
-              </div>
-              <div className="text-xs text-gray-500 font-medium mt-0.5">{st.description || st.name}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* BIỂU ĐỒ DIỄN BIẾN THEO THỜI GIAN (LINE CHARTS) */}
-      {chartData.length > 0 && sensorTypes.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-          {sensorTypes.map((st, index) => (
-            <div key={st.name} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-4 text-gray-800 font-bold text-sm">
-                <div style={{ color: CHART_COLORS[index % CHART_COLORS.length] }}>
-                  {SENSOR_ICONS[st.name] || <Activity className="w-5 h-5" />}
+      {/* THẺ SỐ LIỆU TỨC THỜI & BIỂU ĐỒ DIỄN BIẾN (CHỈ HIỂN THỊ KHI XEM RIÊNG TỪNG TRỤ) */}
+      {!isAllView && (
+        <>
+          {/* THẺ SỐ LIỆU TỨC THỜI (REALTIME GAUGES) */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
+            {sensorTypes.map(st => {
+              const val = latestData[st.name];
+              return (
+                <div key={st.name} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
+                  <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center mb-3 text-green-600">
+                    {SENSOR_ICONS[st.name] || <Activity className="w-5 h-5" />}
+                  </div>
+                  <div className="text-2xl font-black text-gray-900 tracking-tight">
+                    {val != null ? `${val} ${st.unit}` : '--'}
+                  </div>
+                  <div className="text-xs text-gray-500 font-medium mt-0.5">{st.description || st.name}</div>
                 </div>
-                <span>{st.description || st.name} ({st.unit})</span>
-              </div>
-              
-              <ResponsiveContainer width="100%" height={190}>
-                <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                  <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#9ca3af' }} tickMargin={8} />
-                  <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey={st.name} 
-                    name={st.description || st.name} 
-                    stroke={CHART_COLORS[index % CHART_COLORS.length]} 
-                    strokeWidth={2.5}
-                    dot={{ r: 2 }}
-                    activeDot={{ r: 5 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              );
+            })}
+          </div>
+
+          {/* BIỂU ĐỒ DIỄN BIẾN THEO THỜI GIAN (LINE CHARTS) */}
+          {chartData.length > 0 && sensorTypes.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+              {sensorTypes.map((st, index) => (
+                <div key={st.name} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4 text-gray-800 font-bold text-sm">
+                    <div style={{ color: CHART_COLORS[index % CHART_COLORS.length] }}>
+                      {SENSOR_ICONS[st.name] || <Activity className="w-5 h-5" />}
+                    </div>
+                    <span>{st.description || st.name} ({st.unit})</span>
+                  </div>
+                  
+                  <ResponsiveContainer width="100%" height={190}>
+                    <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#9ca3af' }} tickMargin={8} />
+                      <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey={st.name} 
+                        name={st.description || st.name} 
+                        stroke={CHART_COLORS[index % CHART_COLORS.length]} 
+                        strokeWidth={2.5}
+                        dot={{ r: 2 }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {!loading && sensorTypes.length === 0 && (

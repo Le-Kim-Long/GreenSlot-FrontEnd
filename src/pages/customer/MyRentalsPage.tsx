@@ -255,19 +255,34 @@ export default function MyRentalsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-lg font-bold">{rental.slotNumber}</h3>
-                      {rental.pillars && rental.pillars.length > 0 ? (
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {rental.pillars.map(p => (
-                            <span key={p.id || p.pillarCode} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Trụ: {p.pillarCode}
+                      {(() => {
+                        const uniquePillars = Array.from(
+                          new Map(
+                            (rental.pillars || [])
+                              .filter(p => p.pillarCode && p.pillarCode !== 'arduino-greenhouse-01')
+                              .map(p => [p.pillarCode, p])
+                          ).values()
+                        );
+                        if (uniquePillars.length > 0) {
+                          return (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {uniquePillars.map(p => (
+                                <span key={p.id || p.pillarCode} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Trụ: {p.pillarCode}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        }
+                        if (rental.pillarCode && rental.pillarCode !== 'N/A' && rental.pillarCode !== 'arduino-greenhouse-01') {
+                          return (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              Trụ: {rental.pillarCode}
                             </span>
-                          ))}
-                        </div>
-                      ) : rental.pillarCode && rental.pillarCode !== 'N/A' ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Trụ: {rental.pillarCode}
-                        </span>
-                      ) : null}
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                     {rental.locationName && <div className="text-sm text-gray-500">{rental.locationName}</div>}
                     <div className="flex flex-wrap gap-2 mt-2">
@@ -322,6 +337,12 @@ export default function MyRentalsPage() {
                   <div className="flex flex-row sm:flex-col gap-2 h-fit">
                     {rental.status === 'ACTIVE' && (
                       <>
+                        <Link
+                          to={`/dashboard/customer/tree-planting?rentalId=${rental.id}`}
+                          className="btn-primary text-xs flex items-center gap-1 h-fit shadow-xs bg-emerald-600 hover:bg-emerald-700"
+                        >
+                          <Sprout className="w-3.5 h-3.5" /> Trồng cây mới
+                        </Link>
                         <button onClick={() => { setExtendModal(rental); setExtendMonths(1); }}
                           className="btn-outline-green text-xs flex items-center gap-1 h-fit">
                           <Clock className="w-3.5 h-3.5" /> Gia hạn

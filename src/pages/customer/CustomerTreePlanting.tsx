@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { treePlantingApi, TreePlantingRequest, CreateTreePlantingPayload } from '../../api/TreePlantingApi';
 import { bookingApi, BookingHistory } from '../../api/bookingApi';
 import { treeApi, Tree } from '../../api/treeApi';
@@ -172,6 +173,8 @@ export default function CustomerTreePlanting() {
   // Modal Xem chi tiết & Phản hồi từ Admin
   const [selectedDetail, setSelectedDetail] = useState<TreePlantingRequest | null>(null);
 
+  const [searchParams] = useSearchParams();
+
   const fetchMyRequests = async () => {
     setIsLoading(true);
     try {
@@ -191,8 +194,8 @@ export default function CustomerTreePlanting() {
         bookingApi.getHistory().catch(() => []),
         treeApi.getTrees().catch(() => []),
       ]);
-      // Chỉ cho chọn ô đất đang trống (chưa có cây) — không cho gửi yêu cầu thay thế cây đang trồng
-      setMyRentals((rentalsData || []).filter((r: BookingHistory) => r.status === 'ACTIVE' && !r.treeName));
+      // Cho phép chọn tất cả hợp đồng đang hoạt động (ACTIVE)
+      setMyRentals((rentalsData || []).filter((r: BookingHistory) => r.status === 'ACTIVE'));
       setAvailableTrees((treesData || []).filter((t: Tree) => t.isActive !== false));
     } catch (err) {
       console.error('Lỗi khi tải hợp đồng/cây trồng:', err);
@@ -205,6 +208,14 @@ export default function CustomerTreePlanting() {
     fetchMyRequests();
     fetchResources();
   }, []);
+
+  useEffect(() => {
+    const paramRentalId = searchParams.get('rentalId');
+    if (paramRentalId) {
+      setFormData(prev => ({ ...prev, rentalId: Number(paramRentalId) as any }));
+      setIsCreateModalOpen(true);
+    }
+  }, [searchParams]);
 
   const handleOpenCreate = () => {
     setFormData(initialForm);
@@ -554,9 +565,10 @@ export default function CustomerTreePlanting() {
                     <option value="">-- Chọn ô đất --</option>
                     {myRentals.map(rental => {
                       const days = getRemainingDays(rental.endTime || rental.endDate);
+                      const treeStatus = rental.treeName ? `Đang có: ${rental.treeName}` : 'Ô đang trống';
                       return (
                         <option key={rental.id} value={rental.id}>
-                          HĐ #{rental.id} - Ô {rental.slotNumber} ({rental.locationName || 'Vườn'}) [Còn {days} ngày]
+                          HĐ #{rental.id} - Ô {rental.slotNumber} ({rental.locationName || 'Vườn'}) • {treeStatus} [Còn {days} ngày]
                         </option>
                       );
                     })}
@@ -565,8 +577,8 @@ export default function CustomerTreePlanting() {
                     {loadingResources
                       ? 'Đang tải danh sách hợp đồng...'
                       : myRentals.length === 0
-                      ? 'Bạn chưa có ô đất trống nào (ô đã có cây thì phải đợi thu hoạch mới trồng cây khác được)'
-                      : 'Chỉ hiện ô đất đang thuê và chưa trồng cây'}
+                      ? 'Bạn chưa có hợp đồng thuê ô vườn nào đang hoạt động.'
+                      : 'Chọn ô vườn bạn muốn đăng ký trồng cây hoặc gieo vụ mới.'}
                   </span>
                 </div>
 
