@@ -243,10 +243,22 @@ export default function CustomerTreePlanting() {
     selectedRental && selectedTree && growthDays > 0 && growthDays > remainingDays
   );
 
-  const pillarCount = selectedRental?.pillars?.length || selectedRental?.pillarCodes?.length || 1;
-  const estimatedTreeCost = (selectedRental?.pillars && selectedRental.pillars.length > 0)
-    ? selectedRental.pillars.reduce((acc, p) => acc + ((selectedTree?.price || 0) * ((p.capacityHoles || 24) / 24.0)), 0)
-    : (selectedTree?.price || 0) * pillarCount;
+  const selectedPillar = selectedRental?.pillars?.find(p => p.id === Number(formData.targetPillarId));
+  const pillarCount = selectedPillar ? 1 : (selectedRental?.pillars?.length || selectedRental?.pillarCodes?.length || 1);
+
+  let estimatedTreeCost = 0;
+  if (selectedTree?.price) {
+    if (selectedPillar) {
+      estimatedTreeCost = selectedTree.price * ((selectedPillar.capacityHoles || 24) / 24.0);
+    } else if (selectedRental?.pillars && selectedRental.pillars.length > 0) {
+      estimatedTreeCost = selectedRental.pillars.reduce(
+        (acc, p) => acc + (selectedTree.price * ((p.capacityHoles || 24) / 24.0)),
+        0
+      );
+    } else {
+      estimatedTreeCost = selectedTree.price * pillarCount;
+    }
+  }
 
   // Gửi Form tạo mới (POST /api/tree-planting)
   const handleSubmitCreate = async (e: React.FormEvent) => {
@@ -264,9 +276,13 @@ export default function CustomerTreePlanting() {
       return;
     }
 
+    const targetDesc = selectedPillar 
+      ? `Trụ ${selectedPillar.pillarCode} (${selectedPillar.capacityHoles || 24} hốc)` 
+      : `Toàn bộ ${pillarCount} trụ trong ô`;
+
     const confirmed = await toast.confirm({
       title: 'Xác nhận mua giống & yêu cầu gieo trồng',
-      message: `Bạn chắc chắn muốn trồng "${selectedTree?.treeName}" tại ô ${selectedRental?.slotNumber}?\n\nChi phí phôi giống: ${Math.round(estimatedTreeCost).toLocaleString('vi-VN')} VNĐ (${pillarCount} trụ).\n\nSau khi bấm xác nhận, hệ thống sẽ chuyển sang cổng VNPay để bạn thanh toán tiền phôi giống.`,
+      message: `Bạn chắc chắn muốn trồng "${selectedTree?.treeName}" tại ô ${selectedRental?.slotNumber} (${targetDesc})?\n\nChi phí phôi giống: ${Math.round(estimatedTreeCost).toLocaleString('vi-VN')} VNĐ.\n\nSau khi bấm xác nhận, hệ thống sẽ chuyển sang cổng VNPay để bạn thanh toán tiền phôi giống.`,
       confirmText: 'Thanh toán & Gửi yêu cầu',
       cancelText: 'Hủy bỏ',
       type: 'warning',
@@ -280,6 +296,7 @@ export default function CustomerTreePlanting() {
         newTreeId: Number(formData.newTreeId),
         reason: formData.reason.trim(),
         notes: formData.notes?.trim() || '',
+        targetPillarId: formData.targetPillarId ? Number(formData.targetPillarId) : undefined,
       });
       if (res?.paymentUrl) {
         toast.success('Đang chuyển tiếp sang cổng thanh toán VNPay...');
@@ -449,9 +466,18 @@ export default function CustomerTreePlanting() {
               filteredRequests.map(item => (
                 <tr key={item.id} className="hover:bg-green-50/30 transition duration-150">
                   <td className="p-4">
-                    <div className="flex items-center gap-2 font-bold text-gray-900">
+                    <div className="flex items-center gap-2 font-bold text-gray-900 flex-wrap">
                       <MapPin className="w-4 h-4 text-green-600 shrink-0" />
                       <span>{item.slotNumber || `Slot #${item.rentalId}`}</span>
+                      {item.targetPillarCode ? (
+                        <span className="text-[11px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-md border border-emerald-200">
+                          Trụ {item.targetPillarCode}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] bg-gray-100 text-gray-600 font-medium px-1.5 py-0.5 rounded">
+                          Tất cả trụ
+                        </span>
+                      )}
                     </div>
                     <span className="text-xs text-gray-400 mt-0.5 block">Hợp đồng ID: {item.rentalId}</span>
                   </td>
@@ -560,6 +586,29 @@ export default function CustomerTreePlanting() {
                       : 'Danh mục giống cây tại nhà vườn'}
                   </span>
                 </div>
+
+                {selectedRental && selectedRental.pillars && selectedRental.pillars.length > 0 && (
+                  <div className="sm:col-span-2">
+                    <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
+                      Chọn Trụ Canh Tác (Tỷ Lệ 1-1 Theo Từng Trụ)
+                    </label>
+                    <select
+                      className="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition font-medium text-gray-800 bg-white"
+                      value={formData.targetPillarId || ''}
+                      onChange={e => setFormData({ ...formData, targetPillarId: e.target.value ? Number(e.target.value) : undefined })}
+                    >
+                      <option value="">-- Toàn bộ các trụ trong ô ({selectedRental.pillars.length} trụ) --</option>
+                      {selectedRental.pillars.map((pillar) => (
+                        <option key={pillar.id} value={pillar.id}>
+                          Trụ {pillar.pillarCode} ({pillar.pillarType || 'Trụ'} - {pillar.capacityHoles || 24} hốc)
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[11px] text-gray-400 mt-1 block">
+                      Bạn có thể chọn gieo giống cây này cho 1 trụ cụ thể (tỷ lệ 1-1) hoặc gieo đồng loạt cho tất cả các trụ đã thuê.
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* THÔNG TIN SO SÁNH THỜI GIAN & CẢNH BÁO THỜI HẠN */}
@@ -613,7 +662,7 @@ export default function CustomerTreePlanting() {
                     <div>
                       <span className="font-bold text-gray-900 block">Chi phí phôi giống đợt mới:</span>
                       <span className="text-[11px] text-gray-500">
-                        {selectedTree.treeName} ({pillarCount} trụ canh tác)
+                        {selectedTree.treeName} ({selectedPillar ? `Trụ ${selectedPillar.pillarCode} - ${selectedPillar.capacityHoles || 24} hốc` : `${pillarCount} trụ canh tác`})
                       </span>
                     </div>
                     <div className="text-right">
@@ -714,7 +763,10 @@ export default function CustomerTreePlanting() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Vị trí ô đất:</span>
-                  <span className="font-bold text-gray-900">{selectedDetail.slotNumber} (Rental ID: {selectedDetail.rentalId})</span>
+                  <span className="font-bold text-gray-900">
+                    {selectedDetail.slotNumber} (HĐ #{selectedDetail.rentalId})
+                    {selectedDetail.targetPillarCode && ` - Trụ ${selectedDetail.targetPillarCode}`}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Giống cây mong muốn:</span>

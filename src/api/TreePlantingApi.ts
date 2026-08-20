@@ -19,6 +19,8 @@ export interface TreePlantingRequest {
   processedByName?: string;
   amount?: number;
   paymentUrl?: string;
+  targetPillarId?: number;
+  targetPillarCode?: string;
 }
 
 // 👉 Interface cho request body gửi lên khi tạo mới (Theo đúng Swagger POST)
@@ -28,6 +30,7 @@ export interface CreateTreePlantingPayload {
   reason: string;
   notes?: string;
   isMobile?: boolean;
+  targetPillarId?: number;
 }
 
 export const treePlantingApi = {
