@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Wifi, TrendingUp, Thermometer, Droplets, Sun, Activity, CheckCircle, RefreshCw, Cpu, Layers, ArrowLeft, Eye } from 'lucide-react';
+import { Wifi, TrendingUp, Thermometer, Droplets, Sun, Activity, CheckCircle, RefreshCw, Cpu, ArrowLeft, Eye } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
@@ -255,37 +255,6 @@ export default function IoTMonitoringPage() {
           </div>
         </div>
       </div>
-
-      {/* NÚT CHUYỂN NHANH TỪNG TRỤ (QUICK PILLS) */}
-      {availablePillars.length > 0 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-thin">
-          <button
-            onClick={() => setSelectedDeviceId('arduino-greenhouse-01')}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition flex items-center gap-1.5 ${
-              isAllView
-                ? 'bg-green-600 text-white shadow-md shadow-green-600/20'
-                : 'bg-white text-gray-600 border border-gray-200 hover:border-green-400'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Tất cả ({availablePillars.length} trụ)</span>
-          </button>
-          {availablePillars.map((p) => (
-            <button
-              key={p.pillarCode}
-              onClick={() => setSelectedDeviceId(p.pillarCode)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition flex items-center gap-1.5 ${
-                selectedDeviceId === p.pillarCode
-                  ? 'bg-green-600 text-white shadow-md shadow-green-600/20'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-green-400'
-              }`}
-            >
-              <span>Trụ {p.pillarCode}</span>
-              <span className="text-[10px] opacity-75 font-normal">({p.slotNumber})</span>
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* 💥 BẢNG TỔNG HỢP SỐ LIỆU CỦA TỪNG TRỤ (HIỂN THỊ KHI CHỌN "TẤT CẢ") */}
       {isAllView && availablePillars.length > 0 && (
