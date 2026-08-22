@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import { managerApi, LocationDashboardMetrics, RevenueAnalyticsResponse } from '../../api/managerApi';
+import { taskApi } from '../../api/taskApi';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
 
@@ -59,7 +60,7 @@ export default function StaffDashboard() {
           user?.role === 'manager'
             ? managerApi.getRevenue('2024-01-01', new Date().toISOString().split('T')[0]).catch(() => ({ totalRevenue: 0 }))
             : Promise.resolve({ totalRevenue: 0 }),
-          Promise.resolve([]),
+          taskApi.getAllTasks().catch(() => []),
         ]);
         setStats({
           locations: locations.length,
