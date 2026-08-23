@@ -189,6 +189,8 @@ export default function TaskManagement() {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       setDetailFile(file);
+      // Giải phóng Blob URL cũ trước khi tạo mới để tránh rò rỉ bộ nhớ
+      if (detailFilePreview) URL.revokeObjectURL(detailFilePreview);
       setDetailFilePreview(URL.createObjectURL(file));
     }
   };

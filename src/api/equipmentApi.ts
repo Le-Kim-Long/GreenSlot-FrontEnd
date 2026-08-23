@@ -1,4 +1,5 @@
 import apiClient from './axiosConfig';
+import { compressImage } from '../utils/imageCompression';
 
 export interface Equipment {
   id: number;
@@ -41,9 +42,11 @@ export const equipmentApi = {
     apiClient.delete(`/equipment/${id}`).then(r => r.data),
 
   // Upload ảnh thiết bị lên Firebase Storage qua ImageController (không phải EquipmentController)
-  uploadImage: (file: File): Promise<EquipmentImageUploadResponse> => {
+  uploadImage: async (file: File): Promise<EquipmentImageUploadResponse> => {
+    // Nén ảnh trước khi upload để tránh vượt giới hạn Vercel proxy 4.5MB
+    const compressed = await compressImage(file);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', compressed);
     return apiClient.post('/images/upload/equipment', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

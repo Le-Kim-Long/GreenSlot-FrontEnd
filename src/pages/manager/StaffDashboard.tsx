@@ -135,7 +135,7 @@ export default function StaffDashboard() {
   ];
 
   return (
-    <DashboardLayout navItems={staffNavItems} title="Dashboard Quản lý">
+    <DashboardLayout navItems={staffNavItems} title="Bảng điều khiển Quản lý">
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-6 text-white mb-6 shadow-md">
         <h2 className="text-xl font-bold mb-1">Xin chào, {user?.name}!</h2>

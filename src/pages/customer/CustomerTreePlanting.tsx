@@ -6,7 +6,7 @@ import { treeApi, Tree } from '../../api/treeApi';
 import {
   Sprout, Plus, Search, Filter, Clock, CheckCircle2,
   XCircle, Calendar, FileText, MapPin, ChevronDown,
-  X, Eye, Loader2, AlertCircle, AlertTriangle, Sparkles
+  X, Eye, Loader2, AlertCircle, AlertTriangle, Sparkles, CreditCard
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useToast } from '../../context/ToastContext';
@@ -252,6 +252,12 @@ export default function CustomerTreePlanting() {
   const growthDays = selectedTree?.harvestDays || 0;
   const isGrowthExceeded = Boolean(
     selectedRental && selectedTree && growthDays > 0 && growthDays > remainingDays
+  );
+  const isPillarSelectionRequired = Boolean(
+    selectedRental?.treeName &&
+    !formData.targetPillarId &&
+    selectedRental?.pillars &&
+    selectedRental.pillars.length > 0
   );
 
   const selectedPillar = selectedRental?.pillars?.find(p => p.id === Number(formData.targetPillarId));
@@ -514,13 +520,24 @@ export default function CustomerTreePlanting() {
                     {getStatusBadge(item.status)}
                   </td>
                   <td className="p-4 text-right">
-                    <button
-                      onClick={() => setSelectedDetail(item)}
-                      className="px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:text-green-700 bg-gray-100/80 hover:bg-green-100/50 rounded-xl transition inline-flex items-center gap-1.5 border border-transparent hover:border-green-200"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Xem chi tiết</span>
-                    </button>
+                    <div className="flex items-center justify-end gap-2">
+                      {item.status === 'PENDING' && item.paymentUrl && (
+                        <a
+                          href={item.paymentUrl}
+                          className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition inline-flex items-center gap-1 shadow-sm shadow-blue-600/20"
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          <span>Thanh toán VNPay</span>
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setSelectedDetail(item)}
+                        className="px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:text-green-700 bg-gray-100/80 hover:bg-green-100/50 rounded-xl transition inline-flex items-center gap-1.5 border border-transparent hover:border-green-200"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Xem chi tiết</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -686,6 +703,19 @@ export default function CustomerTreePlanting() {
                 </div>
               )}
 
+              {/* HƯỚNG DẪN CHỌN TRỤ NẾU Ô ĐÃ CÓ CÂY */}
+              {isPillarSelectionRequired && (
+                <div className="bg-blue-50 border border-blue-200 p-3.5 rounded-2xl text-xs text-blue-900 flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold mb-0.5">Ô vườn này đang có giống cây ({selectedRental?.treeName})</p>
+                    <p>
+                      Để trồng thêm rau mới trên trụ còn trống, vui lòng chọn một <strong>Trụ canh tác cụ thể</strong> ở mục chọn trụ phía trên.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
                   Lý Do Trồng <span className="text-red-500">*</span>
@@ -737,7 +767,7 @@ export default function CustomerTreePlanting() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || isGrowthExceeded || !formData.rentalId || !formData.newTreeId || !formData.reason.trim()}
+                  disabled={isSubmitting || isGrowthExceeded || isPillarSelectionRequired || !formData.rentalId || !formData.newTreeId || !formData.reason.trim()}
                   className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition shadow-md shadow-green-600/20 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sprout className="w-4 h-4" />}
@@ -833,7 +863,16 @@ export default function CustomerTreePlanting() {
                 )}
               </div>
 
-              <div className="flex justify-end pt-3 border-t border-gray-100">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
+                {selectedDetail.status === 'PENDING' && selectedDetail.paymentUrl && (
+                  <a
+                    href={selectedDetail.paymentUrl}
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-sm inline-flex items-center gap-1.5 shadow-md shadow-blue-600/20"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>Thanh toán VNPay ({selectedDetail.amount ? Math.round(Number(selectedDetail.amount)).toLocaleString('vi-VN') + ' VNĐ' : 'Thanh toán'})</span>
+                  </a>
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedDetail(null)}

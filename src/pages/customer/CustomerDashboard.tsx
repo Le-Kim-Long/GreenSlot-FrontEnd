@@ -43,7 +43,7 @@ export default function CustomerDashboard() {
   };
 
   return (
-    <DashboardLayout navItems={navItems} title="Dashboard Khách hàng">
+    <DashboardLayout navItems={navItems} title="Bảng điều khiển Khách hàng">
       <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-2xl p-6 text-white mb-6">
         <h2 className="text-xl font-bold mb-1">Xin chào, {user?.name}!</h2>
         <p className="text-green-100 text-sm">

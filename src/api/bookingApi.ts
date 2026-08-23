@@ -37,6 +37,16 @@ export const bookingApi = {
   // Khách chọn tự thu hoạch (SELF) hay nhờ nhân viên thu hoạch giúp (STAFF)
   recordHarvestDecision: (rentalId: number, decision: 'SELF' | 'STAFF'): Promise<void> =>
     apiClient.post(`/bookings/${rentalId}/harvest-decision`, { decision }).then(() => undefined),
+
+  downloadPaymentInvoice: async (paymentId: number): Promise<Blob> => {
+    const res = await apiClient.get(`/invoices/payment/${paymentId}`, { responseType: 'blob' });
+    return res.data;
+  },
+
+  downloadRentalInvoice: async (rentalId: number): Promise<Blob> => {
+    const res = await apiClient.get(`/invoices/rental/${rentalId}`, { responseType: 'blob' });
+    return res.data;
+  },
 };
 
 export type { BookingHistory, BookingRequest, BookingResponse, ExtensionRequest };

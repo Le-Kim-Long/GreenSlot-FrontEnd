@@ -1,5 +1,6 @@
 import apiClient from './axiosConfig';
 import { uploadEvidenceImageToFirebase } from '../utils/firebaseUpload';
+import { compressImage } from '../utils/imageCompression';
 import type {
   GardeningTask,
   IssueReport,
@@ -74,9 +75,10 @@ export const taskApi = {
       console.warn('Firebase client upload failed, falling back to Backend API:', err);
     }
 
-    // 2. Fallback sang API Backend (/api/images/upload/evidence)
+    // 2. Fallback sang API Backend (/api/images/upload/evidence) — nén trước khi upload qua Vercel proxy
+    const compressed = await compressImage(file);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', compressed);
     return apiClient.post('/images/upload/evidence', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
