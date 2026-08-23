@@ -134,6 +134,9 @@ export default function ProfilePage() {
         ? formatFirebaseUrl(serverPublicUrl) 
         : localPreviewUrl;
       
+      // Giải phóng Blob URL cũ sau khi đã có URL từ server
+      if (finalUrl !== localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+      
       setAvatarUrl(finalUrl);
       updateUser({ avatar: finalUrl, avatarUrl: finalUrl, imageUrl: finalUrl } as any);
 

@@ -11,6 +11,19 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/analytics', 'firebase/storage'],
+            'vendor-charts': ['recharts'],
+            'vendor-icons': ['lucide-react'],
+            'vendor-http': ['axios'],
+          },
+        },
+      },
+    },
     server: {
       proxy: {
         '/api': {

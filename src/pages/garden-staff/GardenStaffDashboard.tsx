@@ -384,6 +384,8 @@ function TaskActions({
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       setEvidenceFile(file);
+      // Giải phóng Blob URL cũ trước khi tạo mới để tránh rò rỉ bộ nhớ
+      if (evidencePreview) URL.revokeObjectURL(evidencePreview);
       const url = URL.createObjectURL(file);
       setEvidencePreview(url);
     }
@@ -404,6 +406,8 @@ function TaskActions({
       
       setShowComplete(false);
       setEvidenceFile(null);
+      // Giải phóng Blob URL sau khi upload thành công
+      if (evidencePreview) URL.revokeObjectURL(evidencePreview);
       setEvidencePreview(null);
       onUpdated();
     } catch (error) {

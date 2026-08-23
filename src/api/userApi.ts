@@ -1,4 +1,5 @@
 import apiClient from './axiosConfig';
+import { compressImage } from '../utils/imageCompression';
 
 // 👉 Bổ sung các trường avatar để không cần dùng "as any" khi gọi API update profile
 export interface UserProfileUpdateDTO {
@@ -32,8 +33,10 @@ export const userApi = {
 export const imageApi = {
   // 👉 Khớp 100% với Hình 1: POST /api/images/upload/avatar
   uploadAvatar: async (file: File): Promise<string> => {
+    // Nén ảnh trước khi upload để tránh vượt giới hạn Vercel proxy 4.5MB
+    const compressed = await compressImage(file);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', compressed);
 
     const response = await apiClient.post('/images/upload/avatar', formData, {
       headers: {
