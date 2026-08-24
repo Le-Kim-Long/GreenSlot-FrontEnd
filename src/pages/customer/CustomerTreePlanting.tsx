@@ -314,7 +314,9 @@ export default function CustomerTreePlanting() {
         reason: formData.reason.trim(),
         notes: formData.notes?.trim() || '',
         targetPillarId: formData.targetPillarId ? Number(formData.targetPillarId) : undefined,
+        redirectUrl: `${window.location.origin}/payment-result`,
       });
+
       if (res?.paymentUrl) {
         toast.success('Đang chuyển tiếp sang cổng thanh toán VNPay...');
         window.location.href = res.paymentUrl;

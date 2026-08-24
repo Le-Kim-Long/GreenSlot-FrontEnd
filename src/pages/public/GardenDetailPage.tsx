@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Grid3X3, ChevronLeft, Calendar, Loader2, Sprout, Layers, Maximize2, MapPin, CheckCircle2, Sparkles } from 'lucide-react';
+import { Grid3X3, ChevronLeft, Calendar, Loader2, Sprout, Layers, Maximize2, MapPin, CheckCircle2, Sparkles, ChevronDown } from 'lucide-react';
+
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import { bookingApi, type AvailableSlot } from '../../api/bookingApi';
@@ -140,20 +141,27 @@ export default function GardenDetailPage() {
   const pillarsMonthlyPrice = (smallCount * 150000) + (mediumCount * 200000) + (largeCount * 300000);
   const slotRentTotal = pillarsMonthlyPrice * bookingMonths;
 
-  // Danh sách từng trụ cụ thể được chọn trong ô
+  // Danh sách từng trụ cụ thể được chọn trong ô (sắp xếp đồng bộ theo chuẩn BE: SMALL -> MEDIUM -> LARGE)
   const chosenPillars = useMemo<ChosenPillarItem[]>(() => {
     const list: ChosenPillarItem[] = [];
-    for (let i = 1; i <= largeCount; i++) {
-      list.push({ id: `L-${i}`, type: 'LARGE', typeName: 'Trụ Lớn', holes: 48, label: `Trụ Lớn #${i} (48 hốc)` });
+    for (let i = 1; i <= smallCount; i++) {
+      list.push({ id: `S-${i}`, type: 'SMALL', typeName: 'Trụ Nhỏ', holes: 24, label: `Trụ Nhỏ #${i} (24 hốc)` });
     }
     for (let i = 1; i <= mediumCount; i++) {
       list.push({ id: `M-${i}`, type: 'MEDIUM', typeName: 'Trụ Vừa', holes: 36, label: `Trụ Vừa #${i} (36 hốc)` });
     }
-    for (let i = 1; i <= smallCount; i++) {
-      list.push({ id: `S-${i}`, type: 'SMALL', typeName: 'Trụ Nhỏ', holes: 24, label: `Trụ Nhỏ #${i} (24 hốc)` });
+    for (let i = 1; i <= largeCount; i++) {
+      list.push({ id: `L-${i}`, type: 'LARGE', typeName: 'Trụ Lớn', holes: 48, label: `Trụ Lớn #${i} (48 hốc)` });
     }
     return list;
-  }, [largeCount, mediumCount, smallCount]);
+  }, [smallCount, mediumCount, largeCount]);
+
+  // Tự động chuyển về tab ALL nếu trụ đang chọn không còn tồn tại
+  useEffect(() => {
+    if (activePillarTab !== 'ALL' && !chosenPillars.some(p => p.id === activePillarTab)) {
+      setActivePillarTab('ALL');
+    }
+  }, [chosenPillars, activePillarTab]);
 
   // Đồng bộ lựa chọn giống cây cho các trụ mới thêm
   useEffect(() => {
@@ -180,17 +188,26 @@ export default function GardenDetailPage() {
       });
       setPillarTreeSelections(newMap);
     } else {
-      setPillarTreeSelections(prev => ({
-        ...prev,
-        [activePillarTab]: treeId
-      }));
+      setPillarTreeSelections(prev => {
+        const next = {
+          ...prev,
+          [activePillarTab]: treeId
+        };
+        // Nếu tất cả các trụ đều đang chọn cùng 1 giống này, cập nhật selectedTreeId
+        const allSame = chosenPillars.length > 0 && chosenPillars.every(p => next[p.id] === treeId);
+        if (allSame) {
+          setSelectedTreeId(treeId);
+        }
+        return next;
+      });
     }
   };
 
   const getTreeForPillar = (pillarId: string) => {
-    const tId = pillarTreeSelections[pillarId] || selectedTreeId;
-    return trees.find(t => t.id === tId) || null;
+    const tId = pillarTreeSelections[pillarId] || selectedTreeId || (trees[0]?.id ?? 1);
+    return trees.find(t => t.id === tId) || trees[0] || null;
   };
+
 
   // Chi tiết giống cây và giá phôi giống theo từng trụ
   const pillarTreeDetails = useMemo(() => {
@@ -305,7 +322,9 @@ export default function GardenDetailPage() {
         smallPillarsCount: smallCount,
         mediumPillarsCount: mediumCount,
         largePillarsCount: largeCount,
+        redirectUrl: `${window.location.origin}/payment-result`,
       });
+
       cacheSlotId(slot.slotNumber, slot.id);
       if (result.paymentUrl) {
         window.location.href = result.paymentUrl;
@@ -629,56 +648,47 @@ export default function GardenDetailPage() {
                 Bạn có thể gán 1 giống chung cho toàn bộ {totalPillarsCount} trụ hoặc chọn từng giống rau khác nhau cho từng trụ ({totalHoles} hốc).
               </p>
 
-              {/* BỘ CHỌN TRỤ ĐỂ GÁN GIỐNG CÂY (TABS) */}
-              {totalPillarsCount > 1 && (
-                <div className="mb-4 p-3 bg-gray-50/80 rounded-2xl border border-gray-200/60">
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2 flex items-center justify-between">
-                    <span>Chọn trụ để tùy chỉnh giống cây:</span>
-                    <span className="text-[10px] text-green-700 font-medium lowercase">
-                      {activePillarTab === 'ALL' ? 'đang chọn cho tất cả' : `đang tùy chỉnh ${chosenPillars.find(p => p.id === activePillarTab)?.label}`}
+              {/* BỘ CHỌN PHẠM VI TRỤ GÁN GIỐNG CÂY (DROPDOWN) */}
+              {totalPillarsCount > 0 && (
+                <div className="mb-5 p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200/80">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2.5">
+                    <label htmlFor="pillar-select" className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                      <Layers className="w-4 h-4 text-emerald-600" />
+                      <span>Chọn trụ để tùy chỉnh giống rau:</span>
+                    </label>
+                    <span className="text-[11px] text-emerald-800 font-medium bg-emerald-100 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
+                      {activePillarTab === 'ALL'
+                        ? `Áp dụng chung cho cả ${totalPillarsCount} trụ (${totalHoles} hốc)`
+                        : `Tùy chỉnh riêng cho ${chosenPillars.find(p => p.id === activePillarTab)?.label}`}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                    <button
-                      type="button"
-                      onClick={() => setActivePillarTab('ALL')}
-                      className={clsx(
-                        "px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5",
-                        activePillarTab === 'ALL'
-                          ? "bg-green-600 text-white shadow-xs"
-                          : "bg-white text-gray-700 border border-gray-200 hover:border-green-300"
-                      )}
+                  <div className="relative">
+                    <select
+                      id="pillar-select"
+                      value={activePillarTab}
+                      onChange={(e) => setActivePillarTab(e.target.value)}
+                      className="w-full bg-white border border-emerald-300 text-gray-900 text-sm font-semibold rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 block p-3 pr-10 shadow-xs appearance-none cursor-pointer transition-all hover:border-emerald-400"
                     >
-                      <Layers className="w-3.5 h-3.5" />
-                      <span>Áp dụng tất cả ({totalPillarsCount} trụ)</span>
-                    </button>
-
-                    {chosenPillars.map(p => {
-                      const assignedTree = getTreeForPillar(p.id);
-                      const isTabActive = activePillarTab === p.id;
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          onClick={() => setActivePillarTab(p.id)}
-                          className={clsx(
-                            "px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5",
-                            isTabActive
-                              ? "bg-emerald-700 text-white shadow-xs"
-                              : "bg-white text-gray-700 border border-gray-200 hover:border-emerald-300"
-                          )}
-                        >
-                          <span>{p.label}</span>
-                          <span className={clsx(
-                            "text-[10px] px-1.5 py-0.2 rounded-md font-normal",
-                            isTabActive ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-800 border border-emerald-100"
-                          )}>
-                            {assignedTree?.treeName || 'Mặc định'}
-                          </span>
-                        </button>
-                      );
-                    })}
+                      <option value="ALL" className="font-bold text-emerald-800 py-1">
+                        🌱 Áp dụng 1 giống cho tất cả các trụ ({totalPillarsCount} trụ • {totalHoles} hốc)
+                      </option>
+                      {chosenPillars.length > 1 && (
+                        <optgroup label="Tùy chỉnh giống riêng cho từng trụ:" className="font-semibold text-gray-700">
+                          {chosenPillars.map(p => {
+                            const assignedTree = getTreeForPillar(p.id);
+                            return (
+                              <option key={p.id} value={p.id} className="py-1">
+                                📍 {p.label} — Đang chọn: {assignedTree?.treeName || 'Mặc định'}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      )}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3.5 text-emerald-700">
+                      <ChevronDown className="w-4 h-4" />
+                    </div>
                   </div>
                 </div>
               )}
@@ -691,8 +701,9 @@ export default function GardenDetailPage() {
 
                   // Kiểm tra xem cây này có đang được chọn cho tab hiện tại không
                   const isSelectedInActiveTab = activePillarTab === 'ALL'
-                    ? chosenPillars.every(p => pillarTreeSelections[p.id] === t.id)
-                    : pillarTreeSelections[activePillarTab] === t.id;
+                    ? chosenPillars.every(p => (pillarTreeSelections[p.id] || selectedTreeId) === t.id)
+                    : (pillarTreeSelections[activePillarTab] || selectedTreeId) === t.id;
+
 
                   // Các trụ đang gán giống cây này
                   const assignedPillarLabels = chosenPillars
@@ -751,8 +762,49 @@ export default function GardenDetailPage() {
                             </span>
                           </div>
                         )}
-                        <div className="text-xs font-black text-emerald-700 mt-1">
-                          Từ {t.price?.toLocaleString('vi-VN')}đ (24 hốc)
+                        {/* Giá áp dụng cho trụ đang chọn trong Dropdown */}
+                        {activePillarTab === 'ALL' ? (
+                          <div className="text-xs font-black text-emerald-700 mt-1">
+                            Tổng giống cho {totalPillarsCount} trụ: +{Math.round(((t.price || 0) * totalHoles) / 24.0).toLocaleString('vi-VN')}đ
+                          </div>
+                        ) : (
+                          (() => {
+                            const activePillar = chosenPillars.find(p => p.id === activePillarTab);
+                            const scale = (activePillar?.holes || 24) / 24.0;
+                            const activePillarCost = Math.round((t.price || 0) * scale);
+                            return (
+                              <div className="text-xs font-black text-emerald-700 mt-1">
+                                Cho {activePillar?.label}: +{activePillarCost.toLocaleString('vi-VN')}đ
+                              </div>
+                            );
+                          })()
+                        )}
+
+                        {/* Bảng mini 3 cột hiển thị chi tiết giá theo từng loại trụ (Nhỏ 24h, Vừa 36h, Lớn 48h) */}
+                        <div className="mt-2.5 pt-2 border-t border-gray-100/90">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1 flex items-center justify-between">
+                            <span>Giá phôi giống theo trụ:</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-1 text-center text-[10px]">
+                            <div className="p-1.5 rounded-xl bg-emerald-50/70 border border-emerald-100 flex flex-col justify-center">
+                              <span className="text-[9px] text-gray-500 font-semibold">Nhỏ (24h)</span>
+                              <span className="font-black text-emerald-800 mt-0.5">
+                                {Math.round((t.price || 0) * 1.0).toLocaleString('vi-VN')}đ
+                              </span>
+                            </div>
+                            <div className="p-1.5 rounded-xl bg-blue-50/70 border border-blue-100 flex flex-col justify-center">
+                              <span className="text-[9px] text-gray-500 font-semibold">Vừa (36h)</span>
+                              <span className="font-black text-blue-800 mt-0.5">
+                                {Math.round((t.price || 0) * 1.5).toLocaleString('vi-VN')}đ
+                              </span>
+                            </div>
+                            <div className="p-1.5 rounded-xl bg-purple-50/70 border border-purple-100 flex flex-col justify-center">
+                              <span className="text-[9px] text-gray-500 font-semibold">Lớn (48h)</span>
+                              <span className="font-black text-purple-800 mt-0.5">
+                                {Math.round((t.price || 0) * 2.0).toLocaleString('vi-VN')}đ
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                       {isSelectedInActiveTab && (
@@ -763,6 +815,7 @@ export default function GardenDetailPage() {
                       )}
                     </div>
                   );
+
                 })}
               </div>
             </div>

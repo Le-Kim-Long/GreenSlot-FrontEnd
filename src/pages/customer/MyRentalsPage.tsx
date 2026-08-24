@@ -125,7 +125,9 @@ export default function MyRentalsPage() {
       const result = await bookingApi.extendBooking({
         rentalId: extendModal.id,
         durationInMonths: extendMonths,
+        redirectUrl: `${window.location.origin}/payment-result`,
       });
+
       if (result.paymentUrl) {
         window.location.href = result.paymentUrl;
       } else {

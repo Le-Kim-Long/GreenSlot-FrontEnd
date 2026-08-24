@@ -7,7 +7,8 @@ export default defineConfig(({ mode }) => {
   // Chỉ dùng VITE_PROXY_TARGET/VITE_API_URL làm proxy target nếu là URL tuyệt đối (http/https),
   // vì VITE_API_URL có thể là đường dẫn tương đối (vd: "/api") dùng cho fetch phía client.
   const isAbsoluteUrl = (value?: string) => !!value && /^https?:\/\//i.test(value);
-  const target = [env.VITE_PROXY_TARGET, env.VITE_API_URL].find(isAbsoluteUrl) || 'https://greenslot-backend.onrender.com';
+  const target = [env.VITE_PROXY_TARGET, env.VITE_API_URL].find(isAbsoluteUrl) || 'http://localhost:8080';
+
 
   return {
     plugins: [react()],

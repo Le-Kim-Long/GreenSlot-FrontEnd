@@ -15,10 +15,12 @@ import {
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { customerNavItems as navItems } from './customerNavItems';
 import { useNotification } from '../../contexts/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   formatRelativeTime,
   formatExactDateTime,
   getNotificationMeta,
+  getNotificationTargetUrl,
   matchesCategory,
   NotificationCategory,
 } from '../../utils/notificationHelpers';
@@ -26,6 +28,7 @@ import { NotificationItem } from '../../api/notificationApi';
 
 export default function CustomerNotificationsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { notifications, unreadCount, loading, refreshNotifications, markAsRead, markAllAsRead } =
     useNotification();
 
@@ -46,24 +49,12 @@ export default function CustomerNotificationsPage() {
     if (!item.isRead) {
       await markAsRead(item.id);
     }
-    if (item.actionUrl) {
-      navigate(item.actionUrl);
-    } else if (item.referenceId) {
-      // Fallback deep links based on notification type if actionUrl wasn't set
-      const normalizedType = item.type.toUpperCase();
-      if (normalizedType.startsWith('TASK_')) {
-        navigate(`/dashboard/customer/rentals/${item.referenceId}`);
-      } else if (normalizedType.startsWith('HARVEST_')) {
-        navigate(`/dashboard/customer/rentals/${item.referenceId}`);
-      } else if (normalizedType.startsWith('PLANTING_')) {
-        navigate(`/dashboard/customer/tree-planting`);
-      } else if (normalizedType.startsWith('IOT_') || normalizedType.startsWith('ALERT_')) {
-        navigate(`/dashboard/customer/monitoring`);
-      } else if (normalizedType.startsWith('BOOKING_') || normalizedType.startsWith('RENTAL_')) {
-        navigate(`/dashboard/customer/rentals/${item.referenceId}`);
-      }
+    const targetUrl = getNotificationTargetUrl(item, user?.role);
+    if (targetUrl) {
+      navigate(targetUrl);
     }
   };
+
 
   // Filter & Search
   const filteredNotifications = useMemo(() => {

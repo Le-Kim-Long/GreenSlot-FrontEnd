@@ -291,3 +291,83 @@ export function matchesCategory(type: string | undefined, category: Notification
   if (category === 'harvest' && (meta.category === 'harvest' || meta.category === 'task')) return true;
   return meta.category === category;
 }
+
+/**
+ * Get direct destination URL for a notification based on type and user role
+ */
+export function getNotificationTargetUrl(
+  notification: { type?: string | null; actionUrl?: string | null; referenceId?: number | null },
+  userRole?: string | null
+): string {
+  const role = (userRole || 'customer').toLowerCase();
+  const t = (notification.type || '').trim().toUpperCase();
+
+  // If a valid application actionUrl is present and matches existing client routes
+  if (notification.actionUrl && notification.actionUrl.startsWith('/dashboard/')) {
+    // Avoid non-existent dynamic routes like /dashboard/customer/rentals/123
+    if (notification.actionUrl.startsWith('/dashboard/customer/rentals/')) {
+      return '/dashboard/customer/rentals';
+    }
+    return notification.actionUrl;
+  }
+
+  // Garden staff role routing
+  if (role === 'garden_staff') {
+    if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR')) {
+      return '/dashboard/garden-staff/alerts';
+    }
+    if (t.includes('HARVEST') && (t.includes('COMPLETED') || t.includes('DONE'))) {
+      return '/dashboard/garden-staff/harvest-history';
+    }
+    if (t.startsWith('TASK_') || t.startsWith('HARVEST_')) {
+      return '/dashboard/garden-staff';
+    }
+    if (t.startsWith('PUMP_')) {
+      return '/dashboard/garden-staff/pump-control';
+    }
+    return '/dashboard/garden-staff';
+  }
+
+  // Manager / Location manager routing
+  if (role === 'manager' || role === 'location_manager') {
+    if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR')) {
+      return '/dashboard/staff/alert-processing';
+    }
+    if (t.startsWith('TASK_')) {
+      return '/dashboard/staff/tasks';
+    }
+    if (t.startsWith('PLANTING_') || t.startsWith('TREE_PLANTING_')) {
+      return '/dashboard/staff/tree-planting';
+    }
+    if (t.startsWith('HARVEST_') || t.includes('HARVEST')) {
+      return '/dashboard/staff/harvest-history';
+    }
+    if (t.startsWith('BOOKING_') || t.startsWith('RENTAL_') || t.startsWith('PAYMENT_')) {
+      return '/dashboard/staff/rentals';
+    }
+    return '/dashboard/staff';
+  }
+
+  // Customer role (default)
+  if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR')) {
+    return '/dashboard/customer/monitoring';
+  }
+  if (t.startsWith('PLANTING_') || t.startsWith('TREE_PLANTING_')) {
+    return '/dashboard/customer/tree-planting';
+  }
+  if (t.includes('HARVEST') && (t.includes('COMPLETED') || t.includes('DONE'))) {
+    // Thông báo đã hoàn thành thu hoạch -> Chuyển về Lịch sử thu hoạch
+    return '/dashboard/customer/harvest-history';
+  }
+  if (t.startsWith('HARVEST_') || t.startsWith('TASK_')) {
+    // Thông báo sẵn sàng thu hoạch / chọn phương thức -> Chuyển về Vườn đang thuê để khách thao tác
+    return '/dashboard/customer/rentals';
+  }
+  if (t.startsWith('BOOKING_') || t.startsWith('RENTAL_') || t.startsWith('PAYMENT_')) {
+    return '/dashboard/customer/rentals';
+  }
+
+  return '/dashboard/customer/rentals';
+}
+
+

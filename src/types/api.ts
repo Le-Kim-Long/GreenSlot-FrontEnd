@@ -68,6 +68,7 @@ export interface BookingRequest {
   mediumPillarsCount?: number;
   largePillarsCount?: number;
   isMobile?: boolean;
+  redirectUrl?: string;
 }
 
 export interface BookingResponse {
@@ -79,7 +80,9 @@ export interface BookingResponse {
 export interface ExtensionRequest {
   rentalId: number;
   durationInMonths: number;
+  redirectUrl?: string;
 }
+
 
 export interface PaymentTransactionInfo {
   id: number;

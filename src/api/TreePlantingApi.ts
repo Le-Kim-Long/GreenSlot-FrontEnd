@@ -31,7 +31,9 @@ export interface CreateTreePlantingPayload {
   notes?: string;
   isMobile?: boolean;
   targetPillarId?: number;
+  redirectUrl?: string;
 }
+
 
 export const treePlantingApi = {
   // 1. Dành cho Quản lý (Admin/Manager)

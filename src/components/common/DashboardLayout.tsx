@@ -17,8 +17,11 @@ import { useNotification } from '../../contexts/NotificationContext';
 import clsx from 'clsx';
 import { roleLabel } from '../../utils/roleMap';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
-import { formatRelativeTime, getNotificationMeta } from '../../utils/notificationHelpers';
+import { formatRelativeTime, getNotificationMeta, getNotificationTargetUrl } from '../../utils/notificationHelpers';
 import { imageApi, UploadedImage } from '../../api/userApi';
+import { NotificationItem } from '../../api/notificationApi';
+
+
 
 interface NavItem {
   label: string;
@@ -94,15 +97,15 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
     navigate('/');
   };
 
-  const handleNotificationClick = async (notifId: number, actionUrl?: string | null) => {
-    await markAsRead(notifId);
+  const handleNotificationClick = async (item: NotificationItem) => {
+    await markAsRead(item.id);
     setNotifOpen(false);
-    if (actionUrl) {
-      navigate(actionUrl);
-    } else {
-      navigate('/dashboard/customer/notifications');
+    const targetUrl = getNotificationTargetUrl(item, user?.role);
+    if (targetUrl) {
+      navigate(targetUrl);
     }
   };
+
 
   const roleLabels: Record<string, string> = {
     customer: roleLabel('customer'),
@@ -309,7 +312,7 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
                         return (
                           <div
                             key={item.id}
-                            onClick={() => void handleNotificationClick(item.id, item.actionUrl)}
+                            onClick={() => void handleNotificationClick(item)}
                             className={`p-3.5 hover:bg-gray-50 transition-colors cursor-pointer flex items-start gap-3 relative ${
                               !item.isRead ? 'bg-green-50/30' : ''
                             }`}
