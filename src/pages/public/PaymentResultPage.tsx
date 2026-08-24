@@ -27,6 +27,10 @@ export default function PaymentResultPage() {
     }
   }, [searchParams]);
 
+  const isMobileClient =
+    searchParams.get('client') === 'mobile' ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
   const success =
     responseCode === '00' &&
     (transactionStatus === '00' || transactionStatus === null);
@@ -108,12 +112,14 @@ export default function PaymentResultPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
 
-          <a
-            href={`greenslot://payment-result${window.location.search}`}
-            className="btn-primary flex items-center justify-center gap-2 col-span-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all text-center"
-          >
-            📱 Mở ứng dụng GreenSlot Mobile
-          </a>
+          {isMobileClient && (
+            <a
+              href={`greenslot://payment-result${window.location.search}`}
+              className="btn-primary flex items-center justify-center gap-2 col-span-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all text-center"
+            >
+              📱 Mở ứng dụng GreenSlot Mobile
+            </a>
+          )}
 
           <Link
             to="/dashboard/customer/rentals"
