@@ -12,24 +12,22 @@ export default function PaymentResultPage() {
   const orderInfo = searchParams.get('vnp_OrderInfo');
   const payDate = searchParams.get('vnp_PayDate');
 
-  useEffect(() => {
-    // If opened from mobile, automatically redirect back to the native app
-    const client = searchParams.get('client');
-    const isMobileUserAgent = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (client === 'mobile' || isMobileUserAgent) {
-      const search = window.location.search;
-      const appUrl = `greenslot://payment-result${search}`;
-      // Small timeout to allow render before redirect
-      const timer = setTimeout(() => {
-        window.location.href = appUrl;
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams]);
-
   const isMobileClient =
     searchParams.get('client') === 'mobile' ||
     /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  useEffect(() => {
+    // If opened from mobile, automatically and immediately redirect back to the native app
+    if (isMobileClient) {
+      const search = window.location.search;
+      const appUrl = `greenslot://payment-result${search}`;
+      try {
+        window.location.replace(appUrl);
+      } catch {
+        window.location.href = appUrl;
+      }
+    }
+  }, [isMobileClient, searchParams]);
 
   const success =
     responseCode === '00' &&
@@ -52,6 +50,34 @@ export default function PaymentResultPage() {
       12
     )}:${payDate.slice(12, 14)}`;
   };
+
+  // Dedicated Mobile Bridge View: Fast, clean, auto-returning to the Native App
+  if (isMobileClient) {
+    return (
+      <div className="min-h-screen bg-emerald-50/50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full flex flex-col items-center border border-emerald-100">
+          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-5 text-emerald-600">
+            {success ? <CheckCircle2 className="w-12 h-12" /> : <XCircle className="w-12 h-12 text-red-500" />}
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {success ? 'Thanh toán thành công!' : 'Thanh toán chưa hoàn tất'}
+          </h2>
+          <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+            Đang tự động chuyển bạn quay lại ứng dụng <strong>GreenSlot Mobile</strong>...
+          </p>
+          <a
+            href={`greenslot://payment-result${window.location.search}`}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-4 px-6 rounded-2xl shadow-lg transition-all text-center block text-base"
+          >
+            📱 Mở ứng dụng GreenSlot
+          </a>
+          <p className="text-xs text-gray-400 mt-4">
+            Nếu ứng dụng không tự mở, vui lòng bấm vào nút phía trên.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
