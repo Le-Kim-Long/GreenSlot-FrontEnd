@@ -24,6 +24,17 @@ export function mapRentalHistory(dto: RentalHistoryDTO): BookingHistory {
     }
   }
 
+  // Compute monthlyPrice with fallback to initial transaction / duration
+  const initialBookingTx = dto.transactions?.find(t => t.vnpTxnRef?.startsWith('BOOK_')) ?? dto.transactions?.[0];
+  const durationMonths = (() => {
+    if (!dto.startTime || !dto.endTime) return 1;
+    const start = new Date(dto.startTime);
+    const end = new Date(dto.endTime);
+    const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    return Math.max(1, diffMonths);
+  })();
+  const monthlyPrice = dto.monthlyPrice || (initialBookingTx ? Math.round(Number(initialBookingTx.amount) / durationMonths) : 0);
+
   return {
     id: dto.rentalId,
     slotId: dto.slotId,
@@ -38,6 +49,7 @@ export function mapRentalHistory(dto: RentalHistoryDTO): BookingHistory {
     startTime: dto.startTime,
     endTime: dto.endTime,
     totalPrice,
+    monthlyPrice,
     status: computedStatus,
     paymentStatus: paidTx?.status || latestTx?.status,
     transactions: dto.transactions ?? [],

@@ -107,6 +107,7 @@ export interface RentalHistoryDTO {
   harvestDecision?: string;
   plantedAt?: string;
   expectedHarvestAt?: string;
+  monthlyPrice?: number;
 }
 
 export interface BookingHistory {
@@ -123,6 +124,7 @@ export interface BookingHistory {
   startTime?: string;
   endTime?: string;
   totalPrice: number;
+  monthlyPrice?: number;
   status: string;
   paymentStatus?: string;
   transactions: PaymentTransactionInfo[];

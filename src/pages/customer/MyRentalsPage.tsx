@@ -442,13 +442,41 @@ export default function MyRentalsPage() {
               </div>
             </div>
 
+            {/* Chi tiết chi phí gia hạn */}
+            {(() => {
+              const unitPrice = extendModal.monthlyPrice || 0;
+              const totalCost = (extendMonths > 0 ? extendMonths : 0) * unitPrice;
+              return (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
+                  <div className="flex justify-between items-center text-sm text-gray-600 mb-1.5">
+                    <span>Đơn giá thuê ô vườn:</span>
+                    <span className="font-semibold text-gray-900">{unitPrice.toLocaleString('vi-VN')} đ/tháng</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-600 mb-1.5">
+                    <span>Thời gian gia hạn:</span>
+                    <span className="font-semibold text-gray-900">{extendMonths > 0 ? `${extendMonths} tháng` : '--'}</span>
+                  </div>
+                  <div className="border-t border-emerald-200 pt-2.5 mt-2 flex justify-between items-center">
+                    <span className="font-bold text-gray-900">Tổng tiền cần thanh toán:</span>
+                    <span className="text-lg font-bold text-emerald-700">
+                      {totalCost.toLocaleString('vi-VN')} đ
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
+
             {extendError && <div className="text-red-600 text-sm mb-3">{extendError}</div>}
             <button
               onClick={handleExtend}
               disabled={extending || !extendMonths || extendMonths < 1 || Boolean(extendMonthsError)}
-              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed font-semibold py-3"
             >
-              {extending ? 'Đang xử lý...' : 'Xác nhận & Thanh toán VNPay'}
+              {extending
+                ? 'Đang xử lý...'
+                : extendMonths > 0 && extendModal.monthlyPrice
+                ? `Xác nhận & Thanh toán VNPay (${((extendMonths > 0 ? extendMonths : 0) * extendModal.monthlyPrice).toLocaleString('vi-VN')} đ)`
+                : 'Xác nhận & Thanh toán VNPay'}
             </button>
           </div>
         </div>
