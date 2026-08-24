@@ -51,6 +51,26 @@ export default function PaymentResultPage() {
     )}:${payDate.slice(12, 14)}`;
   };
 
+  const handleOpenApp = () => {
+    const search = window.location.search;
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const standardDeepLink = `greenslot://payment-result${search}`;
+    const androidIntent = `intent://payment-result${search}#Intent;scheme=greenslot;package=com.greenslot.mobile;end`;
+    const expoIntent = `intent://#Intent;package=host.exp.exponent;end`;
+
+    if (isAndroid) {
+      window.location.href = standardDeepLink;
+      setTimeout(() => {
+        window.location.href = androidIntent;
+      }, 300);
+      setTimeout(() => {
+        window.location.href = expoIntent;
+      }, 700);
+    } else {
+      window.location.href = standardDeepLink;
+    }
+  };
+
   // Dedicated Mobile Bridge View: Fast, clean, auto-returning to the Native App
   if (isMobileClient) {
     return (
@@ -65,14 +85,15 @@ export default function PaymentResultPage() {
           <p className="text-sm text-gray-500 mb-6 leading-relaxed">
             Đang tự động chuyển bạn quay lại ứng dụng <strong>GreenSlot Mobile</strong>...
           </p>
-          <a
-            href={`greenslot://payment-result${window.location.search}`}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-4 px-6 rounded-2xl shadow-lg transition-all text-center block text-base"
+          <button
+            type="button"
+            onClick={handleOpenApp}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-4 px-6 rounded-2xl shadow-lg transition-all text-center block text-base cursor-pointer"
           >
             📱 Mở ứng dụng GreenSlot
-          </a>
-          <p className="text-xs text-gray-400 mt-4">
-            Nếu ứng dụng không tự mở, vui lòng bấm vào nút phía trên.
+          </button>
+          <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+            Hoặc bạn có thể vuốt chuyển tab quay lại <strong>Expo Go / GreenSlot App</strong> để xem ô đất đã được cập nhật thành công.
           </p>
         </div>
       </div>
