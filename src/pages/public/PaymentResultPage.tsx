@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, Receipt, ArrowLeft, Home } from 'lucide-react';
 
@@ -10,6 +11,21 @@ export default function PaymentResultPage() {
   const txnRef = searchParams.get('vnp_TxnRef');
   const orderInfo = searchParams.get('vnp_OrderInfo');
   const payDate = searchParams.get('vnp_PayDate');
+
+  useEffect(() => {
+    // If opened from mobile, automatically redirect back to the native app
+    const client = searchParams.get('client');
+    const isMobileUserAgent = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (client === 'mobile' || isMobileUserAgent) {
+      const search = window.location.search;
+      const appUrl = `greenslot://payment-result${search}`;
+      // Small timeout to allow render before redirect
+      const timer = setTimeout(() => {
+        window.location.href = appUrl;
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   const success =
     responseCode === '00' &&
@@ -91,6 +107,13 @@ export default function PaymentResultPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+
+          <a
+            href={`greenslot://payment-result${window.location.search}`}
+            className="btn-primary flex items-center justify-center gap-2 col-span-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all text-center"
+          >
+            📱 Mở ứng dụng GreenSlot Mobile
+          </a>
 
           <Link
             to="/dashboard/customer/rentals"
