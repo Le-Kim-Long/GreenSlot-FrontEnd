@@ -246,7 +246,16 @@ export default function Navbar() {
                           <button
                             onClick={() => {
                               setNotifOpen(false);
-                              navigate('/dashboard/customer/notifications');
+                              const role = user?.role;
+                              const notifPath =
+                                role === 'manager' || role === 'location_manager'
+                                  ? '/dashboard/staff/notifications'
+                                  : role === 'garden_staff'
+                                  ? '/dashboard/garden-staff/notifications'
+                                  : role === 'admin'
+                                  ? '/dashboard/admin/notifications'
+                                  : '/dashboard/customer/notifications';
+                              navigate(notifPath);
                             }}
                             className="text-xs text-green-700 hover:text-green-800 font-semibold inline-flex items-center gap-1.5 hover:underline"
                           >

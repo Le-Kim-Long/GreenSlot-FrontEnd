@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { treeApi, Tree } from '../../api/treeApi';
 import { 
   Trees, Plus, Edit2, Trash2, X, Search, Filter, 
-  Loader2, Clock, ChevronDown,
-  Droplets, Sun, Beaker, Upload, Image as ImageIcon 
+  Loader2, Clock, ChevronDown, Sparkles,
+  Droplets, Sun, Beaker, Upload, Image as ImageIcon,
+  AlertCircle, Info
 } from 'lucide-react';
+
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { Toast, ToastData } from '../../components/common/Toast';
 import { staffNavItems } from './staffNav';
@@ -75,9 +77,12 @@ const emptyForm: Partial<Tree> = {
   treeName: '',
   scientificName: '',
   description: '',
-  harvestDays: 90,
+  harvestDays: 35,
   minRentalDays: 30,
-  price: 100000,
+  price: 25000,
+  priceSmall: 25000,
+  priceMedium: 37500,
+  priceLarge: 50000,
   imageUrl: '',
   soilMoistureMin: 30,
   soilMoistureMax: 70,
@@ -89,6 +94,7 @@ const emptyForm: Partial<Tree> = {
   careInstructions: '',
   isActive: true,
 };
+
 
 export default function TreeManagement() {
   const [trees, setTrees] = useState<Tree[]>([]);
@@ -207,12 +213,145 @@ export default function TreeManagement() {
     handleCloseModal();
   };
 
+  const handleHarvestDaysChange = (days: number) => {
+    setFormData(prev => {
+      const newDays = days;
+      const currentMin = prev.minRentalDays;
+      return {
+        ...prev,
+        harvestDays: newDays,
+        // Tự động nâng số ngày thuê tối thiểu bằng số ngày thu hoạch nếu chưa có hoặc đang nhỏ hơn
+        minRentalDays: (!currentMin || currentMin < newDays) ? newDays : currentMin,
+      };
+    });
+  };
+
+  const handlePriceSmallChange = (val: number) => {
+    const pSmall = val;
+    setFormData(prev => ({
+      ...prev,
+      price: pSmall,
+      priceSmall: pSmall,
+      // Tự động gợi ý điền giá Trụ Vừa (x1.5) và Trụ Lớn (x2.0)
+      priceMedium: Math.round(pSmall * 1.5),
+      priceLarge: Math.round(pSmall * 2.0),
+    }));
+  };
+
+  const handleAutoCalculatePrices = () => {
+    const base = Number(formData.priceSmall || formData.price || 0);
+    setFormData(prev => ({
+      ...prev,
+      price: base,
+      priceSmall: base,
+      priceMedium: Math.round(base * 1.5),
+      priceLarge: Math.round(base * 2.0),
+    }));
+    showToast('success', 'Đã tính lại giá theo tỷ lệ chuẩn', 'Trụ Nhỏ: 1.0x | Trụ Vừa: 1.5x | Trụ Lớn: 2.0x');
+  };
+
+  // Chặn phím nhập số âm (-), số thập phân (., ,), ký tự e/E trên các ô chỉ cho phép số nguyên (như ngày, giá tiền)
+  const blockDecimalAndNegative = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '.' || e.key === ',') {
+      e.preventDefault();
+    }
+  };
+
+  // Chặn phím nhập số âm (-) trên các ô cho phép số thập phân (như độ pH, độ ẩm, ánh sáng)
+  const blockNegative = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') {
+      e.preventDefault();
+    }
+  };
+
+  // Các cờ kiểm tra lỗi thời gian thực (Real-time Validation Flags)
+  const isRentalDaysInvalid = formData.harvestDays != null && formData.minRentalDays != null && formData.minRentalDays < formData.harvestDays;
+  const isMoistureInvalid = formData.soilMoistureMin != null && formData.soilMoistureMax != null && formData.soilMoistureMax <= formData.soilMoistureMin;
+  const isLightInvalid = formData.lightMin != null && formData.lightMax != null && formData.lightMax <= formData.lightMin;
+  const isPhInvalid = formData.phMin != null && formData.phMax != null && formData.phMax <= formData.phMin;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.treeName?.trim()) {
-      showToast('warning', 'Thiếu thông tin', 'Vui lòng nhập Tên cây.');
+      showToast('warning', 'Thiếu thông tin bắt buộc', 'Vui lòng nhập Tên giống cây trồng.');
       return;
     }
+    if (!formData.harvestDays || formData.harvestDays <= 0) {
+      showToast('warning', 'Thời gian thu hoạch không hợp lệ', 'Thời gian thu hoạch phải là số nguyên dương lớn hơn 0 ngày.');
+      return;
+    }
+    if (!Number.isInteger(Number(formData.harvestDays))) {
+      showToast('warning', 'Định dạng ngày không hợp lệ', 'Thời gian thu hoạch phải là số nguyên ngày (không được nhập số lẻ/thập phân).');
+      return;
+    }
+    if (!formData.minRentalDays || formData.minRentalDays < formData.harvestDays) {
+      showToast(
+        'warning',
+        'Thời gian thuê chưa hợp lý',
+        `Số ngày thuê tối thiểu (${formData.minRentalDays || 0} ngày) cần ít nhất bằng thời gian thu hoạch (${formData.harvestDays} ngày) để cây đủ chu kỳ sinh trưởng.`
+      );
+      return;
+    }
+    if (!Number.isInteger(Number(formData.minRentalDays))) {
+      showToast('warning', 'Định dạng ngày không hợp lệ', 'Số ngày thuê tối thiểu phải là số nguyên ngày (không được nhập số lẻ/thập phân).');
+      return;
+    }
+
+    if (
+      (formData.priceSmall != null && formData.priceSmall < 0) ||
+      (formData.priceMedium != null && formData.priceMedium < 0) ||
+      (formData.priceLarge != null && formData.priceLarge < 0)
+    ) {
+      showToast('warning', 'Định giá không hợp lệ', 'Đơn giá phôi giống của từng loại trụ không được là số âm.');
+      return;
+    }
+    if (
+      (formData.soilMoistureMin != null && (formData.soilMoistureMin < 0 || formData.soilMoistureMin > 100)) ||
+      (formData.soilMoistureMax != null && (formData.soilMoistureMax < 0 || formData.soilMoistureMax > 100))
+    ) {
+      showToast('warning', 'Chỉ số độ ẩm ngoài giới hạn', 'Độ ẩm đất chỉ được thiết lập trong phạm vi chuẩn từ 0% đến 100%.');
+      return;
+    }
+    if (isMoistureInvalid) {
+      showToast(
+        'warning',
+        'Định mức độ ẩm đất chưa chuẩn xác',
+        `Ngưỡng độ ẩm tối đa (${formData.soilMoistureMax}%) phải cao hơn ngưỡng tối thiểu (${formData.soilMoistureMin}%).`
+      );
+      return;
+    }
+    if (
+      (formData.lightMin != null && (formData.lightMin < 0 || formData.lightMin > 24)) ||
+      (formData.lightMax != null && (formData.lightMax < 0 || formData.lightMax > 24))
+    ) {
+      showToast('warning', 'Thời gian chiếu sáng ngoài giới hạn', 'Thời gian chiếu sáng hàng ngày chỉ được thiết lập từ 0 đến 24 giờ.');
+      return;
+    }
+    if (isLightInvalid) {
+      showToast(
+        'warning',
+        'Thời gian chiếu sáng chưa chuẩn xác',
+        `Ngưỡng chiếu sáng tối đa (${formData.lightMax} giờ) phải lớn hơn ngưỡng tối thiểu (${formData.lightMin} giờ).`
+      );
+      return;
+    }
+    if (
+      (formData.phMin != null && (formData.phMin < 0 || formData.phMin > 14)) ||
+      (formData.phMax != null && (formData.phMax < 0 || formData.phMax > 14))
+    ) {
+      showToast('warning', 'Chỉ số pH ngoài giới hạn', 'Độ pH chỉ được thiết lập trong thang đo hóa học chuẩn từ 0 đến 14.');
+      return;
+    }
+    if (isPhInvalid) {
+      showToast(
+        'warning',
+        'Chỉ số độ pH chưa chuẩn xác',
+        `Ngưỡng pH tối đa (${formData.phMax}) phải cao hơn ngưỡng pH tối thiểu (${formData.phMin}).`
+      );
+      return;
+    }
+
+
 
     setIsSubmitting(true);
     try {
@@ -225,13 +364,15 @@ export default function TreeManagement() {
       // Khi bấm Lưu thành công thì CHỈ ĐÓNG MODAL (không xóa ảnh vì ảnh đã trở thành ảnh chính thức)
       handleCloseModal();
       fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Lỗi lưu cây trồng:', err);
-      showToast('error', 'Thao tác thất bại', 'Vui lòng kiểm tra lại thông số.');
+      const detailMsg = err?.response?.data?.message || 'Vui lòng kiểm tra lại thông số.';
+      showToast('error', 'Thao tác thất bại', detailMsg);
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
@@ -310,6 +451,7 @@ export default function TreeManagement() {
             <thead className="bg-gray-50/75 border-b border-gray-100">
               <tr>
                 <th className="p-4 font-semibold text-gray-600">Cây trồng</th>
+                <th className="p-4 font-semibold text-gray-600">Bảng giá theo trụ</th>
                 <th className="p-4 font-semibold text-gray-600">Thu hoạch</th>
                 <th className="p-4 font-semibold text-gray-600">Định mức sinh thái (IoT)</th>
                 <th className="p-4 font-semibold text-gray-600">Trạng thái</th>
@@ -318,10 +460,10 @@ export default function TreeManagement() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={5} className="p-8 text-center text-gray-500">Đang tải danh mục cây trồng...</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-gray-500">Đang tải danh mục cây trồng...</td></tr>
               ) : filteredTrees.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-gray-400">
+                  <td colSpan={6} className="p-12 text-center text-gray-400">
                     <Trees className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p>Không tìm thấy giống cây trồng nào phù hợp.</p>
                   </td>
@@ -342,6 +484,22 @@ export default function TreeManagement() {
                       </div>
                     </td>
                     <td className="p-4">
+                      <div className="flex flex-col gap-1 text-xs min-w-[170px]">
+                        <div className="flex items-center justify-between gap-2 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-medium">
+                          <span>🟢 Nhỏ (24h):</span>
+                          <span className="font-bold">{Number(tree.priceSmall || tree.price || 0).toLocaleString('vi-VN')}đ</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200/60 font-medium">
+                          <span>🔵 Vừa (36h):</span>
+                          <span className="font-bold">{Number(tree.priceMedium || ((tree.price || 0) * 1.5)).toLocaleString('vi-VN')}đ</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-2 px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-200/60 font-medium">
+                          <span>🟣 Lớn (48h):</span>
+                          <span className="font-bold">{Number(tree.priceLarge || ((tree.price || 0) * 2.0)).toLocaleString('vi-VN')}đ</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
                       <div className="text-xs text-gray-500 flex items-center gap-1">
                         <Clock className="w-3 h-3 text-gray-400" />
                         Thu hoạch: ~{tree.harvestDays} ngày (Thuê min {tree.minRentalDays} ngày)
@@ -359,6 +517,7 @@ export default function TreeManagement() {
                         {tree.isActive ? 'Đang kinh doanh' : 'Ngưng kinh doanh'}
                       </span>
                     </td>
+
                     <td className="p-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
@@ -427,7 +586,7 @@ export default function TreeManagement() {
                   <p className="text-sm">Đang tải thông số sinh thái mới nhất từ máy chủ...</p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6 text-sm">
+                <form onSubmit={handleSubmit} noValidate className="space-y-6 text-sm">
                   
                   {/* PHẦN 1: THÔNG TIN & KINH DOANH */}
                   <div>
@@ -435,39 +594,164 @@ export default function TreeManagement() {
                       1. Thông tin định danh & Kinh doanh
                     </h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
+                      <div className="sm:col-span-2">
                         <label className="block font-medium text-gray-700 mb-1">Tên cây trồng <span className="text-red-500">*</span></label>
                         <input
-                          required
                           className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
                           value={formData.treeName || ''}
                           onChange={e => setFormData({...formData, treeName: e.target.value})}
-                          placeholder="VD: Cây Tràm"
+                          placeholder="VD: Cây Tràm, Xà lách xoăn, Cải Kale..."
                         />
                       </div>
                       <div>
-                        <label className="block font-medium text-gray-700 mb-1">Thời gian thu hoạch (Ngày)</label>
+                        <label className="block font-medium text-gray-700 mb-1">Thời gian thu hoạch (Ngày) <span className="text-red-500">*</span></label>
                         <input
-                          type="number" min={1} required
-                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none"
+                          type="number"
+                          step={1}
+                          onKeyDown={blockDecimalAndNegative}
+                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
                           value={formData.harvestDays ?? ''}
-                          onChange={e => setFormData({...formData, harvestDays: Number(e.target.value)})}
+                          onChange={e => handleHarvestDaysChange(Math.floor(Math.max(1, Number(e.target.value) || 0)))}
+                          placeholder="VD: 35"
                         />
+                        <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          Chu kỳ sinh trưởng từ khi gieo trồng đến lúc thu hoạch.
+                        </p>
                       </div>
                       <div>
-                        <label className="block font-medium text-gray-700 mb-1">Số ngày thuê tối thiểu (Ngày)</label>
+                        <label className="block font-medium text-gray-700 mb-1">Số ngày thuê tối thiểu (Ngày) <span className="text-red-500">*</span></label>
                         <input
-                          type="number" min={1} required
-                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none"
+                          type="number" 
+                          step={1}
+                          onKeyDown={blockDecimalAndNegative}
+                          className={clsx(
+                            "w-full border rounded-xl p-2.5 outline-none transition-all",
+                            isRentalDaysInvalid 
+                              ? "border-rose-500 ring-2 ring-rose-500/10 text-rose-700 bg-rose-50/30 font-semibold" 
+                              : "border-gray-300 focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+                          )}
                           value={formData.minRentalDays ?? ''}
-                          onChange={e => setFormData({...formData, minRentalDays: Number(e.target.value)})}
+                          onChange={e => setFormData({...formData, minRentalDays: Math.floor(Math.max(1, Number(e.target.value) || 0))})}
+                          placeholder={`≥ ${formData.harvestDays || 30}`}
                         />
+                        {isRentalDaysInvalid ? (
+                          <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200/80 rounded-lg p-2 mt-1.5 flex items-start gap-1.5 animate-in fade-in duration-200">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                            <span>Số ngày thuê tối thiểu ({formData.minRentalDays} ngày) phải lớn hơn hoặc bằng chu kỳ thu hoạch ({formData.harvestDays} ngày).</span>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
+                            <Info className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                            Đảm bảo thời gian thuê đủ để cây hoàn thành chu kỳ thu hoạch.
+                          </p>
+                        )}
                       </div>
                     </div>
+
+
+                    {/* KHU VỰC BẢNG GIÁ PHÔI GIỐNG THEO TRỤ */}
+                    <div className="mt-4 p-4 rounded-xl bg-gray-50/80 border border-gray-200/80">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div>
+                          <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4 text-emerald-600" />
+                            Định giá phôi giống theo từng loại trụ (VNĐ) <span className="text-red-500">*</span>
+                          </h4>
+                          <p className="text-[11px] text-gray-500 mt-0.5">
+                            Quản lý có thể nhập độc lập từng mức giá hoặc dùng nút gợi ý tỷ lệ chuẩn (1.0x - 1.5x - 2.0x).
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAutoCalculatePrices}
+                          className="text-xs text-emerald-700 hover:text-emerald-800 bg-emerald-100 hover:bg-emerald-200/80 px-2.5 py-1.5 rounded-lg font-medium transition flex items-center gap-1 shadow-xs whitespace-nowrap self-start sm:self-auto"
+                          title="Tự động tính giá Trụ Vừa (x1.5) và Trụ Lớn (x2.0) từ giá Trụ Nhỏ"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Tự động tính 1.5x / 2.0x
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {/* Trụ Nhỏ 24 hốc */}
+                        <div className="bg-white p-3 rounded-xl border-2 border-emerald-200 shadow-2xs">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-semibold text-emerald-800 text-xs flex items-center gap-1">
+                              🟢 Trụ Nhỏ (24 hốc)
+                            </span>
+                            <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">1.0x</span>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              onKeyDown={blockDecimalAndNegative}
+                              className="w-full border border-emerald-300 rounded-lg p-2 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none pr-8"
+                              value={formData.priceSmall ?? formData.price ?? ''}
+                              onChange={e => handlePriceSmallChange(Math.floor(Math.max(0, Number(e.target.value) || 0)))}
+                              placeholder="VD: 25000"
+                            />
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-semibold">đ</span>
+                          </div>
+                        </div>
+
+                        {/* Trụ Vừa 36 hốc */}
+                        <div className="bg-white p-3 rounded-xl border-2 border-blue-200 shadow-2xs">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-semibold text-blue-800 text-xs flex items-center gap-1">
+                              🔵 Trụ Vừa (36 hốc)
+                            </span>
+                            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">1.5x</span>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              onKeyDown={blockDecimalAndNegative}
+                              className="w-full border border-blue-300 rounded-lg p-2 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none pr-8"
+                              value={formData.priceMedium ?? ''}
+                              onChange={e => setFormData({ ...formData, priceMedium: Math.floor(Math.max(0, Number(e.target.value) || 0)) })}
+                              placeholder="VD: 37500"
+                            />
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-semibold">đ</span>
+                          </div>
+                        </div>
+
+                        {/* Trụ Lớn 48 hốc */}
+                        <div className="bg-white p-3 rounded-xl border-2 border-purple-200 shadow-2xs">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="font-semibold text-purple-800 text-xs flex items-center gap-1">
+                              🟣 Trụ Lớn (48 hốc)
+                            </span>
+                            <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">2.0x</span>
+                          </div>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              onKeyDown={blockDecimalAndNegative}
+                              className="w-full border border-purple-300 rounded-lg p-2 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 outline-none pr-8"
+                              value={formData.priceLarge ?? ''}
+                              onChange={e => setFormData({ ...formData, priceLarge: Math.floor(Math.max(0, Number(e.target.value) || 0)) })}
+                              placeholder="VD: 50000"
+                            />
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-semibold">đ</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+
+
                     
                     {/* KHU VỰC UPLOAD ẢNH FIREBASE */}
                     <div className="mt-4">
                       <label className="block font-medium text-gray-700 mb-1.5">Hình ảnh giống cây</label>
+
                       
                       <div className="flex items-center gap-4">
                         {/* Box Khung xem trước ảnh (Preview) */}
@@ -521,33 +805,144 @@ export default function TreeManagement() {
 
                   {/* PHẦN 2: THÔNG SỐ SINH THÁI - IOT */}
                   <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg mb-3">
-                      2. Định mức sinh thái cảnh báo IoT (Min - Max)
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100">
-                        <span className="font-semibold text-blue-600 block mb-2 flex items-center gap-1"><Droplets className="w-4 h-4"/> Độ ẩm đất (%)</span>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                        <Droplets className="w-4 h-4 text-blue-600" />
+                        2. Định mức sinh thái & Ngưỡng an toàn IoT
+                      </h3>
+                      <span className="text-[11px] text-gray-400 hidden sm:inline">
+                        Hệ thống IoT tự động cảnh báo khi vượt ngưỡng
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* Độ ẩm đất */}
+                      <div className={clsx(
+                        "p-3.5 rounded-xl border transition-all duration-200",
+                        isMoistureInvalid ? "bg-rose-50/50 border-rose-300 ring-2 ring-rose-500/10" : "bg-gray-50/80 border-gray-200/80 hover:border-blue-300/60"
+                      )}>
+                        <span className="font-semibold text-blue-700 block mb-2.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-xs"><Droplets className="w-4 h-4 text-blue-500"/> Độ ẩm đất (%)</span>
+                          <span className="text-[10px] bg-blue-100/70 text-blue-700 px-1.5 py-0.5 rounded font-bold">0 - 100%</span>
+                        </span>
                         <div className="flex items-center gap-2">
-                          <input type="number" step={0.1} placeholder="Min" className="w-full p-1.5 border rounded-lg text-center" value={formData.soilMoistureMin ?? ''} onChange={e => setFormData({...formData, soilMoistureMin: Number(e.target.value)})} />
-                          <span>-</span>
-                          <input type="number" step={0.1} placeholder="Max" className="w-full p-1.5 border rounded-lg text-center" value={formData.soilMoistureMax ?? ''} onChange={e => setFormData({...formData, soilMoistureMax: Number(e.target.value)})} />
+                          <div className="flex-1">
+                            <input 
+                              type="number" step="any" min={0} max={100} placeholder="Min" 
+                              onKeyDown={blockNegative}
+                              className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none bg-white transition shadow-2xs" 
+                              value={formData.soilMoistureMin ?? ''} 
+                              onChange={e => setFormData({...formData, soilMoistureMin: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))})} 
+                            />
+                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối thiểu</span>
+                          </div>
+                          <span className="text-gray-300 font-bold mb-3">-</span>
+                          <div className="flex-1">
+                            <input 
+                              type="number" step="any" min={0} max={100} placeholder="Max" 
+                              onKeyDown={blockNegative}
+                              className={clsx(
+                                "w-full p-2 border rounded-lg text-center text-sm font-semibold outline-none bg-white transition shadow-2xs",
+                                isMoistureInvalid ? "border-rose-500 text-rose-700 font-bold ring-1 ring-rose-500/20" : "border-gray-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                              )}
+                              value={formData.soilMoistureMax ?? ''} 
+                              onChange={e => setFormData({...formData, soilMoistureMax: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))})} 
+                            />
+                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối đa</span>
+                          </div>
                         </div>
+                        {isMoistureInvalid && (
+                          <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200/80 rounded-lg p-2 mt-2 flex items-start gap-1.5 animate-in fade-in duration-200">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                            <span>Ngưỡng tối đa phải lớn hơn ngưỡng tối thiểu ({formData.soilMoistureMin}%).</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100">
-                        <span className="font-semibold text-amber-600 block mb-2 flex items-center gap-1"><Sun className="w-4 h-4"/> Ánh sáng (Giờ)</span>
+
+                      {/* Ánh sáng */}
+                      <div className={clsx(
+                        "p-3.5 rounded-xl border transition-all duration-200",
+                        isLightInvalid ? "bg-rose-50/50 border-rose-300 ring-2 ring-rose-500/10" : "bg-gray-50/80 border-gray-200/80 hover:border-amber-300/60"
+                      )}>
+                        <span className="font-semibold text-amber-700 block mb-2.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-xs"><Sun className="w-4 h-4 text-amber-500"/> Ánh sáng (Giờ)</span>
+                          <span className="text-[10px] bg-amber-100/70 text-amber-700 px-1.5 py-0.5 rounded font-bold">0 - 24h</span>
+                        </span>
                         <div className="flex items-center gap-2">
-                          <input type="number" step={0.1} placeholder="Min" className="w-full p-1.5 border rounded-lg text-center" value={formData.lightMin ?? ''} onChange={e => setFormData({...formData, lightMin: Number(e.target.value)})} />
-                          <span>-</span>
-                          <input type="number" step={0.1} placeholder="Max" className="w-full p-1.5 border rounded-lg text-center" value={formData.lightMax ?? ''} onChange={e => setFormData({...formData, lightMax: Number(e.target.value)})} />
+                          <div className="flex-1">
+                            <input 
+                              type="number" step="any" min={0} max={24} placeholder="Min" 
+                              onKeyDown={blockNegative}
+                              className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm font-semibold focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none bg-white transition shadow-2xs" 
+                              value={formData.lightMin ?? ''} 
+                              onChange={e => setFormData({...formData, lightMin: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))})} 
+                            />
+                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối thiểu</span>
+                          </div>
+                          <span className="text-gray-300 font-bold mb-3">-</span>
+                          <div className="flex-1">
+                            <input 
+                              type="number" step="any" min={0} max={24} placeholder="Max" 
+                              onKeyDown={blockNegative}
+                              className={clsx(
+                                "w-full p-2 border rounded-lg text-center text-sm font-semibold outline-none bg-white transition shadow-2xs",
+                                isLightInvalid ? "border-rose-500 text-rose-700 font-bold ring-1 ring-rose-500/20" : "border-gray-200 focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
+                              )}
+                              value={formData.lightMax ?? ''} 
+                              onChange={e => setFormData({...formData, lightMax: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))})} 
+                            />
+                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối đa</span>
+                          </div>
                         </div>
+                        {isLightInvalid && (
+                          <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200/80 rounded-lg p-2 mt-2 flex items-start gap-1.5 animate-in fade-in duration-200">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                            <span>Ngưỡng chiếu sáng tối đa phải lớn hơn {formData.lightMin} giờ.</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="bg-gray-50/80 p-3 rounded-xl border border-gray-100 col-span-2 sm:col-span-1">
-                        <span className="font-semibold text-purple-600 block mb-2 flex items-center gap-1"><Beaker className="w-4 h-4"/> Độ pH đất</span>
+
+                      {/* Độ pH */}
+                      <div className={clsx(
+                        "p-3.5 rounded-xl border transition-all duration-200",
+                        isPhInvalid ? "bg-rose-50/50 border-rose-300 ring-2 ring-rose-500/10" : "bg-gray-50/80 border-gray-200/80 hover:border-purple-300/60"
+                      )}>
+                        <span className="font-semibold text-purple-700 block mb-2.5 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5 text-xs"><Beaker className="w-4 h-4 text-purple-500"/> Độ pH đất</span>
+                          <span className="text-[10px] bg-purple-100/70 text-purple-700 px-1.5 py-0.5 rounded font-bold">0 - 14 pH</span>
+                        </span>
                         <div className="flex items-center gap-2">
-                          <input type="number" step={0.1} placeholder="Min" className="w-full p-1.5 border rounded-lg text-center" value={formData.phMin ?? ''} onChange={e => setFormData({...formData, phMin: Number(e.target.value)})} />
-                          <span>-</span>
-                          <input type="number" step={0.1} placeholder="Max" className="w-full p-1.5 border rounded-lg text-center" value={formData.phMax ?? ''} onChange={e => setFormData({...formData, phMax: Number(e.target.value)})} />
+                          <div className="flex-1">
+                            <input 
+                              type="number" step="any" min={0} max={14} placeholder="Min" 
+                              onKeyDown={blockNegative}
+                              className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm font-semibold focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none bg-white transition shadow-2xs" 
+                              value={formData.phMin ?? ''} 
+                              onChange={e => setFormData({...formData, phMin: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))})} 
+                            />
+                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối thiểu</span>
+                          </div>
+                          <span className="text-gray-300 font-bold mb-3">-</span>
+                          <div className="flex-1">
+                            <input 
+                              type="number" step="any" min={0} max={14} placeholder="Max" 
+                              onKeyDown={blockNegative}
+                              className={clsx(
+                                "w-full p-2 border rounded-lg text-center text-sm font-semibold outline-none bg-white transition shadow-2xs",
+                                isPhInvalid ? "border-rose-500 text-rose-700 font-bold ring-1 ring-rose-500/20" : "border-gray-200 focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                              )}
+                              value={formData.phMax ?? ''} 
+                              onChange={e => setFormData({...formData, phMax: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))})} 
+                            />
+                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối đa</span>
+                          </div>
                         </div>
+                        {isPhInvalid && (
+                          <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200/80 rounded-lg p-2 mt-2 flex items-start gap-1.5 animate-in fade-in duration-200">
+                            <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
+                            <span>Độ pH tối đa phải lớn hơn độ pH tối thiểu ({formData.phMin}).</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

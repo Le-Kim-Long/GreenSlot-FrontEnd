@@ -293,78 +293,235 @@ export function matchesCategory(type: string | undefined, category: Notification
 }
 
 /**
- * Get direct destination URL for a notification based on type and user role
+ * Get direct destination URL for a notification based on type, actionUrl, title, message, and user role
  */
 export function getNotificationTargetUrl(
-  notification: { type?: string | null; actionUrl?: string | null; referenceId?: number | null },
+  notification: {
+    type?: string | null;
+    actionUrl?: string | null;
+    referenceId?: number | null;
+    title?: string | null;
+    message?: string | null;
+  },
   userRole?: string | null
 ): string {
   const role = (userRole || 'customer').toLowerCase();
   const t = (notification.type || '').trim().toUpperCase();
+  const text = `${notification.title || ''} ${notification.message || ''}`.toLowerCase();
+  let rawUrl = (notification.actionUrl || '').trim();
 
-  // If a valid application actionUrl is present and matches existing client routes
-  if (notification.actionUrl && notification.actionUrl.startsWith('/dashboard/')) {
-    // Avoid non-existent dynamic routes like /dashboard/customer/rentals/123
-    if (notification.actionUrl.startsWith('/dashboard/customer/rentals/')) {
-      return '/dashboard/customer/rentals';
+  // 1. Sanitize & Normalize legacy or malformed backend URLs
+  if (rawUrl) {
+    // Replace legacy manager paths with staff paths
+    rawUrl = rawUrl.replace('/dashboard/manager/tree-requests', '/dashboard/staff/tree-planting');
+    rawUrl = rawUrl.replace('/dashboard/manager/alerts', '/dashboard/staff/alert-processing');
+    rawUrl = rawUrl.replace('/dashboard/manager/tasks', '/dashboard/staff/tasks');
+    rawUrl = rawUrl.replace('/dashboard/manager/schedules', '/dashboard/staff/schedules');
+    rawUrl = rawUrl.replace('/dashboard/manager/rentals', '/dashboard/staff/rentals');
+    rawUrl = rawUrl.replace('/dashboard/manager', '/dashboard/staff');
+
+    // Replace incorrect customer paths
+    rawUrl = rawUrl.replace('/dashboard/customer/iot', '/dashboard/customer/monitoring');
+    rawUrl = rawUrl.replace('/dashboard/customer/sensors', '/dashboard/customer/monitoring');
+
+    // Strip trailing dynamic IDs that don't have dedicated subroutes
+    if (rawUrl.startsWith('/dashboard/customer/rentals/')) {
+      rawUrl = '/dashboard/customer/rentals';
     }
-    return notification.actionUrl;
+    if (rawUrl.startsWith('/dashboard/customer/tree-planting/')) {
+      rawUrl = '/dashboard/customer/tree-planting';
+    }
+    if (rawUrl.startsWith('/dashboard/staff/tasks/')) {
+      rawUrl = '/dashboard/staff/tasks';
+    }
+    if (rawUrl.startsWith('/dashboard/staff/tree-planting/')) {
+      rawUrl = '/dashboard/staff/tree-planting';
+    }
   }
 
-  // Garden staff role routing
+  // 2. Role-specific routing
+
+  // --- GARDEN STAFF ---
   if (role === 'garden_staff') {
-    if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR')) {
+    // IoT Alerts & Sensors
+    if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR') || text.includes('cảm biến') || text.includes('cảnh báo')) {
       return '/dashboard/garden-staff/alerts';
     }
-    if (t.includes('HARVEST') && (t.includes('COMPLETED') || t.includes('DONE'))) {
+    // Pump control & Auto watering
+    if (t.startsWith('PUMP_') || t.includes('WATERING') || text.includes('bơm') || text.includes('tưới')) {
+      return '/dashboard/garden-staff/pump-control';
+    }
+    // Harvest history
+    if (
+      (t.includes('HARVEST') && (t.includes('COMPLETED') || t.includes('DONE'))) ||
+      text.includes('hoàn tất thu hoạch') ||
+      text.includes('đã thu hoạch')
+    ) {
       return '/dashboard/garden-staff/harvest-history';
     }
-    if (t.startsWith('TASK_') || t.startsWith('HARVEST_')) {
-      return '/dashboard/garden-staff';
+    // Schedules
+    if (t.startsWith('SCHEDULE_') || text.includes('lịch trực')) {
+      return '/dashboard/garden-staff/schedules';
     }
-    if (t.startsWith('PUMP_')) {
-      return '/dashboard/garden-staff/pump-control';
+    // Tasks, assignments & active harvest requests
+    if (
+      t.startsWith('TASK_') ||
+      t.includes('HARVEST') ||
+      t.includes('CARE') ||
+      text.includes('nhiệm vụ') ||
+      text.includes('phân công') ||
+      text.includes('thu hoạch')
+    ) {
+      return '/dashboard/garden-staff'; // Task workspace
+    }
+    // Camera
+    if (t.includes('CAMERA') || text.includes('camera')) {
+      return '/dashboard/garden-staff/cameras';
     }
     return '/dashboard/garden-staff';
   }
 
-  // Manager / Location manager routing
+  // --- MANAGER / LOCATION MANAGER ---
   if (role === 'manager' || role === 'location_manager') {
-    if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR')) {
+    // IoT Alerts
+    if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR') || text.includes('cảm biến') || text.includes('cảnh báo')) {
       return '/dashboard/staff/alert-processing';
     }
-    if (t.startsWith('TASK_')) {
-      return '/dashboard/staff/tasks';
-    }
-    if (t.startsWith('PLANTING_') || t.startsWith('TREE_PLANTING_')) {
+    // Tree planting requests
+    if (
+      t.startsWith('PLANTING_') ||
+      t.startsWith('TREE_PLANTING_') ||
+      t.includes('PLANT') ||
+      text.includes('trồng cây') ||
+      text.includes('gieo giống')
+    ) {
       return '/dashboard/staff/tree-planting';
     }
-    if (t.startsWith('HARVEST_') || t.includes('HARVEST')) {
+    // Harvest history & decisions
+    if (t.startsWith('HARVEST_') || t.includes('HARVEST') || text.includes('thu hoạch')) {
       return '/dashboard/staff/harvest-history';
     }
-    if (t.startsWith('BOOKING_') || t.startsWith('RENTAL_') || t.startsWith('PAYMENT_')) {
+    // Tasks & issues & services
+    if (
+      t.startsWith('TASK_') ||
+      t.startsWith('SERVICE_') ||
+      t.startsWith('PILLAR_SETUP') ||
+      text.includes('nhiệm vụ') ||
+      text.includes('sự cố') ||
+      text.includes('dịch vụ') ||
+      text.includes('lắp đặt')
+    ) {
+      return '/dashboard/staff/tasks';
+    }
+    // Financial / Revenue (Manager) or Rentals (Location Manager)
+    if (t.startsWith('PAYMENT_') || t.startsWith('REVENUE_') || text.includes('thanh toán') || text.includes('doanh thu')) {
+      return role === 'manager' ? '/dashboard/staff/revenue' : '/dashboard/staff/rentals';
+    }
+    // Rentals & Bookings
+    if (t.startsWith('BOOKING_') || t.startsWith('RENTAL_') || text.includes('hợp đồng') || text.includes('thuê')) {
       return '/dashboard/staff/rentals';
     }
+    // Schedules & Staff
+    if (t.startsWith('SCHEDULE_') || t.startsWith('STAFF_') || text.includes('lịch trực') || text.includes('nhân viên')) {
+      return '/dashboard/staff/schedules';
+    }
+    // Equipment
+    if (t.startsWith('EQUIPMENT_') || text.includes('thiết bị')) {
+      return '/dashboard/staff/equipment';
+    }
+    // Cameras
+    if (t.includes('CAMERA') || text.includes('camera')) {
+      return role === 'manager' ? '/dashboard/staff/cameras' : '/dashboard/staff/cameras/all';
+    }
+
+    // If normalized URL is a valid staff route, use it
+    if (rawUrl && rawUrl.startsWith('/dashboard/staff/')) {
+      return rawUrl;
+    }
+
     return '/dashboard/staff';
   }
 
-  // Customer role (default)
-  if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR')) {
+  // --- ADMIN ---
+  if (role === 'admin') {
+    if (t.includes('USER') || text.includes('người dùng') || text.includes('tài khoản')) {
+      return '/dashboard/admin/users';
+    }
+    if (t.includes('CAMERA') || text.includes('camera')) {
+      return '/dashboard/staff/cameras/all';
+    }
+    if (t.includes('ALERT') || t.includes('IOT')) {
+      return '/dashboard/staff/alert-processing';
+    }
+    return '/dashboard/admin';
+  }
+
+  // --- CUSTOMER (Default) ---
+  // IoT Monitoring & Auto watering
+  if (
+    t.includes('ALERT') ||
+    t.includes('IOT') ||
+    t.includes('SENSOR') ||
+    t.includes('WATERING') ||
+    text.includes('cảm biến') ||
+    text.includes('chỉ số') ||
+    text.includes('tưới cây') ||
+    text.includes('sinh trưởng')
+  ) {
     return '/dashboard/customer/monitoring';
   }
-  if (t.startsWith('PLANTING_') || t.startsWith('TREE_PLANTING_')) {
+
+  // Tree planting requests
+  if (
+    t.startsWith('PLANTING_') ||
+    t.startsWith('TREE_PLANTING_') ||
+    t.includes('PLANT') ||
+    text.includes('trồng cây') ||
+    text.includes('gieo giống')
+  ) {
     return '/dashboard/customer/tree-planting';
   }
-  if (t.includes('HARVEST') && (t.includes('COMPLETED') || t.includes('DONE'))) {
-    // Thông báo đã hoàn thành thu hoạch -> Chuyển về Lịch sử thu hoạch
+
+  // Harvest completed -> Harvest history
+  if (
+    (t.includes('HARVEST') && (t.includes('COMPLETED') || t.includes('DONE') || t.includes('STORED') || t.includes('RECEIVED'))) ||
+    text.includes('đã thu hoạch') ||
+    text.includes('hoàn tất thu hoạch')
+  ) {
     return '/dashboard/customer/harvest-history';
   }
-  if (t.startsWith('HARVEST_') || t.startsWith('TASK_')) {
-    // Thông báo sẵn sàng thu hoạch / chọn phương thức -> Chuyển về Vườn đang thuê để khách thao tác
+
+  // Harvest ready / choice / reminder -> Active rentals (where user chooses harvest method)
+  if (t.startsWith('HARVEST_') || text.includes('thu hoạch')) {
     return '/dashboard/customer/rentals';
   }
-  if (t.startsWith('BOOKING_') || t.startsWith('RENTAL_') || t.startsWith('PAYMENT_')) {
+
+  // Payments & Invoices
+  if (t.startsWith('PAYMENT_') || text.includes('thanh toán') || text.includes('hóa đơn') || text.includes('giao dịch')) {
+    return '/dashboard/customer/payments';
+  }
+
+  // Rentals & Bookings & Care tasks progress
+  if (
+    t.startsWith('BOOKING_') ||
+    t.startsWith('RENTAL_') ||
+    t.startsWith('TASK_') ||
+    t.startsWith('SERVICE_') ||
+    text.includes('hợp đồng') ||
+    text.includes('thuê') ||
+    text.includes('chăm sóc') ||
+    text.includes('dịch vụ')
+  ) {
     return '/dashboard/customer/rentals';
+  }
+
+  // Cameras
+  if (t.includes('CAMERA') || text.includes('camera')) {
+    return '/dashboard/customer/cameras';
+  }
+
+  if (rawUrl && rawUrl.startsWith('/dashboard/customer/')) {
+    return rawUrl;
   }
 
   return '/dashboard/customer/rentals';
