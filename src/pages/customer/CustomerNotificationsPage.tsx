@@ -11,9 +11,19 @@ import {
   Sparkles,
   Inbox,
   X,
+  ClipboardList,
+  Calendar,
+  Wifi,
+  ShieldAlert,
+  CheckCircle,
+  History,
+  Camera,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
-import { customerNavItems as navItems } from './customerNavItems';
+import { customerNavItems } from './customerNavItems';
+import { staffNavItems } from '../manager/staffNav';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -25,6 +35,22 @@ import {
   NotificationCategory,
 } from '../../utils/notificationHelpers';
 import { NotificationItem } from '../../api/notificationApi';
+
+const gardenStaffNavItems = [
+  { label: 'Công việc', path: '/dashboard/garden-staff', icon: <ClipboardList className="w-full h-full" /> },
+  { label: 'Lịch trực', path: '/dashboard/garden-staff/schedules', icon: <Calendar className="w-full h-full" /> },
+  { label: 'Giám sát IoT', path: '/dashboard/garden-staff/monitoring', icon: <Wifi className="w-full h-full" /> },
+  { label: 'Cảnh báo IoT', path: '/dashboard/garden-staff/alerts', icon: <ShieldAlert className="w-full h-full" /> },
+  { label: 'Điều khiển máy bơm', path: '/dashboard/garden-staff/pump-control', icon: <CheckCircle className="w-full h-full" /> },
+  { label: 'Camera', path: '/dashboard/garden-staff/cameras', icon: <Camera className="w-full h-full" /> },
+  { label: 'Lịch sử thu hoạch', path: '/dashboard/garden-staff/harvest-history', icon: <History className="w-full h-full" /> },
+];
+
+const adminNavItems = [
+  { label: 'Tổng quan', path: '/dashboard/admin', icon: <TrendingUp className="w-full h-full" /> },
+  { label: 'Người dùng', path: '/dashboard/admin/users', icon: <Users className="w-full h-full" /> },
+  { label: 'Camera Tổng', path: '/dashboard/staff/cameras/all', icon: <Camera className="w-full h-full" /> },
+];
 
 export default function CustomerNotificationsPage() {
   const navigate = useNavigate();
@@ -103,8 +129,17 @@ export default function CustomerNotificationsPage() {
     },
   ];
 
+  const resolvedNavItems =
+    user?.role === 'garden_staff'
+      ? gardenStaffNavItems
+      : user?.role === 'manager' || user?.role === 'location_manager'
+      ? staffNavItems
+      : user?.role === 'admin'
+      ? adminNavItems
+      : customerNavItems;
+
   return (
-    <DashboardLayout navItems={navItems} title="Trung tâm thông báo">
+    <DashboardLayout navItems={resolvedNavItems} title="Trung tâm thông báo">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header Banner */}
         <div className="bg-gradient-to-r from-green-700 via-emerald-600 to-teal-700 rounded-3xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">

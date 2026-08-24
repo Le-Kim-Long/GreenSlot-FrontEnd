@@ -124,6 +124,7 @@ function AppRoutes() {
       <Route path="/dashboard/staff/schedules" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><StaffScheduleManagement /></ProtectedRoute>} />
       <Route path="/dashboard/staff/tree-planting" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><TreePlantingManagement /></ProtectedRoute>} />
       <Route path="/dashboard/staff/harvest-history" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><HarvestHistoryManagement /></ProtectedRoute>} />
+      <Route path="/dashboard/staff/notifications" element={<ProtectedRoute allowedRoles={['manager', 'location_manager']}><CustomerNotificationsPage /></ProtectedRoute>} />
 
       {/* Garden Staff */}
       <Route path="/dashboard/garden-staff" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffDashboard /></ProtectedRoute>} />
@@ -132,11 +133,13 @@ function AppRoutes() {
       <Route path="/dashboard/garden-staff/monitoring" element={<ProtectedRoute allowedRoles={['garden_staff']}><IoTMonitoringPage /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/pump-control" element={<ProtectedRoute allowedRoles={['garden_staff']}><PumpControl /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/harvest-history" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffHarvestHistoryPage /></ProtectedRoute>} />
-
+      <Route path="/dashboard/garden-staff/notifications" element={<ProtectedRoute allowedRoles={['garden_staff']}><CustomerNotificationsPage /></ProtectedRoute>} />
 
       {/* Admin */}
       <Route path="/dashboard/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
       <Route path="/dashboard/admin/users" element={<ProtectedRoute allowedRoles={['admin']}><UserManagementPage /></ProtectedRoute>} />
+      <Route path="/dashboard/admin/notifications" element={<ProtectedRoute allowedRoles={['admin']}><CustomerNotificationsPage /></ProtectedRoute>} />
+      <Route path="/dashboard/notifications" element={<ProtectedRoute><CustomerNotificationsPage /></ProtectedRoute>} />
       {/* Legacy owner routes → redirect */}
       <Route path="/dashboard/owner/*" element={<Navigate to="/gardens" replace />} />
 

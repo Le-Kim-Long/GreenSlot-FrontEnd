@@ -263,19 +263,27 @@ export default function CustomerTreePlanting() {
   const selectedPillar = selectedRental?.pillars?.find(p => p.id === Number(formData.targetPillarId));
   const pillarCount = selectedPillar ? 1 : (selectedRental?.pillars?.length || selectedRental?.pillarCodes?.length || 1);
 
+  const getTreePriceForPillarCapacity = (tree: any, holes: number = 24) => {
+    if (!tree) return 0;
+    if (holes >= 48) return Number(tree.priceLarge != null ? tree.priceLarge : ((tree.price || 0) * 2.0));
+    if (holes >= 36) return Number(tree.priceMedium != null ? tree.priceMedium : ((tree.price || 0) * 1.5));
+    return Number(tree.priceSmall != null ? tree.priceSmall : (tree.price || 0));
+  };
+
   let estimatedTreeCost = 0;
-  if (selectedTree?.price) {
+  if (selectedTree) {
     if (selectedPillar) {
-      estimatedTreeCost = selectedTree.price * ((selectedPillar.capacityHoles || 24) / 24.0);
+      estimatedTreeCost = getTreePriceForPillarCapacity(selectedTree, selectedPillar.capacityHoles || 24);
     } else if (selectedRental?.pillars && selectedRental.pillars.length > 0) {
       estimatedTreeCost = selectedRental.pillars.reduce(
-        (acc, p) => acc + (selectedTree.price * ((p.capacityHoles || 24) / 24.0)),
+        (acc, p) => acc + getTreePriceForPillarCapacity(selectedTree, p.capacityHoles || 24),
         0
       );
     } else {
-      estimatedTreeCost = selectedTree.price * pillarCount;
+      estimatedTreeCost = getTreePriceForPillarCapacity(selectedTree, 24) * pillarCount;
     }
   }
+
 
   // Gửi Form tạo mới (POST /api/tree-planting)
   const handleSubmitCreate = async (e: React.FormEvent) => {

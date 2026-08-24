@@ -8,7 +8,11 @@ export interface Tree {
   harvestDays: number;
   minRentalDays: number;
   price: number;
+  priceSmall?: number;
+  priceMedium?: number;
+  priceLarge?: number;
   imageUrl?: string | null;
+
   soilMoistureMin: number;
   soilMoistureMax: number;
   lightMin: number;

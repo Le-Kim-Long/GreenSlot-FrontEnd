@@ -209,12 +209,23 @@ export default function GardenDetailPage() {
   };
 
 
+  const getTreePriceForPillar = (t?: Tree | null, p?: { holes: number; type?: string }) => {
+    if (!t) return 0;
+    const holes = p?.holes || 24;
+    if (holes >= 48) {
+      return Number(t.priceLarge != null ? t.priceLarge : ((t.price || 0) * 2.0));
+    }
+    if (holes >= 36) {
+      return Number(t.priceMedium != null ? t.priceMedium : ((t.price || 0) * 1.5));
+    }
+    return Number(t.priceSmall != null ? t.priceSmall : (t.price || 0));
+  };
+
   // Chi tiết giống cây và giá phôi giống theo từng trụ
   const pillarTreeDetails = useMemo(() => {
     return chosenPillars.map(p => {
       const t = getTreeForPillar(p.id);
-      const scale = p.holes / 24.0;
-      const cost = t && t.price ? t.price * scale : 0;
+      const cost = getTreePriceForPillar(t, p);
       return {
         pillar: p,
         tree: t,
@@ -226,6 +237,7 @@ export default function GardenDetailPage() {
   const treeTotal = useMemo(() => {
     return pillarTreeDetails.reduce((sum, item) => sum + item.cost, 0);
   }, [pillarTreeDetails]);
+
 
   const finalPrice = slotRentTotal + treeTotal;
 
@@ -764,14 +776,18 @@ export default function GardenDetailPage() {
                         )}
                         {/* Giá áp dụng cho trụ đang chọn trong Dropdown */}
                         {activePillarTab === 'ALL' ? (
-                          <div className="text-xs font-black text-emerald-700 mt-1">
-                            Tổng giống cho {totalPillarsCount} trụ: +{Math.round(((t.price || 0) * totalHoles) / 24.0).toLocaleString('vi-VN')}đ
-                          </div>
+                          (() => {
+                            const totalAllPillarsCost = chosenPillars.reduce((sum, p) => sum + getTreePriceForPillar(t, p), 0);
+                            return (
+                              <div className="text-xs font-black text-emerald-700 mt-1">
+                                Tổng giống cho {totalPillarsCount} trụ: +{totalAllPillarsCost.toLocaleString('vi-VN')}đ
+                              </div>
+                            );
+                          })()
                         ) : (
                           (() => {
                             const activePillar = chosenPillars.find(p => p.id === activePillarTab);
-                            const scale = (activePillar?.holes || 24) / 24.0;
-                            const activePillarCost = Math.round((t.price || 0) * scale);
+                            const activePillarCost = getTreePriceForPillar(t, activePillar);
                             return (
                               <div className="text-xs font-black text-emerald-700 mt-1">
                                 Cho {activePillar?.label}: +{activePillarCost.toLocaleString('vi-VN')}đ
@@ -789,23 +805,24 @@ export default function GardenDetailPage() {
                             <div className="p-1.5 rounded-xl bg-emerald-50/70 border border-emerald-100 flex flex-col justify-center">
                               <span className="text-[9px] text-gray-500 font-semibold">Nhỏ (24h)</span>
                               <span className="font-black text-emerald-800 mt-0.5">
-                                {Math.round((t.price || 0) * 1.0).toLocaleString('vi-VN')}đ
+                                {Number(t.priceSmall != null ? t.priceSmall : (t.price || 0)).toLocaleString('vi-VN')}đ
                               </span>
                             </div>
                             <div className="p-1.5 rounded-xl bg-blue-50/70 border border-blue-100 flex flex-col justify-center">
                               <span className="text-[9px] text-gray-500 font-semibold">Vừa (36h)</span>
                               <span className="font-black text-blue-800 mt-0.5">
-                                {Math.round((t.price || 0) * 1.5).toLocaleString('vi-VN')}đ
+                                {Number(t.priceMedium != null ? t.priceMedium : ((t.price || 0) * 1.5)).toLocaleString('vi-VN')}đ
                               </span>
                             </div>
                             <div className="p-1.5 rounded-xl bg-purple-50/70 border border-purple-100 flex flex-col justify-center">
                               <span className="text-[9px] text-gray-500 font-semibold">Lớn (48h)</span>
                               <span className="font-black text-purple-800 mt-0.5">
-                                {Math.round((t.price || 0) * 2.0).toLocaleString('vi-VN')}đ
+                                {Number(t.priceLarge != null ? t.priceLarge : ((t.price || 0) * 2.0)).toLocaleString('vi-VN')}đ
                               </span>
                             </div>
                           </div>
                         </div>
+
                       </div>
                       {isSelectedInActiveTab && (
                         <CheckCircle2 className={clsx(
