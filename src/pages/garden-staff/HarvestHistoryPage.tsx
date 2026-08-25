@@ -57,23 +57,40 @@ export default function HarvestHistoryPage() {
                     <MapPin className="w-3.5 h-3.5" /> Ô {item.slotNumber}
                   </div>
                 </div>
-                <span className={item.harvestMethod === 'SELF' ? 'badge-green' : 'badge-blue'}>
-                  {item.harvestMethod === 'SELF' ? 'Khách tự thu hoạch' : `Nhân viên${item.staffName ? ': ' + item.staffName : ''}`}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {item.isEarlyHarvest && (
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-300 shadow-sm animate-pulse">
+                      🌱 Thu hoạch sớm {item.daysGrown != null && item.harvestDays ? `(${item.daysGrown}/${item.harvestDays} ngày)` : ''}
+                    </span>
+                  )}
+                  <span className={item.harvestMethod === 'SELF' ? 'badge-green' : 'badge-blue'}>
+                    {item.harvestMethod === 'SELF' ? 'Khách tự thu hoạch' : `Nhân viên${item.staffName ? ': ' + item.staffName : ''}`}
+                  </span>
+                </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 mt-3 text-xs text-gray-500">
+              <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500">
+                {item.pillarCodes && (
+                  <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    🏷️ Trụ: {item.pillarCodes}
+                  </span>
+                )}
                 {item.plantedAt && (
                   <span className="flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5" /> Trồng: {new Date(item.plantedAt).toLocaleDateString('vi-VN')}
+                    <Calendar className="w-3.5 h-3.5" /> Gieo trồng: {new Date(item.plantedAt).toLocaleDateString('vi-VN')}
                   </span>
                 )}
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5" /> Thu hoạch: {new Date(item.harvestedAt).toLocaleDateString('vi-VN')}
                 </span>
+                {item.daysGrown != null && (
+                  <span className="text-gray-600 font-medium">
+                    ⏱️ Sinh trưởng: <strong className="text-gray-900">{item.daysGrown} ngày</strong> {item.harvestDays ? `(Chu kỳ: ${item.harvestDays} ngày)` : ''}
+                  </span>
+                )}
                 {item.customerName && (
                   <span className="flex items-center gap-1">
-                    <User className="w-3.5 h-3.5" /> Khách: {item.customerName}
+                    <User className="w-3.5 h-3.5" /> Khách hàng: {item.customerName}
                   </span>
                 )}
               </div>

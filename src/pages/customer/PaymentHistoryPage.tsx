@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { 
   CreditCard, Loader2, RotateCw, ShoppingBag, Sprout, 
   Eye, Download, Printer, X, CheckCircle2, AlertCircle, 
-  XCircle, Clock, MapPin, Calendar, FileText, Building2
+  XCircle, Clock, MapPin, Calendar, FileText, Building2,
+  Receipt, ShieldCheck
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
@@ -39,6 +40,7 @@ interface DetailedTransaction extends PaymentTransactionInfo {
   treeName?: string;
   pillarCodes?: string[];
   pillars?: PillarInfo[];
+  monthlyPrice?: number;
   kind: 'EXTEND' | 'BOOK' | 'PLANT';
   extendedMonths: number | null;
 }
@@ -69,6 +71,7 @@ export default function PaymentHistoryPage() {
       treeName: r.treeName,
       pillarCodes: r.pillarCodes,
       pillars: r.pillars,
+      monthlyPrice: r.monthlyPrice,
       kind: getTxnKind(t.vnpTxnRef),
       extendedMonths: getExtendedMonths(t.vnpTxnRef),
     }))
@@ -345,6 +348,141 @@ export default function PaymentHistoryPage() {
                     <span className="font-mono text-gray-800 font-semibold">{selectedTxn.vnpTxnRef}</span>
                   </div>
                 </div>
+
+                {/* 🧾 BẢNG KÊ CHI TIẾT CÁC KHOẢN PHÍ (ITEMIZED BREAKDOWN) */}
+                {(() => {
+                  const total = Number(selectedTxn.amount) || 0;
+                  const pillarsCount = selectedTxn.pillars?.length || selectedTxn.pillarCodes?.length || 1;
+                  
+                  let months = selectedTxn.extendedMonths || 1;
+                  if (selectedTxn.kind === 'BOOK' && selectedTxn.startDate && selectedTxn.endDate) {
+                    const start = new Date(selectedTxn.startDate);
+                    const end = new Date(selectedTxn.endDate);
+                    const diffDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                    months = Math.max(1, Math.round(diffDays / 30));
+                  }
+
+                  const isPlantOnly = selectedTxn.kind === 'PLANT';
+                  const slotPricePerMonth = isPlantOnly ? 0 : (selectedTxn.monthlyPrice || 500000);
+                  const slotSubtotal = isPlantOnly ? 0 : Math.min(total, slotPricePerMonth * months);
+                  const treeSubtotal = isPlantOnly ? total : Math.max(0, total - slotSubtotal);
+                  const treePricePerPillar = treeSubtotal > 0 ? Math.round(treeSubtotal / Math.max(1, pillarsCount)) : 0;
+
+                  return (
+                    <div className="bg-white border border-gray-200/90 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-sm">
+                      <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
+                        <h3 className="font-bold text-gray-900 text-xs uppercase tracking-wider text-green-700 flex items-center gap-1.5">
+                          <Receipt className="w-4 h-4 text-green-600" /> Bảng kê chi tiết thanh toán (Itemized Breakdown)
+                        </h3>
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          {selectedTxn.kind === 'EXTEND' ? 'Gia hạn' : selectedTxn.kind === 'PLANT' ? 'Phôi giống' : 'Thuê mới'}
+                        </span>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="text-[11px] text-gray-400 font-semibold border-b border-gray-100">
+                              <th className="pb-2">Khoản mục / Dịch vụ</th>
+                              <th className="pb-2 text-right">Đơn giá</th>
+                              <th className="pb-2 text-center">SL / Hạn</th>
+                              <th className="pb-2 text-right">Thành tiền</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {/* Dòng 1: Tiền thuê ô đất */}
+                            {slotSubtotal > 0 && (
+                              <tr>
+                                <td className="py-2.5">
+                                  <div className="font-bold text-gray-900 flex items-center gap-1">
+                                    <Building2 className="w-3.5 h-3.5 text-gray-500" />
+                                    <span>Thuê ô vườn #{selectedTxn.slotNumber}</span>
+                                  </div>
+                                  <div className="text-[11px] text-gray-500 mt-0.5">
+                                    {selectedTxn.kind === 'EXTEND' 
+                                      ? `Phí gia hạn thời hạn hợp đồng (${months} tháng)` 
+                                      : `Mặt bằng canh tác công nghệ cao (${pillarsCount} trụ)`}
+                                  </div>
+                                </td>
+                                <td className="py-2.5 text-right font-mono text-gray-700">
+                                  {slotPricePerMonth.toLocaleString('vi-VN')} đ/th
+                                </td>
+                                <td className="py-2.5 text-center text-gray-600 font-semibold">
+                                  {months} tháng
+                                </td>
+                                <td className="py-2.5 text-right font-bold font-mono text-gray-900">
+                                  {slotSubtotal.toLocaleString('vi-VN')} đ
+                                </td>
+                              </tr>
+                            )}
+
+                            {/* Dòng 2: Phôi giống cây trồng */}
+                            {treeSubtotal > 0 && (
+                              <tr>
+                                <td className="py-2.5">
+                                  <div className="font-bold text-emerald-800 flex items-center gap-1">
+                                    <span>🌱</span>
+                                    <span>{selectedTxn.treeName || 'Phôi giống rau thủy canh'}</span>
+                                  </div>
+                                  <div className="text-[11px] text-gray-500 mt-0.5">
+                                    Cung cấp giống chất lượng cao ({pillarsCount} trụ gieo trồng)
+                                  </div>
+                                </td>
+                                <td className="py-2.5 text-right font-mono text-gray-700">
+                                  {treePricePerPillar.toLocaleString('vi-VN')} đ/trụ
+                                </td>
+                                <td className="py-2.5 text-center text-gray-600 font-semibold">
+                                  {pillarsCount} trụ
+                                </td>
+                                <td className="py-2.5 text-right font-bold font-mono text-emerald-700">
+                                  {treeSubtotal.toLocaleString('vi-VN')} đ
+                                </td>
+                              </tr>
+                            )}
+
+                            {/* Dòng 3: Hệ thống châm phân & IoT tự động */}
+                            <tr className="bg-gray-50/40">
+                              <td className="py-2.5">
+                                <div className="font-semibold text-gray-700 flex items-center gap-1">
+                                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Hệ thống IoT & Tưới tự động 24/7</span>
+                                </div>
+                                <div className="text-[10px] text-gray-400">
+                                  Cảm biến đo ẩm/pH/ánh sáng và điều khiển máy bơm tự động
+                                </div>
+                              </td>
+                              <td className="py-2.5 text-right text-gray-400 font-mono">Đã bao gồm</td>
+                              <td className="py-2.5 text-center text-gray-400">Toàn kỳ</td>
+                              <td className="py-2.5 text-right font-semibold text-emerald-600 font-mono">
+                                0 đ (Miễn phí)
+                              </td>
+                            </tr>
+                          </tbody>
+                          <tfoot className="border-t-2 border-gray-100 text-xs">
+                            <tr>
+                              <td colSpan={3} className="pt-3 text-right text-gray-500 font-medium">Tạm tính chi phí:</td>
+                              <td className="pt-3 text-right font-mono font-semibold text-gray-800">
+                                {total.toLocaleString('vi-VN')} đ
+                              </td>
+                            </tr>
+                            <tr>
+                              <td colSpan={3} className="py-1 text-right text-gray-500 font-medium">Thuế GTGT / Phí nền tảng:</td>
+                              <td className="py-1 text-right font-mono text-gray-500">0 đ (Đã bao gồm)</td>
+                            </tr>
+                            <tr className="border-t border-gray-200">
+                              <td colSpan={3} className="pt-2.5 text-right font-bold text-gray-900 text-sm">
+                                Tổng thanh toán thực tế (VNPay):
+                              </td>
+                              <td className="pt-2.5 text-right font-black font-mono text-emerald-800 text-base">
+                                {total.toLocaleString('vi-VN')} VNĐ
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Thông tin Ô vườn & Hợp đồng */}
                 <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-2.5 text-xs">
