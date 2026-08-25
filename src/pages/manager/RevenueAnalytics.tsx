@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, Calendar, User, Hash, CreditCard, MapPin, PieChart as PieIcon, FileSpreadsheet, Download, FileText } from 'lucide-react';
+﻿import { useState, useEffect } from 'react';
+import { DollarSign, TrendingUp, Calendar, CreditCard, MapPin, PieChart as PieIcon, FileSpreadsheet, Hash } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { managerApi, RevenueAnalyticsResponse, RevenueByLocationItem, TransactionDeclarationItem } from '../../api/managerApi';
@@ -12,9 +12,7 @@ export default function RevenueAnalytics() {
   const [data, setData] = useState<RevenueAnalyticsResponse | null>(null);
   const [locationData, setLocationData] = useState<RevenueByLocationItem[]>([]);
   const [declarations, setDeclarations] = useState<TransactionDeclarationItem[]>([]);
-  
-  // 👉 State chuyển tab giữa "Giao dịch thường" và "Kê khai thuế"
-  const [activeTab, setActiveTab] = useState<'normal' | 'declarations'>('normal');
+  const [selectedLocation, setSelectedLocation] = useState('');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -51,6 +49,21 @@ export default function RevenueAnalytics() {
     fetchData();
   }, [startDate, endDate]);
 
+  const formatPaymentMethod = (method?: string) => {
+    switch (method?.toUpperCase()) {
+      case 'VNPAY':
+        return 'VNPAY Online';
+      case 'CASH':
+        return 'Tiền mặt';
+      case 'BANK_TRANSFER':
+        return 'Chuyển khoản';
+      case 'QR_CODE':
+        return 'Quét mã QR';
+      default:
+        return 'VNPAY Online';
+    }
+  };
+
   const formatDateTime = (dateString?: string) => {
     if (!dateString) return '-';
     try {
@@ -68,35 +81,17 @@ export default function RevenueAnalytics() {
     }
   };
 
-  // 💥 Tính năng bổ sung: Xuất dữ liệu Kê khai thuế ra file CSV / Excel để nộp báo cáo
-  const handleExportCSV = () => {
-    if (!declarations || declarations.length === 0) return;
-    const headers = ['ID,Rental ID,Khu vườn,Mã Trụ,Vị trí,Tên khách hàng,Tên đăng nhập,Mã GD,Phương thức,Số tiền,Thời gian,Trạng thái,Mô tả'];
-    const rows = declarations.map(item => [
-      item.id,
-      item.rentalId,
-      `"${item.locationName || ''}"`,
-      item.pillarCode || '',
-      item.slotNumber || '',
-      `"${item.customerName || ''}"`,
-      item.customerUsername || '',
-      item.transactionCode || '',
-      item.paymentMethod || '',
-      item.amount || 0,
-      `"${formatDateTime(item.paymentDate)}"`,
-      item.status || '',
-      `"${item.description || ''}"`,
-    ].join(','));
+  // 👉 Danh sách cơ sở để lọc bảng lịch sử giao dịch (gộp từ dữ liệu doanh thu theo cơ sở & giao dịch)
+  const locationOptions = Array.from(
+    new Set([
+      ...locationData.map((loc) => loc.locationName),
+      ...declarations.map((d) => d.locationName),
+    ].filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
 
-    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers, ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `ke-khai-thue-${startDate}-den-${endDate}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const filteredDeclarations = selectedLocation
+    ? declarations.filter((d) => d.locationName === selectedLocation)
+    : declarations;
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Phân tích Doanh thu & Kê khai">
@@ -118,6 +113,21 @@ export default function RevenueAnalytics() {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <MapPin className="w-5 h-5 text-green-600 shrink-0" />
+          <span className="text-sm font-semibold text-gray-700">Cơ sở:</span>
+          <select
+            className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white"
+            value={selectedLocation}
+            onChange={(e) => setSelectedLocation(e.target.value)}
+          >
+            <option value="">Tất cả cơ sở</option>
+            {locationOptions.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -307,177 +317,92 @@ export default function RevenueAnalytics() {
             </div>
           )}
 
-          {/* 💥 KHU VỰC QUẢN LÝ GIAO DỊCH & KÊ KHAI THUẾ (HỆ THỐNG TAB) */}
+          {/* Lịch sử giao dịch (gộp "Giao dịch thường" + "Kê khai thuế" thành 1 bảng duy nhất) */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              
-              {/* Tab Navigation Buttons */}
-              <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-xl w-fit">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('normal')}
-                  className={clsx(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2",
-                    activeTab === 'normal' ? "bg-white text-green-700 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                  )}
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>Giao dịch thường ({data.transactions?.length || 0})</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('declarations')}
-                  className={clsx(
-                    "px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2",
-                    activeTab === 'declarations' ? "bg-white text-green-700 shadow-sm" : "text-gray-600 hover:text-gray-900"
-                  )}
-                >
-                  <FileSpreadsheet className="w-4 h-4" />
-                  <span>Báo cáo Kê khai thuế ({declarations?.length || 0})</span>
-                </button>
-              </div>
-
-              {/* Nút tải Excel / CSV chỉ hiện khi ở tab Kê Khai Thuế */}
-              {activeTab === 'declarations' && declarations?.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleExportCSV}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition shadow-sm"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Xuất Excel / CSV báo cáo</span>
-                </button>
-              )}
+              <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                <span>
+                  Lịch sử giao dịch ({filteredDeclarations?.length || 0})
+                  {selectedLocation && <span className="text-green-700"> — {selectedLocation}</span>}
+                </span>
+              </h3>
             </div>
 
-            {/* TAB 1: Bảng Giao Dịch Thường */}
-            {activeTab === 'normal' && (
-              <div className="overflow-x-auto">
-                {data.transactions && data.transactions.length > 0 ? (
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead className="bg-gray-50/75 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      <tr>
-                        <th className="p-4">Mã GD</th>
-                        <th className="p-4">Khách hàng</th>
-                        <th className="p-4">Mã thuê & Vị trí</th>
-                        <th className="p-4">Mã VNPAY</th>
-                        <th className="p-4">Thời gian thanh toán</th>
-                        <th className="p-4">Trạng thái</th>
-                        <th className="p-4 text-right">Số tiền</th>
+            <div className="overflow-x-auto">
+              {filteredDeclarations && filteredDeclarations.length > 0 ? (
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead className="bg-green-50/60 border-b border-gray-100 text-xs font-bold text-green-800 uppercase tracking-wider">
+                    <tr>
+                      <th className="p-4">Mã giao dịch</th>
+                      <th className="p-4">Khách hàng</th>
+                      <th className="p-4">Khu vườn, Trụ & Vị trí</th>
+                      <th className="p-4">Phương thức</th>
+                      <th className="p-4">Trạng thái</th>
+                      <th className="p-4">Mô tả giao dịch</th>
+                      <th className="p-4">Thời gian</th>
+                      <th className="p-4 text-right">Số tiền</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredDeclarations.map((d) => (
+                      <tr key={d.id} className="hover:bg-gray-50/80 transition">
+                        <td className="p-4">
+                          <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md border border-gray-200/60 font-mono text-xs font-bold text-gray-900">
+                            <Hash className="w-3 h-3 text-gray-500" />
+                            {d.transactionCode || `#${d.id}`}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-bold text-gray-900">{d.customerName || d.customerUsername || 'Khách vãng lai'}</div>
+                          <div className="text-xs text-gray-400 mt-0.5">({d.customerUsername || 'N/A'})</div>
+                        </td>
+                        <td className="p-4">
+                          <div className="font-semibold text-gray-800">{d.locationName || 'N/A'}</div>
+                          <div className="text-xs text-green-700 font-semibold mt-0.5">Trụ: {d.pillarCode || 'N/A'}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">Rental #{d.rentalId} — Vị trí: {d.slotNumber || '-'}</div>
+                        </td>
+                        <td className="p-4">
+                          <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-md text-xs border border-blue-200/50">
+                            <CreditCard className="w-3 h-3" />
+                            {formatPaymentMethod(d.paymentMethod)}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={clsx(
+                              'px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider',
+                              d.status?.toUpperCase() === 'SUCCESS' || d.status?.toUpperCase() === 'COMPLETED' || d.status?.toUpperCase() === 'PAID'
+                                ? 'bg-green-100 text-green-700 border border-green-200/50'
+                                : d.status?.toUpperCase() === 'PENDING'
+                                ? 'bg-amber-100 text-amber-700 border border-amber-200/50'
+                                : 'bg-gray-100 text-gray-700 border border-gray-200/50'
+                            )}
+                          >
+                            {d.status || 'UNKNOWN'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-600 text-xs max-w-xs truncate" title={d.description}>
+                          {d.description || 'Thanh toán tiền thuê đất / dịch vụ'}
+                        </td>
+                        <td className="p-4 text-gray-600 text-xs font-medium whitespace-nowrap">
+                          {formatDateTime(d.paymentDate)}
+                        </td>
+                        <td className="p-4 text-right font-black text-green-600 text-base whitespace-nowrap">
+                          {(d.amount || 0).toLocaleString('vi-VN')}đ
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {data.transactions.map((t) => (
-                        <tr key={t.id} className="hover:bg-gray-50/80 transition">
-                          <td className="p-4 font-bold text-gray-900">
-                            <span className="inline-flex items-center gap-1">
-                              <Hash className="w-3.5 h-3.5 text-gray-400" />
-                              {t.id}
-                            </span>
-                          </td>
-                          <td className="p-4 font-semibold text-gray-700">
-                            <span className="inline-flex items-center gap-1.5">
-                              <User className="w-4 h-4 text-green-600 shrink-0" />
-                              {t.customerUsername || 'N/A'}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <div className="font-medium text-gray-800">Rental #{t.rentalId}</div>
-                            <div className="text-xs text-gray-400 mt-0.5">Vị trí: {t.slotNumber || 'N/A'}</div>
-                          </td>
-                          <td className="p-4 text-gray-600 font-mono text-xs">
-                            <span className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-md border border-gray-200/60">
-                              <CreditCard className="w-3 h-3 text-gray-500" />
-                              {t.vnpTxnRef || '-'}
-                            </span>
-                          </td>
-                          <td className="p-4 text-gray-600 text-xs font-medium">
-                            {formatDateTime(t.paymentDate)}
-                          </td>
-                          <td className="p-4">
-                            <span
-                              className={clsx(
-                                'px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider',
-                                t.status?.toUpperCase() === 'SUCCESS' || t.status?.toUpperCase() === 'COMPLETED' || t.status?.toUpperCase() === 'PAID'
-                                  ? 'bg-green-100 text-green-700 border border-green-200/50'
-                                  : t.status?.toUpperCase() === 'PENDING'
-                                  ? 'bg-amber-100 text-amber-700 border border-amber-200/50'
-                                  : 'bg-gray-100 text-gray-700 border border-gray-200/50'
-                              )}
-                            >
-                              {t.status || 'UNKNOWN'}
-                            </span>
-                          </td>
-                          <td className="p-4 text-right font-black text-green-600 text-base">
-                            {(t.amount || 0).toLocaleString('vi-VN')}đ
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="p-12 text-center text-gray-400 font-medium">Chưa có dữ liệu giao dịch thường</div>
-                )}
-              </div>
-            )}
-
-            {/* TAB 2: Bảng Báo Cáo Kê Khai Thuế / Chi Tiết (Declarations) */}
-            {activeTab === 'declarations' && (
-              <div className="overflow-x-auto">
-                {declarations && declarations.length > 0 ? (
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead className="bg-green-50/60 border-b border-gray-100 text-xs font-bold text-green-800 uppercase tracking-wider">
-                      <tr>
-                        <th className="p-4">Mã GD / Trụ</th>
-                        <th className="p-4">Khách hàng</th>
-                        <th className="p-4">Khu vườn & Vị trí</th>
-                        <th className="p-4">Phương thức</th>
-                        <th className="p-4">Mô tả giao dịch</th>
-                        <th className="p-4">Thời gian</th>
-                        <th className="p-4 text-right">Số tiền</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {declarations.map((d) => (
-                        <tr key={d.id} className="hover:bg-gray-50/80 transition">
-                          <td className="p-4">
-                            <div className="font-bold text-gray-900 font-mono text-xs">{d.transactionCode || `#${d.id}`}</div>
-                            <div className="text-xs text-green-700 font-semibold mt-0.5">Trụ: {d.pillarCode || 'N/A'}</div>
-                          </td>
-                          <td className="p-4">
-                            <div className="font-bold text-gray-900">{d.customerName || d.customerUsername || 'Khách vãng lai'}</div>
-                            <div className="text-xs text-gray-400 mt-0.5">({d.customerUsername || 'N/A'})</div>
-                          </td>
-                          <td className="p-4">
-                            <div className="font-semibold text-gray-800">{d.locationName || 'N/A'}</div>
-                            <div className="text-xs text-gray-500 mt-0.5">Rental #{d.rentalId} — Vị trí: {d.slotNumber || '-'}</div>
-                          </td>
-                          <td className="p-4">
-                            <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-md text-xs border border-blue-200/50">
-                              <CreditCard className="w-3 h-3" />
-                              {d.paymentMethod || 'SYSTEM'}
-                            </span>
-                          </td>
-                          <td className="p-4 text-gray-600 text-xs max-w-xs truncate" title={d.description}>
-                            {d.description || 'Thanh toán tiền thuê đất / dịch vụ'}
-                          </td>
-                          <td className="p-4 text-gray-600 text-xs font-medium whitespace-nowrap">
-                            {formatDateTime(d.paymentDate)}
-                          </td>
-                          <td className="p-4 text-right font-black text-green-600 text-base whitespace-nowrap">
-                            {(d.amount || 0).toLocaleString('vi-VN')}đ
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="p-12 text-center text-gray-400 font-medium">Chưa có dữ liệu báo cáo kê khai thuế trong khoảng thời gian này</div>
-                )}
-              </div>
-            )}
-
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="p-12 text-center text-gray-400 font-medium">
+                  {selectedLocation
+                    ? `Không có giao dịch nào tại "${selectedLocation}" trong khoảng thời gian này`
+                    : 'Chưa có dữ liệu lịch sử giao dịch trong khoảng thời gian này'}
+                </div>
+              )}
+            </div>
           </div>
         </>
       ) : null}
