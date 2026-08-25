@@ -25,6 +25,8 @@ export interface PillarDetail {
   defaultTreeName?: string;
   defaultTreePrice?: number;
   defaultTreeImageUrl?: string;
+  treeId?: number;
+  treeName?: string;
   cameraStreamUrl?: string;
   cameraStatus?: string;
   locationId?: number;

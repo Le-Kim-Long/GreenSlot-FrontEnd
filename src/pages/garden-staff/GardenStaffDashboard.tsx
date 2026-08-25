@@ -3,7 +3,7 @@ import {
   ClipboardList, Wifi, CheckCircle, AlertTriangle,
   Loader2, ShieldAlert, Upload, Calendar, Bell, Eye,
   Image as ImageIcon, X, ExternalLink, Sprout, Zap, History, Wrench, Camera,
-  MapPin, Layers
+  MapPin, Layers, Filter, Play
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { taskApi, EligibleHarvestRental } from '../../api/taskApi';
@@ -33,14 +33,14 @@ const statusConfig: Record<string, { label: string; cls: string }> = {
 type TaskCategoryKey = 'ISSUE' | 'NEW_PLANTING' | 'HARVEST' | 'SERVICE_REQUEST' | 'MAINTENANCE';
 
 const categoryConfig: Record<TaskCategoryKey, { label: string; icon: JSX.Element; badgeCls: string; cardCls: string }> = {
-  ISSUE: { label: 'Báo cáo sự cố', icon: <AlertTriangle className="w-4 h-4" />, badgeCls: 'bg-red-100 text-red-700', cardCls: 'border-red-200 bg-red-50/50' },
-  NEW_PLANTING: { label: 'Cây mới trồng', icon: <Sprout className="w-4 h-4" />, badgeCls: 'bg-green-100 text-green-700', cardCls: 'border-green-200 bg-green-50/50' },
   HARVEST: { label: 'Thu hoạch', icon: <Zap className="w-4 h-4" />, badgeCls: 'bg-amber-100 text-amber-700', cardCls: 'border-amber-200 bg-amber-50/50' },
+  NEW_PLANTING: { label: 'Cây mới trồng', icon: <Sprout className="w-4 h-4" />, badgeCls: 'bg-green-100 text-green-700', cardCls: 'border-green-200 bg-green-50/50' },
+  ISSUE: { label: 'Báo cáo sự cố', icon: <AlertTriangle className="w-4 h-4" />, badgeCls: 'bg-red-100 text-red-700', cardCls: 'border-red-200 bg-red-50/50' },
   SERVICE_REQUEST: { label: 'Dịch vụ khách yêu cầu', icon: <ClipboardList className="w-4 h-4" />, badgeCls: 'bg-indigo-100 text-indigo-700', cardCls: 'border-indigo-200 bg-indigo-50/50' },
   MAINTENANCE: { label: 'Bảo trì & vệ sinh', icon: <Wrench className="w-4 h-4" />, badgeCls: 'bg-gray-100 text-gray-700', cardCls: 'border-gray-200 bg-gray-50/50' },
 };
 
-const CATEGORY_ORDER: TaskCategoryKey[] = ['ISSUE', 'NEW_PLANTING', 'HARVEST', 'SERVICE_REQUEST', 'MAINTENANCE'];
+const CATEGORY_ORDER: TaskCategoryKey[] = ['HARVEST', 'NEW_PLANTING', 'ISSUE', 'SERVICE_REQUEST', 'MAINTENANCE'];
 
 function getTaskCategory(task: GardeningTask): TaskCategoryKey {
   if (task.taskType === 'HARVEST') return 'HARVEST';
@@ -50,8 +50,9 @@ function getTaskCategory(task: GardeningTask): TaskCategoryKey {
   return 'MAINTENANCE';
 }
 
-function groupTasksByCategory(tasks: GardeningTask[]): { key: TaskCategoryKey; items: GardeningTask[] }[] {
-  return CATEGORY_ORDER
+function groupTasksByCategory(tasks: GardeningTask[], selectedCat: TaskCategoryKey | 'ALL'): { key: TaskCategoryKey; items: GardeningTask[] }[] {
+  const allowedCategories = selectedCat === 'ALL' ? CATEGORY_ORDER : [selectedCat];
+  return allowedCategories
     .map(key => ({ key, items: tasks.filter(t => getTaskCategory(t) === key) }))
     .filter(group => group.items.length > 0);
 }
@@ -59,6 +60,7 @@ function groupTasksByCategory(tasks: GardeningTask[]): { key: TaskCategoryKey; i
 export default function GardenStaffDashboard() {
   const [tasks, setTasks] = useState<GardeningTask[]>([]);
   const [availableTasks, setAvailableTasks] = useState<GardeningTask[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<TaskCategoryKey | 'ALL'>('ALL');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [claimingId, setClaimingId] = useState<number | null>(null);
@@ -115,8 +117,8 @@ export default function GardenStaffDashboard() {
     try {
       await taskApi.claimTask(taskId);
       fetchTasks();
-    } catch {
-      setError('Nhận việc thất bại, có thể staff khác đã nhận trước.');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Nhận việc thất bại, có thể bạn chưa được phân công phụ trách ô vườn này hoặc ca trực khác đã nhận.');
     } finally {
       setClaimingId(null);
     }
@@ -125,15 +127,55 @@ export default function GardenStaffDashboard() {
   const pending = tasks.filter(t => t.status === 'PENDING');
   const inProgress = tasks.filter(t => t.status === 'IN_PROGRESS');
 
+  // Lọc theo Category được chọn
+  const filteredAvailableGroups = groupTasksByCategory(availableTasks, selectedCategory);
+  const filteredMyGroups = groupTasksByCategory(tasks, selectedCategory);
+  const totalTasksCount = tasks.length + availableTasks.length;
+
   return (
     <DashboardLayout navItems={navItems} title="Bảng điều khiển Nhân viên vườn">
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="card"><div className="text-2xl font-black">{tasks.length}</div><div className="text-sm text-gray-500">Tổng công việc</div></div>
-        <div className="card"><div className="text-2xl font-black text-yellow-600">{pending.length}</div><div className="text-sm text-gray-500">Chờ xử lý</div></div>
-        <div className="card"><div className="text-2xl font-black text-blue-600">{inProgress.length}</div><div className="text-sm text-gray-500">Đang làm</div></div>
+      {/* Thẻ thống kê */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="card"><div className="text-2xl font-black">{tasks.length}</div><div className="text-sm text-gray-500">Việc của tôi đã nhận</div></div>
+        <div className="card"><div className="text-2xl font-black text-yellow-600">{pending.length}</div><div className="text-sm text-gray-500">Chờ bắt đầu làm</div></div>
+        <div className="card"><div className="text-2xl font-black text-blue-600">{inProgress.length}</div><div className="text-sm text-gray-500">Đang thực hiện</div></div>
       </div>
 
-      {error && <div className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>}
+      {/* Thanh bộ lọc loại công việc */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter className="w-4 h-4 text-green-600 shrink-0" />
+          <span className="text-sm font-bold text-gray-700">Lọc theo loại công việc:</span>
+          <select
+            className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white font-medium"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value as TaskCategoryKey | 'ALL')}
+          >
+            <option value="ALL">Tất cả loại công việc ({totalTasksCount})</option>
+            <option value="HARVEST">🌾 Thu hoạch ({tasks.filter(t => getTaskCategory(t) === 'HARVEST').length + availableTasks.filter(t => getTaskCategory(t) === 'HARVEST').length})</option>
+            <option value="NEW_PLANTING">🌱 Chăm sóc cây mới trồng ({tasks.filter(t => getTaskCategory(t) === 'NEW_PLANTING').length + availableTasks.filter(t => getTaskCategory(t) === 'NEW_PLANTING').length})</option>
+            <option value="ISSUE">⚠️ Báo cáo sự cố ({tasks.filter(t => getTaskCategory(t) === 'ISSUE').length + availableTasks.filter(t => getTaskCategory(t) === 'ISSUE').length})</option>
+            <option value="SERVICE_REQUEST">🛠️ Dịch vụ khách yêu cầu ({tasks.filter(t => getTaskCategory(t) === 'SERVICE_REQUEST').length + availableTasks.filter(t => getTaskCategory(t) === 'SERVICE_REQUEST').length})</option>
+            <option value="MAINTENANCE">🧹 Bảo trì & vệ sinh ({tasks.filter(t => getTaskCategory(t) === 'MAINTENANCE').length + availableTasks.filter(t => getTaskCategory(t) === 'MAINTENANCE').length})</option>
+          </select>
+        </div>
+
+        {selectedCategory !== 'ALL' && (
+          <button
+            onClick={() => setSelectedCategory('ALL')}
+            className="text-xs text-gray-500 hover:text-green-600 font-semibold self-start sm:self-auto"
+          >
+            ✕ Xóa bộ lọc
+          </button>
+        )}
+      </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-600 rounded-xl px-4 py-3 mb-6 text-sm font-medium border border-red-200 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 text-xs">✕</button>
+        </div>
+      )}
 
       {eligibleRentals.length > 0 && (
         <div className="mb-6">
@@ -184,12 +226,15 @@ export default function GardenStaffDashboard() {
         </div>
       )}
 
-      {availableTasks.length > 0 && (
-        <div className="mb-6 space-y-4">
-          <h3 className="text-sm font-bold text-gray-700 flex items-center gap-1.5">
-            <Bell className="w-4 h-4 text-amber-500" /> Công việc chưa ai nhận ({availableTasks.length})
+      {/* Danh sách công việc chưa ai nhận */}
+      {availableTasks.length > 0 && filteredAvailableGroups.length > 0 && (
+        <div className="mb-8 space-y-4">
+          <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+            <Bell className="w-4 h-4 text-amber-500" />
+            <span>Công việc chưa ai nhận ({availableTasks.length})</span>
+            <span className="text-xs font-normal text-gray-500">(Theo ca trực & ô vườn bạn phụ trách)</span>
           </h3>
-          {groupTasksByCategory(availableTasks).map(group => {
+          {filteredAvailableGroups.map(group => {
             const cat = categoryConfig[group.key];
             return (
               <div key={group.key}>
@@ -231,7 +276,7 @@ export default function GardenStaffDashboard() {
                       <button
                         disabled={claimingId === task.id}
                         onClick={() => handleClaim(task.id)}
-                        className="btn-primary text-xs py-1.5 px-3 whitespace-nowrap self-end sm:self-auto"
+                        className="btn-primary text-xs py-1.5 px-3.5 whitespace-nowrap self-end sm:self-auto shadow-xs"
                       >
                         {claimingId === task.id ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : null}
                         Nhận việc
@@ -244,7 +289,6 @@ export default function GardenStaffDashboard() {
           })}
         </div>
       )}
-
       {loading ? (
         <div className="text-center py-16"><Loader2 className="w-8 h-8 animate-spin text-green-600 mx-auto" /></div>
       ) : tasks.length === 0 ? (
@@ -254,7 +298,11 @@ export default function GardenStaffDashboard() {
         </div>
       ) : (
         <div className="space-y-6">
-          {groupTasksByCategory(tasks).map(group => {
+          <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-green-600" />
+            <span>Công việc của tôi ({tasks.length})</span>
+          </h3>
+          {filteredMyGroups.map(group => {
             const cat = categoryConfig[group.key];
             return (
               <div key={group.key}>
@@ -263,96 +311,96 @@ export default function GardenStaffDashboard() {
                 </div>
                 <div className="space-y-3">
                   {group.items.map(task => {
-            const st = statusConfig[task.status] || { label: task.status, cls: 'badge-gray' };
-            return (
-              <div key={task.id} className="card shadow-sm border border-gray-100">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono font-bold text-gray-400">#{task.id}</span>
-                      <div className="font-bold text-gray-900 text-base">{task.taskName}</div>
-                      {(task.isEarlyHarvest || task.taskName?.includes('sớm')) && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full">
-                          ⚡ Thu hoạch sớm
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap mt-1 text-xs">
-                      <span className="font-bold text-green-700 flex items-center gap-1 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md">
-                        <MapPin className="w-3.5 h-3.5" /> Ô vườn: {task.targetSlotNumber || 'N/A'}
-                      </span>
-                      {task.pillarCodes ? (
-                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
-                          <Layers className="w-3 h-3" /> Trụ {task.pillarCodes}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 font-medium text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-md">
-                          <Layers className="w-3 h-3" /> Toàn bộ các trụ
-                        </span>
-                      )}
-                      {task.treeName && (
-                        <span className="inline-flex items-center gap-1 font-medium text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">
-                          <Sprout className="w-3 h-3" /> {task.treeName}
-                        </span>
-                      )}
-                      {task.locationName && (
-                        <span className="text-gray-400">({task.locationName})</span>
-                      )}
-                    </div>
-                    {task.description && (
-                      <div className="text-xs text-gray-600 mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                        {task.description}
-                      </div>
-                    )}
-                    
-                    {task.status === 'REJECTED' && task.rejectionReason && (
-                      <div className="text-xs text-red-600 mt-2 font-medium bg-red-50 p-2.5 border border-red-200 rounded-lg">
-                        ⚠️ <strong>Lý do từ chối:</strong> {task.rejectionReason}
-                      </div>
-                    )}
+                    const st = statusConfig[task.status] || { label: task.status, cls: 'badge-gray' };
+                    return (
+                      <div key={task.id} className="card shadow-sm border border-gray-100">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-mono font-bold text-gray-400">#{task.id}</span>
+                              <div className="font-bold text-gray-900 text-base">{task.taskName}</div>
+                              {(task.isEarlyHarvest || task.taskName?.includes('sớm')) && (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full">
+                                  ⚡ Thu hoạch sớm
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 flex-wrap mt-1 text-xs">
+                              <span className="font-bold text-green-700 flex items-center gap-1 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md">
+                                <MapPin className="w-3.5 h-3.5" /> Ô vườn: {task.targetSlotNumber || 'N/A'}
+                              </span>
+                              {task.pillarCodes ? (
+                                <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                  <Layers className="w-3 h-3" /> Trụ {task.pillarCodes}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 font-medium text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-md">
+                                  <Layers className="w-3 h-3" /> Toàn bộ các trụ
+                                </span>
+                              )}
+                              {task.treeName && (
+                                <span className="inline-flex items-center gap-1 font-medium text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">
+                                  <Sprout className="w-3 h-3" /> {task.treeName}
+                                </span>
+                              )}
+                              {task.locationName && (
+                                <span className="text-gray-400">({task.locationName})</span>
+                              )}
+                            </div>
+                            {task.description && (
+                              <div className="text-xs text-gray-600 mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                                {task.description}
+                              </div>
+                            )}
+                            
+                            {task.status === 'REJECTED' && task.rejectionReason && (
+                              <div className="text-xs text-red-600 mt-2 font-medium bg-red-50 p-2.5 border border-red-200 rounded-lg">
+                                ⚠️ <strong>Lý do từ chối:</strong> {task.rejectionReason}
+                              </div>
+                            )}
 
-                    {/* Hiển thị Ảnh Bằng Chứng Đã Nộp */}
-                    {task.evidenceImageUrl && (
-                      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
-                        <div 
-                          onClick={() => setPreviewImage(task.evidenceImageUrl!)}
-                          className="group relative w-16 h-16 rounded-lg overflow-hidden border border-green-300 bg-gray-900 cursor-pointer shadow-sm flex-shrink-0"
-                        >
-                          <img 
-                            src={task.evidenceImageUrl} 
-                            alt="Ảnh bằng chứng" 
-                            className="w-full h-full object-cover group-hover:scale-105 transition"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Ảnh';
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white">
-                            <Eye className="w-4 h-4" />
+                            {/* Hiển thị Ảnh Bằng Chứng Đã Nộp */}
+                            {task.evidenceImageUrl && (
+                              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
+                                <div 
+                                  onClick={() => setPreviewImage(task.evidenceImageUrl!)}
+                                  className="group relative w-16 h-16 rounded-lg overflow-hidden border border-green-300 bg-gray-900 cursor-pointer shadow-sm flex-shrink-0"
+                                >
+                                  <img 
+                                    src={task.evidenceImageUrl} 
+                                    alt="Ảnh bằng chứng" 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition"
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Ảnh';
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition text-white">
+                                    <Eye className="w-4 h-4" />
+                                  </div>
+                                </div>
+                                <div className="text-xs">
+                                  <span className="font-semibold text-gray-700 block">Ảnh bằng chứng đã nộp</span>
+                                  <button 
+                                    type="button" 
+                                    onClick={() => setPreviewImage(task.evidenceImageUrl!)}
+                                    className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 mt-0.5"
+                                  >
+                                    <Eye className="w-3 h-3" /> Bấm để xem ảnh lớn
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
+
+                          <span className={clsx(st.cls, 'px-3 py-1 rounded-full text-xs font-semibold w-fit self-start')}>
+                            {st.label}
+                          </span>
                         </div>
-                        <div className="text-xs">
-                          <span className="font-semibold text-gray-700 block">Ảnh bằng chứng đã nộp</span>
-                          <button 
-                            type="button" 
-                            onClick={() => setPreviewImage(task.evidenceImageUrl!)}
-                            className="text-green-600 hover:text-green-700 font-medium inline-flex items-center gap-1 mt-0.5"
-                          >
-                            <Eye className="w-3 h-3" /> Bấm để xem ảnh lớn
-                          </button>
-                        </div>
+
+                        {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL' && task.status !== 'CANCELLED') && (
+                          <TaskActions task={task} onUpdated={fetchTasks} />
+                        )}
                       </div>
-                    )}
-                  </div>
-
-                  <span className={clsx(st.cls, 'px-3 py-1 rounded-full text-xs font-semibold w-fit self-start')}>
-                    {st.label}
-                  </span>
-                </div>
-
-                {(task.status !== 'COMPLETED' && task.status !== 'PENDING_APPROVAL' && task.status !== 'CANCELLED') && (
-                  <TaskActions task={task} onUpdated={fetchTasks} />
-                )}
-              </div>
                     );
                   })}
                 </div>
@@ -447,7 +495,6 @@ function TaskActions({
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
       setEvidenceFile(file);
-      // Giải phóng Blob URL cũ trước khi tạo mới để tránh rò rỉ bộ nhớ
       if (evidencePreview) URL.revokeObjectURL(evidencePreview);
       const url = URL.createObjectURL(file);
       setEvidencePreview(url);
@@ -469,7 +516,6 @@ function TaskActions({
       
       setShowComplete(false);
       setEvidenceFile(null);
-      // Giải phóng Blob URL sau khi upload thành công
       if (evidencePreview) URL.revokeObjectURL(evidencePreview);
       setEvidencePreview(null);
       onUpdated();
@@ -503,31 +549,59 @@ function TaskActions({
     <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2">
       {actionError && <div className="w-full bg-red-50 text-red-600 rounded-lg p-2.5 text-xs mb-2 font-medium border border-red-200">{actionError}</div>}
 
-      {task.taskType === 'HARVEST' && (task.status === 'PENDING' || task.status === 'IN_PROGRESS') && (
+      {/* Nút bắt đầu làm khi trạng thái là PENDING (chưa bắt đầu) */}
+      {task.status === 'PENDING' && (
+        <button
+          disabled={busy}
+          onClick={() => updateStatus('IN_PROGRESS')}
+          className="btn-primary text-xs py-1.5 px-3.5 flex items-center gap-1.5 shadow-xs"
+        >
+          {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+          Bắt đầu làm việc
+        </button>
+      )}
+
+      {/* Nút báo khách hàng thu hoạch (CHỈ hiển thị khi task đã IN_PROGRESS) */}
+      {task.taskType === 'HARVEST' && task.status === 'IN_PROGRESS' && (
         notified ? (
           <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 inline-flex items-center gap-1">
             <Bell className="w-3 h-3" /> Đã báo khách hàng
           </span>
         ) : (
-          <button disabled={busy} onClick={handleNotifyHarvest} className="btn-secondary text-xs py-1.5 px-3">
-            <Bell className="w-3 h-3 inline mr-1" /> Báo khách hàng
+          <button disabled={busy} onClick={handleNotifyHarvest} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+            <Bell className="w-3 h-3 text-amber-600 inline" /> Báo khách hàng thu hoạch
           </button>
         )
       )}
-
-      {task.status === 'PENDING' && (
-        <button disabled={busy} onClick={() => updateStatus('IN_PROGRESS')} className="btn-primary text-xs py-1.5 px-3">
-          Bắt đầu làm
-        </button>
-      )}
       
+      {/* Nút hoàn thành & nộp ảnh bằng chứng (CHỈ hiển thị khi IN_PROGRESS hoặc REJECTED) */}
       {(task.status === 'IN_PROGRESS' || task.status === 'REJECTED') && (
-        <button disabled={busy} onClick={() => { setShowComplete(!showComplete); setShowReport(false); setActionError(''); setEvidenceFile(null); setEvidencePreview(null); }} className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1">
-          <CheckCircle className="w-3.5 h-3.5 inline" /> {task.status === 'REJECTED' ? 'Nộp lại bằng chứng' : 'Hoàn thành công việc'}
+        <button
+          disabled={busy}
+          onClick={() => {
+            setShowComplete(!showComplete);
+            setShowReport(false);
+            setActionError('');
+            setEvidenceFile(null);
+            setEvidencePreview(null);
+          }}
+          className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1 shadow-xs"
+        >
+          <CheckCircle className="w-3.5 h-3.5 inline" />
+          {task.status === 'REJECTED' ? 'Nộp lại bằng chứng' : 'Hoàn thành & nộp bằng chứng'}
         </button>
       )}
       
-      <button disabled={busy} onClick={() => { setShowReport(!showReport); setShowComplete(false); setActionError(''); }} className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1">
+      {/* Nút báo cáo sự cố */}
+      <button
+        disabled={busy}
+        onClick={() => {
+          setShowReport(!showReport);
+          setShowComplete(false);
+          setActionError('');
+        }}
+        className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1"
+      >
         <AlertTriangle className="w-3.5 h-3.5 inline text-orange-500" /> Báo sự cố
       </button>
       
