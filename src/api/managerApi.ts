@@ -31,13 +31,20 @@ export interface TransactionDeclarationItem {
   slotNumber: string;
   customerUsername: string;
   customerName: string;
+  customerEmail?: string;
+  customerPhone?: string;
   amount: number;
   transactionCode: string;
+  vnpTxnRef?: string;
   paymentMethod: string;
   paymentDate: string;
   status: string;
   locationName: string;
   pillarCode: string;
+  treeName?: string;
+  durationMonths?: number;
+  startDate?: string;
+  endDate?: string;
   description: string;
 }
 
