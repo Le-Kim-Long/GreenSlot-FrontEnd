@@ -284,7 +284,7 @@ export default function CustomerNotificationsPage() {
         ) : (
           <div className="space-y-3">
             {filteredNotifications.map(item => {
-              const meta = getNotificationMeta(item.type);
+              const meta = getNotificationMeta(item.type, item.title);
               const IconComponent = meta.icon;
 
               return (

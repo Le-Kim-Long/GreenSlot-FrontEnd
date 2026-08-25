@@ -90,6 +90,10 @@ export interface PaymentTransactionInfo {
   vnpTxnRef: string;
   paymentDate: string;
   status: string;
+  targetPillarCode?: string;
+  targetPillarHoles?: number;
+  treeName?: string;
+  pillarsCount?: number;
 }
 
 export interface RentalHistoryDTO {
@@ -156,6 +160,11 @@ export interface GardeningTask {
   assignedStaffName?: string;
   targetSlotId?: number;
   targetSlotNumber?: string;
+  locationName?: string;
+  pillarCodes?: string;
+  treeName?: string;
+  isEarlyHarvest?: boolean;
+  customerName?: string;
   createdAt: string;
 }
 

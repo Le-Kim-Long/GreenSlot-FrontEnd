@@ -86,8 +86,12 @@ export default function CustomerDashboard() {
                   <Leaf className="w-6 h-6 text-green-600" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-gray-900 text-sm">{r.slotNumber}</div>
-                  <div className="text-xs text-gray-500">{r.locationName} · {r.startDate} — {r.endDate}</div>
+                  <div className="font-semibold text-gray-900 text-sm">{r.slotNumber} {r.treeName ? `· 🌱 ${r.treeName}` : ''}</div>
+                  <div className="text-xs text-gray-500">
+                    {r.locationName} 
+                    {r.pillarCodes && r.pillarCodes.length > 0 ? ` · Trụ ${r.pillarCodes.join(', ')}` : (r.pillarCode ? ` · Trụ ${r.pillarCode}` : '')}
+                    {` · ${r.startDate} — ${r.endDate}`}
+                  </div>
                   <span className={clsx('text-xs mt-1 inline-block', statusCls[r.status] || 'badge-gray')}>
                     {statusLabel[r.status] || r.status}
                   </span>

@@ -8,7 +8,9 @@ export interface StaffSchedule {
   locationName: string;
   scheduleDate: string; // Định dạng "YYYY-MM-DD"
   startTime: string;    // VD: "08:00"
-  endTime: string;      // VD: "17:00"
+  endTime: string;      // VD: "16:00"
+  slotId?: number;
+  slotNumber?: string;
   notes: string;
   isActive: boolean;
 }

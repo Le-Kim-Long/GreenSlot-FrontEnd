@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import {
   ClipboardList, Wifi, CheckCircle, AlertTriangle,
   Loader2, ShieldAlert, Upload, Calendar, Bell, Eye,
-  Image as ImageIcon, X, ExternalLink, Sprout, Zap, History, Wrench, Camera
+  Image as ImageIcon, X, ExternalLink, Sprout, Zap, History, Wrench, Camera,
+  MapPin, Layers
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { taskApi, EligibleHarvestRental } from '../../api/taskApi';
@@ -66,7 +67,7 @@ export default function GardenStaffDashboard() {
   // Báo thu hoạch sớm (trước khi đủ số ngày sinh trưởng)
   const [eligibleRentals, setEligibleRentals] = useState<EligibleHarvestRental[]>([]);
   const [showEarlyPanel, setShowEarlyPanel] = useState(false);
-  const [selectedEarlyRentalId, setSelectedEarlyRentalId] = useState('');
+  const [selectedEarlyItemKey, setSelectedEarlyItemKey] = useState('');
   const [earlyNotifying, setEarlyNotifying] = useState(false);
   const [earlyError, setEarlyError] = useState('');
   const [earlySuccess, setEarlySuccess] = useState('');
@@ -86,14 +87,21 @@ export default function GardenStaffDashboard() {
   useEffect(() => { fetchTasks(); }, []);
 
   const handleNotifyEarlyHarvest = async () => {
-    if (!selectedEarlyRentalId) return;
+    if (!selectedEarlyItemKey) return;
+    const selectedItem = eligibleRentals.find((r, idx) => `${r.rentalId}_${r.pillarId || r.pillarCode || idx}` === selectedEarlyItemKey);
+    if (!selectedItem) return;
+
     setEarlyNotifying(true);
     setEarlyError('');
     setEarlySuccess('');
     try {
-      await taskApi.notifyEarlyHarvest(Number(selectedEarlyRentalId));
-      setEarlySuccess('Đã báo khách hàng thành công!');
-      setSelectedEarlyRentalId('');
+      await taskApi.notifyEarlyHarvest({
+        rentalId: selectedItem.rentalId,
+        pillarId: selectedItem.pillarId,
+        pillarCode: selectedItem.pillarCode || selectedItem.pillarCodes,
+      });
+      setEarlySuccess(`Đã báo thu hoạch sớm thành công cho Ô ${selectedItem.slotNumber}${selectedItem.pillarCode ? ` (Trụ ${selectedItem.pillarCode})` : ''}!`);
+      setSelectedEarlyItemKey('');
       fetchTasks();
     } catch (err: any) {
       setEarlyError(err?.response?.data?.message || 'Báo thu hoạch sớm thất bại.');
@@ -139,25 +147,31 @@ export default function GardenStaffDashboard() {
           {showEarlyPanel && (
             <div className="card border-amber-200 bg-amber-50/50 space-y-3">
               <p className="text-xs text-gray-600">
-                Chọn ô đất đang có cây tại cơ sở của bạn để báo khách hàng biết cây đã sẵn sàng thu hoạch, kể cả khi chưa đủ số ngày sinh trưởng dự kiến.
+                Chọn chính xác trụ và cây trồng đang canh tác tại cơ sở để báo khách hàng cây đã sẵn sàng thu hoạch (kể cả khi chưa đủ số ngày sinh trưởng dự kiến).
               </p>
               {earlyError && <div className="bg-red-50 text-red-600 rounded-lg px-3 py-2 text-xs">{earlyError}</div>}
               {earlySuccess && <div className="bg-green-50 text-green-700 rounded-lg px-3 py-2 text-xs">{earlySuccess}</div>}
               <div className="flex flex-col sm:flex-row gap-2">
                 <select
-                  className="input text-sm flex-1"
-                  value={selectedEarlyRentalId}
-                  onChange={e => setSelectedEarlyRentalId(e.target.value)}
+                  className="input text-sm flex-1 bg-white"
+                  value={selectedEarlyItemKey}
+                  onChange={e => setSelectedEarlyItemKey(e.target.value)}
                 >
-                  <option value="">-- Chọn ô đất --</option>
-                  {eligibleRentals.map(r => (
-                    <option key={r.rentalId} value={r.rentalId}>
-                      Ô {r.slotNumber} · {r.treeName}
-                    </option>
-                  ))}
+                  <option value="">-- Chọn trụ / cây trồng cần báo thu hoạch sớm --</option>
+                  {eligibleRentals.map((r, idx) => {
+                    const key = `${r.rentalId}_${r.pillarId || r.pillarCode || idx}`;
+                    const pillarText = r.pillarCode ? ` · Trụ ${r.pillarCode}` : (r.pillarCodes ? ` · Trụ ${r.pillarCodes}` : '');
+                    const growthText = r.daysGrown != null ? ` · Đã trồng ${r.daysGrown} ngày` : '';
+                    const harvestDaysText = r.harvestDays ? ` (Chu kỳ ${r.harvestDays} ngày)` : '';
+                    return (
+                      <option key={key} value={key}>
+                        Ô {r.slotNumber}{pillarText} · 🌱 {r.treeName}{growthText}{harvestDaysText}
+                      </option>
+                    );
+                  })}
                 </select>
                 <button
-                  disabled={!selectedEarlyRentalId || earlyNotifying}
+                  disabled={!selectedEarlyItemKey || earlyNotifying}
                   onClick={handleNotifyEarlyHarvest}
                   className="btn-primary text-xs py-2 px-4 whitespace-nowrap flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
@@ -184,15 +198,40 @@ export default function GardenStaffDashboard() {
                 </div>
                 <div className="space-y-2">
                   {group.items.map(task => (
-                    <div key={task.id} className={clsx('card flex items-center justify-between gap-3', cat.cardCls)}>
+                    <div key={task.id} className={clsx('card flex flex-col sm:flex-row sm:items-center justify-between gap-3', cat.cardCls)}>
                       <div>
-                        <div className="font-bold text-gray-900">{task.taskName}</div>
-                        <div className="text-sm text-gray-500">{task.targetSlotNumber}</div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="font-bold text-gray-900">{task.taskName}</div>
+                          {(task.isEarlyHarvest || task.taskName?.includes('sớm')) && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+                              ⚡ Thu hoạch sớm
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap mt-1 text-xs">
+                          <span className="font-bold text-green-700 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" /> Ô {task.targetSlotNumber || 'N/A'}
+                          </span>
+                          {task.pillarCodes ? (
+                            <span className="inline-flex items-center gap-0.5 text-emerald-800 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded text-[11px] font-semibold">
+                              <Layers className="w-3 h-3" /> Trụ {task.pillarCodes}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-0.5 text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded text-[11px]">
+                              <Layers className="w-3 h-3" /> Toàn bộ trụ
+                            </span>
+                          )}
+                          {task.treeName && (
+                            <span className="text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded text-[11px] font-medium flex items-center gap-1">
+                              <Sprout className="w-3 h-3" /> {task.treeName}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <button
                         disabled={claimingId === task.id}
                         onClick={() => handleClaim(task.id)}
-                        className="btn-primary text-xs py-1.5 px-3 whitespace-nowrap"
+                        className="btn-primary text-xs py-1.5 px-3 whitespace-nowrap self-end sm:self-auto"
                       >
                         {claimingId === task.id ? <Loader2 className="w-3 h-3 animate-spin inline mr-1" /> : null}
                         Nhận việc
@@ -229,12 +268,36 @@ export default function GardenStaffDashboard() {
               <div key={task.id} className="card shadow-sm border border-gray-100">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-mono font-bold text-gray-400">#{task.id}</span>
                       <div className="font-bold text-gray-900 text-base">{task.taskName}</div>
+                      {(task.isEarlyHarvest || task.taskName?.includes('sớm')) && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-full">
+                          ⚡ Thu hoạch sớm
+                        </span>
+                      )}
                     </div>
-                    <div className="text-xs font-medium text-green-700 mt-0.5">
-                      Ô vườn: {task.targetSlotNumber || 'N/A'}
+                    <div className="flex items-center gap-2 flex-wrap mt-1 text-xs">
+                      <span className="font-bold text-green-700 flex items-center gap-1 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md">
+                        <MapPin className="w-3.5 h-3.5" /> Ô vườn: {task.targetSlotNumber || 'N/A'}
+                      </span>
+                      {task.pillarCodes ? (
+                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                          <Layers className="w-3 h-3" /> Trụ {task.pillarCodes}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 font-medium text-gray-600 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded-md">
+                          <Layers className="w-3 h-3" /> Toàn bộ các trụ
+                        </span>
+                      )}
+                      {task.treeName && (
+                        <span className="inline-flex items-center gap-1 font-medium text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md">
+                          <Sprout className="w-3 h-3" /> {task.treeName}
+                        </span>
+                      )}
+                      {task.locationName && (
+                        <span className="text-gray-400">({task.locationName})</span>
+                      )}
                     </div>
                     {task.description && (
                       <div className="text-xs text-gray-600 mt-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100">

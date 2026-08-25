@@ -195,7 +195,7 @@ export default function Navbar() {
                             </div>
                           ) : (
                             recentNotifications.map(item => {
-                              const meta = getNotificationMeta(item.type);
+                              const meta = getNotificationMeta(item.type, item.title);
                               const IconComponent = meta.icon;
                               return (
                                 <div

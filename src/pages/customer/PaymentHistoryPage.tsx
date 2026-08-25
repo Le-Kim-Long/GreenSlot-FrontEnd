@@ -38,6 +38,9 @@ interface DetailedTransaction extends PaymentTransactionInfo {
   startDate?: string;
   endDate?: string;
   treeName?: string;
+  targetPillarCode?: string;
+  targetPillarHoles?: number;
+  pillarsCount?: number;
   pillarCodes?: string[];
   pillars?: PillarInfo[];
   monthlyPrice?: number;
@@ -66,9 +69,12 @@ export default function PaymentHistoryPage() {
       slotNumber: r.slotNumber,
       locationName: r.locationName,
       locationAddress: r.locationAddress,
-      startDate: r.startDate || r.startTime,
-      endDate: r.endDate || r.endTime,
-      treeName: r.treeName,
+      startDate: (r as any).startDate || r.startTime,
+      endDate: (r as any).endDate || r.endTime,
+      treeName: t.treeName || r.treeName,
+      targetPillarCode: t.targetPillarCode,
+      targetPillarHoles: t.targetPillarHoles,
+      pillarsCount: t.pillarsCount,
       pillarCodes: r.pillarCodes,
       pillars: r.pillars,
       monthlyPrice: r.monthlyPrice,
@@ -352,17 +358,23 @@ export default function PaymentHistoryPage() {
                 {/* 🧾 BẢNG KÊ CHI TIẾT CÁC KHOẢN PHÍ (ITEMIZED BREAKDOWN) */}
                 {(() => {
                   const total = Number(selectedTxn.amount) || 0;
-                  const pillarsCount = selectedTxn.pillars?.length || selectedTxn.pillarCodes?.length || 1;
+                  const isPlantOnly = selectedTxn.kind === 'PLANT';
+                  const isSinglePillarPlant = isPlantOnly && !!selectedTxn.targetPillarCode && selectedTxn.targetPillarCode !== 'Toàn bộ các trụ';
+                  
+                  const pillarsCount = isSinglePillarPlant
+                    ? 1
+                    : (isPlantOnly ? (selectedTxn.pillarsCount || selectedTxn.pillars?.length || 1) : (selectedTxn.pillars?.length || selectedTxn.pillarCodes?.length || 1));
                   
                   let months = selectedTxn.extendedMonths || 1;
                   if (selectedTxn.kind === 'BOOK' && selectedTxn.startDate && selectedTxn.endDate) {
                     const start = new Date(selectedTxn.startDate);
                     const end = new Date(selectedTxn.endDate);
-                    const diffDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
-                    months = Math.max(1, Math.round(diffDays / 30));
+                    if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+                      const diffDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+                      months = Math.max(1, Math.round(diffDays / 30));
+                    }
                   }
 
-                  const isPlantOnly = selectedTxn.kind === 'PLANT';
                   const slotPricePerMonth = isPlantOnly ? 0 : (selectedTxn.monthlyPrice || 500000);
                   const slotSubtotal = isPlantOnly ? 0 : Math.min(total, slotPricePerMonth * months);
                   const treeSubtotal = isPlantOnly ? total : Math.max(0, total - slotSubtotal);
@@ -425,14 +437,16 @@ export default function PaymentHistoryPage() {
                                     <span>{selectedTxn.treeName || 'Phôi giống rau thủy canh'}</span>
                                   </div>
                                   <div className="text-[11px] text-gray-500 mt-0.5">
-                                    Cung cấp giống chất lượng cao ({pillarsCount} trụ gieo trồng)
+                                    {isSinglePillarPlant
+                                      ? `Cung cấp giống chất lượng cao cho Trụ ${selectedTxn.targetPillarCode} (${selectedTxn.targetPillarHoles || 24} hốc)`
+                                      : `Cung cấp giống chất lượng cao (${pillarsCount} trụ gieo trồng)`}
                                   </div>
                                 </td>
                                 <td className="py-2.5 text-right font-mono text-gray-700">
                                   {treePricePerPillar.toLocaleString('vi-VN')} đ/trụ
                                 </td>
                                 <td className="py-2.5 text-center text-gray-600 font-semibold">
-                                  {pillarsCount} trụ
+                                  {isSinglePillarPlant ? `1 trụ` : `${pillarsCount} trụ`}
                                 </td>
                                 <td className="py-2.5 text-right font-bold font-mono text-emerald-700">
                                   {treeSubtotal.toLocaleString('vi-VN')} đ
@@ -516,27 +530,40 @@ export default function PaymentHistoryPage() {
                     </div>
                   )}
 
-                  {selectedTxn.pillars && selectedTxn.pillars.length > 0 && (
+                  {/* Trụ canh tác */}
+                  {selectedTxn.kind === 'PLANT' && selectedTxn.targetPillarCode && selectedTxn.targetPillarCode !== 'Toàn bộ các trụ' ? (
                     <div className="flex justify-between items-start">
-                      <span className="text-gray-500">Các trụ canh tác:</span>
+                      <span className="text-gray-500">Trụ đăng ký trồng:</span>
                       <div className="flex flex-wrap gap-1 justify-end max-w-xs">
-                        {selectedTxn.pillars.map((p, idx) => (
-                          <span key={idx} className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[11px] border border-emerald-200">
-                            {p.pillarCode} ({p.capacityHoles || 24} hốc)
-                          </span>
-                        ))}
+                        <span className="bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-lg font-bold text-[11px] border border-emerald-300 shadow-xs">
+                          🏷️ Trụ {selectedTxn.targetPillarCode} ({selectedTxn.targetPillarHoles || 24} hốc)
+                        </span>
                       </div>
                     </div>
+                  ) : (
+                    selectedTxn.pillars && selectedTxn.pillars.length > 0 && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-gray-500">Các trụ canh tác:</span>
+                        <div className="flex flex-wrap gap-1 justify-end max-w-xs">
+                          {selectedTxn.pillars.map((p, idx) => (
+                            <span key={idx} className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[11px] border border-emerald-200">
+                              {p.pillarCode} ({p.capacityHoles || 24} hốc)
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )
                   )}
 
-                  {selectedTxn.startDate && selectedTxn.endDate && (
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Thời hạn hợp đồng:</span>
-                      <span className="font-medium text-gray-800">
-                        {new Date(selectedTxn.startDate).toLocaleDateString('vi-VN')} → {new Date(selectedTxn.endDate).toLocaleDateString('vi-VN')}
-                      </span>
-                    </div>
-                  )}
+                  {/* Thời hạn hợp đồng (Fix triệt để Invalid Date) */}
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Thời hạn hợp đồng:</span>
+                    <span className="font-medium text-gray-800">
+                      {selectedTxn.startDate && selectedTxn.endDate && !isNaN(new Date(selectedTxn.startDate).getTime()) && !isNaN(new Date(selectedTxn.endDate).getTime())
+                        ? `${new Date(selectedTxn.startDate).toLocaleDateString('vi-VN')} → ${new Date(selectedTxn.endDate).toLocaleDateString('vi-VN')}`
+                        : `Theo hợp đồng thuê HĐ #${selectedTxn.rentalId}`}
+                    </span>
+                  </div>
                 </div>
               </div>
 

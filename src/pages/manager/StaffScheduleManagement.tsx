@@ -43,6 +43,7 @@ export default function StaffScheduleManagement() {
   // Danh sách cơ sở & nhân viên để chọn trong form (thay vì gõ tay ID)
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [staffs, setStaffs] = useState<GardenStaff[]>([]);
+  const [slots, setSlots] = useState<any[]>([]);
   const [isLoadingStaffs, setIsLoadingStaffs] = useState(false);
 
   // Xóa State
@@ -55,6 +56,7 @@ export default function StaffScheduleManagement() {
 
   useEffect(() => {
     managerApi.getLocations().then(setLocations).catch(() => setLocations([]));
+    managerApi.getSlots().then(setSlots).catch(() => setSlots([]));
   }, []);
 
   useEffect(() => {
@@ -69,6 +71,8 @@ export default function StaffScheduleManagement() {
       .finally(() => setIsLoadingStaffs(false));
   }, [formData.locationId]);
 
+  const availableSlots = slots.filter(s => !formData.locationId || s.locationId === formData.locationId);
+
   const handleLocationChange = (locationId: number) => {
     const loc = locations.find(l => l.id === locationId);
     setFormData(prev => ({
@@ -77,6 +81,8 @@ export default function StaffScheduleManagement() {
       locationName: loc?.name || '',
       staffId: undefined,
       staffName: '',
+      slotId: undefined,
+      slotNumber: undefined,
     }));
   };
 
@@ -127,6 +133,11 @@ export default function StaffScheduleManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!formData.staffId) {
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn nhân viên phân ca!');
+      return;
+    }
+
     if (!formData.scheduleDate) {
       showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn ngày trực!');
       return;
@@ -140,8 +151,22 @@ export default function StaffScheduleManagement() {
       return;
     }
 
-    if (formData.startTime && formData.endTime && formData.startTime >= formData.endTime) {
+    if (!formData.startTime || !formData.endTime) {
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng nhập đầy đủ giờ bắt đầu và kết thúc.');
+      return;
+    }
+
+    const [startH, startM] = formData.startTime.split(':').map(Number);
+    const [endH, endM] = formData.endTime.split(':').map(Number);
+    const diffMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+
+    if (diffMinutes <= 0) {
       showToast('warning', 'Thời gian trực không hợp lệ', 'Giờ kết thúc phải sau giờ bắt đầu.');
+      return;
+    }
+
+    if (diffMinutes > 8 * 60) {
+      showToast('warning', 'Vượt quá thời gian quy định', 'Thời gian làm việc một ca không được vượt quá 8 tiếng (tối đa 8 giờ/ngày).');
       return;
     }
 
@@ -155,8 +180,9 @@ export default function StaffScheduleManagement() {
       showToast('success', editingItem ? 'Cập nhật lịch làm việc thành công!' : 'Phân ca thành công!');
       setIsModalOpen(false);
       fetchData();
-    } catch (err) {
-      showToast('error', 'Thao tác thất bại', 'Vui lòng kiểm tra lại thông tin.');
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || err?.message || 'Vui lòng kiểm tra lại thông tin.';
+      showToast('error', 'Thao tác thất bại', errMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -234,7 +260,7 @@ export default function StaffScheduleManagement() {
             <thead className="bg-gray-50/75 border-b border-gray-100">
               <tr>
                 <th className="p-4 font-semibold text-gray-600">Nhân viên</th>
-                <th className="p-4 font-semibold text-gray-600">Khu vực làm việc</th>
+                <th className="p-4 font-semibold text-gray-600">Khu vực & Ô vườn</th>
                 <th className="p-4 font-semibold text-gray-600">Ngày & Giờ trực</th>
                 <th className="p-4 font-semibold text-gray-600">Ghi chú</th>
                 <th className="p-4 font-semibold text-gray-600">Trạng thái</th>
@@ -261,9 +287,18 @@ export default function StaffScheduleManagement() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="flex items-center gap-1.5 text-gray-700">
+                      <div className="flex items-center gap-1.5 text-gray-700 font-medium">
                         <MapPin className="w-4 h-4 text-amber-500" />
                         {schedule.locationName || `Khu vực #${schedule.locationId}`}
+                      </div>
+                      <div className="mt-1">
+                        {schedule.slotNumber ? (
+                          <span className="bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded text-[11px] border border-emerald-200">
+                            🌿 Phụ trách: Ô {schedule.slotNumber}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">Toàn khu vực</span>
+                        )}
                       </div>
                     </td>
                     <td className="p-4">
@@ -349,6 +384,32 @@ export default function StaffScheduleManagement() {
                   </div>
                 </div>
 
+                {/* Phụ trách Ô vườn cụ thể (Tùy chọn) */}
+                <div>
+                  <label className="block font-medium text-gray-700 mb-1">Ô vườn phụ trách (Tùy chọn)</label>
+                  <select
+                    disabled={!formData.locationId}
+                    className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20 bg-white disabled:bg-gray-100 disabled:text-gray-400"
+                    value={formData.slotId || ''}
+                    onChange={e => {
+                      const val = e.target.value ? Number(e.target.value) : undefined;
+                      const sl = availableSlots.find(s => s.id === val);
+                      setFormData(prev => ({
+                        ...prev,
+                        slotId: val,
+                        slotNumber: sl?.slotNumber || undefined,
+                      }));
+                    }}
+                  >
+                    <option value="">-- Toàn bộ khu vực (Không cố định ô) --</option>
+                    {availableSlots.map(slot => (
+                      <option key={slot.id} value={slot.id}>
+                        Ô {slot.slotNumber} {slot.area ? `(${slot.area} m²)` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label className="block font-medium text-gray-700 mb-1">Ngày trực</label>
                   <input 
@@ -371,7 +432,7 @@ export default function StaffScheduleManagement() {
                     />
                   </div>
                   <div>
-                    <label className="block font-medium text-gray-700 mb-1">Giờ kết thúc</label>
+                    <label className="block font-medium text-gray-700 mb-1">Giờ kết thúc (Tối đa 8 tiếng/ca)</label>
                     <input 
                       type="time" required
                       className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"

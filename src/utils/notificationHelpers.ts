@@ -92,8 +92,9 @@ export function formatExactDateTime(dateString?: string | null): string {
 /**
  * Get category, icon, and colors for a notification type
  */
-export function getNotificationMeta(type?: string | null): NotificationMeta {
+export function getNotificationMeta(type?: string | null, title?: string | null): NotificationMeta {
   const normalizedType = (type || '').trim().toUpperCase();
+  const normalizedTitle = (title || '').trim().toLowerCase();
 
   // 1. Task Lifecycle
   if (normalizedType.startsWith('TASK_')) {
@@ -143,13 +144,14 @@ export function getNotificationMeta(type?: string | null): NotificationMeta {
 
   // 2. Harvest Lifecycle
   if (normalizedType.startsWith('HARVEST_')) {
+    const isEarly = normalizedType.includes('EARLY') || normalizedTitle.includes('sớm');
     if (normalizedType === 'HARVEST_READY' || normalizedType === 'HARVEST_CHOICE') {
       return {
         icon: Wheat,
         colorClasses: 'text-amber-600',
         bgClasses: 'bg-amber-50',
         borderClasses: 'border-amber-200',
-        badgeLabel: 'Sẵn sàng thu hoạch',
+        badgeLabel: isEarly ? '⚡ Sẵn sàng thu hoạch sớm' : 'Sẵn sàng thu hoạch',
         category: 'harvest',
         defaultActionLabel: 'Chọn phương án',
       };
@@ -170,7 +172,7 @@ export function getNotificationMeta(type?: string | null): NotificationMeta {
       colorClasses: 'text-amber-600',
       bgClasses: 'bg-amber-50',
       borderClasses: 'border-amber-200',
-      badgeLabel: 'Thu hoạch',
+      badgeLabel: isEarly ? '⚡ Thu hoạch sớm' : 'Thu hoạch',
       category: 'harvest',
       defaultActionLabel: 'Xem thu hoạch',
     };
