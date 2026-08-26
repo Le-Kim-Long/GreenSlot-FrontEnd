@@ -18,6 +18,9 @@ export interface StaffSchedule {
 export const staffScheduleApi = {
   getSchedules: (): Promise<StaffSchedule[]> => 
     apiClient.get('/staff-schedules').then(r => r.data),
+
+  getMySchedules: (): Promise<StaffSchedule[]> => 
+    apiClient.get('/staff-schedules/my-schedules').then(r => r.data),
   
   getScheduleById: (id: number): Promise<StaffSchedule> => 
     apiClient.get(`/staff-schedules/${id}`).then(r => r.data),

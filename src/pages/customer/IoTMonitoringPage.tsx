@@ -37,6 +37,7 @@ export default function IoTMonitoringPage() {
   const navItems = isStaffView ? staffNav : customerNav;
 
   const [activeRentals, setActiveRentals] = useState<BookingHistory[]>([]);
+  const [staffPillars, setStaffPillars] = useState<PillarOption[]>([]);
   const [sensorTypes, setSensorTypes] = useState<SensorTypeInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('arduino-greenhouse-01');
   const [latestData, setLatestData] = useState<Record<string, number>>({});
@@ -46,7 +47,7 @@ export default function IoTMonitoringPage() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [accessDenied, setAccessDenied] = useState(false);
 
-  // Tải danh sách hợp đồng đang thuê & loại cảm biến
+  // Tải danh sách hợp đồng đang thuê (Customer) hoặc danh sách trụ tại cơ sở (Staff) & loại cảm biến
   useEffect(() => {
     if (!isStaffView) {
       bookingApi.getHistory()
@@ -55,12 +56,29 @@ export default function IoTMonitoringPage() {
           setActiveRentals(active);
         })
         .catch(() => setActiveRentals([]));
+    } else {
+      iotApi.getMonitoredPillars()
+        .then(list => {
+          const mapped: PillarOption[] = (list || []).map((p: any) => ({
+            pillarId: p.pillarId,
+            pillarCode: p.pillarCode,
+            pillarType: p.pillarType,
+            capacityHoles: p.capacityHoles,
+            slotNumber: p.slotNumber,
+            treeName: p.treeName,
+          }));
+          setStaffPillars(mapped);
+        })
+        .catch(() => setStaffPillars([]));
     }
     iotApi.getTypes().then(setSensorTypes).catch(() => setSensorTypes([]));
   }, [isStaffView]);
 
   // Trích xuất danh sách duy nhất các trụ (Loại bỏ trùng lặp và loại bỏ gateway tổng)
   const availablePillars = useMemo<PillarOption[]>(() => {
+    if (isStaffView) {
+      return staffPillars.filter(p => p.pillarCode && p.pillarCode !== 'arduino-greenhouse-01');
+    }
     const map = new Map<string, PillarOption>();
     activeRentals.forEach(rental => {
       if (rental.pillars && rental.pillars.length > 0) {
@@ -93,7 +111,7 @@ export default function IoTMonitoringPage() {
       }
     });
     return Array.from(map.values());
-  }, [activeRentals]);
+  }, [activeRentals, isStaffView, staffPillars]);
 
   // Tìm thông tin trụ đang được chọn
   const currentPillarInfo = useMemo(() => {
