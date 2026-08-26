@@ -385,10 +385,32 @@ export function getNotificationTargetUrl(
 
   // --- MANAGER / LOCATION MANAGER ---
   if (role === 'manager' || role === 'location_manager') {
+    // If backend provided an explicit valid staff route, prioritize it
+    if (rawUrl && rawUrl.startsWith('/dashboard/staff/')) {
+      return rawUrl;
+    }
+
     // IoT Alerts
     if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR') || text.includes('cảm biến') || text.includes('cảnh báo')) {
       return '/dashboard/staff/alert-processing';
     }
+
+    // Tasks & Issues & Submissions (must be checked BEFORE harvest keyword so task approvals go to task management)
+    if (
+      t.startsWith('TASK_') ||
+      t.startsWith('SERVICE_') ||
+      t.startsWith('PILLAR_SETUP') ||
+      text.includes('nhiệm vụ') ||
+      text.includes('chờ duyệt') ||
+      text.includes('nộp bằng chứng') ||
+      text.includes('đề xuất') ||
+      text.includes('sự cố') ||
+      text.includes('dịch vụ') ||
+      text.includes('lắp đặt')
+    ) {
+      return '/dashboard/staff/tasks';
+    }
+
     // Tree planting requests
     if (
       t.startsWith('PLANTING_') ||
@@ -399,46 +421,35 @@ export function getNotificationTargetUrl(
     ) {
       return '/dashboard/staff/tree-planting';
     }
+
     // Harvest history & decisions
     if (t.startsWith('HARVEST_') || t.includes('HARVEST') || text.includes('thu hoạch')) {
       return '/dashboard/staff/harvest-history';
     }
-    // Tasks & issues & services
-    if (
-      t.startsWith('TASK_') ||
-      t.startsWith('SERVICE_') ||
-      t.startsWith('PILLAR_SETUP') ||
-      text.includes('nhiệm vụ') ||
-      text.includes('sự cố') ||
-      text.includes('dịch vụ') ||
-      text.includes('lắp đặt')
-    ) {
-      return '/dashboard/staff/tasks';
-    }
+
     // Financial / Revenue (Manager) or Rentals (Location Manager)
     if (t.startsWith('PAYMENT_') || t.startsWith('REVENUE_') || text.includes('thanh toán') || text.includes('doanh thu')) {
       return role === 'manager' ? '/dashboard/staff/revenue' : '/dashboard/staff/rentals';
     }
+
     // Rentals & Bookings
     if (t.startsWith('BOOKING_') || t.startsWith('RENTAL_') || text.includes('hợp đồng') || text.includes('thuê')) {
       return '/dashboard/staff/rentals';
     }
+
     // Schedules & Staff
     if (t.startsWith('SCHEDULE_') || t.startsWith('STAFF_') || text.includes('lịch trực') || text.includes('nhân viên')) {
       return '/dashboard/staff/schedules';
     }
+
     // Equipment
     if (t.startsWith('EQUIPMENT_') || text.includes('thiết bị')) {
       return '/dashboard/staff/equipment';
     }
+
     // Cameras
     if (t.includes('CAMERA') || text.includes('camera')) {
       return role === 'manager' ? '/dashboard/staff/cameras' : '/dashboard/staff/cameras/all';
-    }
-
-    // If normalized URL is a valid staff route, use it
-    if (rawUrl && rawUrl.startsWith('/dashboard/staff/')) {
-      return rawUrl;
     }
 
     return '/dashboard/staff';

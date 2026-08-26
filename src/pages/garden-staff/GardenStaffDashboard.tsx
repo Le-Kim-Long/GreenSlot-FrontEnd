@@ -102,7 +102,7 @@ export default function GardenStaffDashboard() {
         pillarId: selectedItem.pillarId,
         pillarCode: selectedItem.pillarCode || selectedItem.pillarCodes,
       });
-      setEarlySuccess(`Đã báo thu hoạch sớm thành công cho Ô ${selectedItem.slotNumber}${selectedItem.pillarCode ? ` (Trụ ${selectedItem.pillarCode})` : ''}!`);
+      setEarlySuccess(`Đã gửi đề xuất thu hoạch sớm cho Ô ${selectedItem.slotNumber}${selectedItem.pillarCode ? ` (Trụ ${selectedItem.pillarCode})` : ''} lên Location Manager phê duyệt thành công!`);
       setSelectedEarlyItemKey('');
       fetchTasks();
     } catch (err: any) {
@@ -177,22 +177,24 @@ export default function GardenStaffDashboard() {
         </div>
       )}
 
-      {eligibleRentals.length > 0 && (
-        <div className="mb-6">
-          <button
-            onClick={() => setShowEarlyPanel(v => !v)}
-            className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5 hover:text-green-700"
-          >
-            <Zap className="w-4 h-4 text-amber-500" /> Báo thu hoạch sớm {showEarlyPanel ? '▲' : '▼'}
-          </button>
+      {/* Bảng báo thu hoạch sớm */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowEarlyPanel(v => !v)}
+          className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5 hover:text-green-700"
+        >
+          <Zap className="w-4 h-4 text-amber-500" /> Báo thu hoạch sớm (Gửi đề xuất Quản lý duyệt) {showEarlyPanel ? '▲' : '▼'}
+        </button>
 
-          {showEarlyPanel && (
-            <div className="card border-amber-200 bg-amber-50/50 space-y-3">
-              <p className="text-xs text-gray-600">
-                Chọn chính xác trụ và cây trồng đang canh tác tại cơ sở để báo khách hàng cây đã sẵn sàng thu hoạch (kể cả khi chưa đủ số ngày sinh trưởng dự kiến).
-              </p>
-              {earlyError && <div className="bg-red-50 text-red-600 rounded-lg px-3 py-2 text-xs">{earlyError}</div>}
-              {earlySuccess && <div className="bg-green-50 text-green-700 rounded-lg px-3 py-2 text-xs">{earlySuccess}</div>}
+        {showEarlyPanel && (
+          <div className="card border-amber-200 bg-amber-50/50 space-y-3">
+            <p className="text-xs text-gray-600">
+              Chọn chính xác trụ và cây trồng bạn <strong>đã nhận việc phụ trách</strong> để gửi đề xuất thu hoạch sớm lên Location Manager phê duyệt. Sau khi Quản lý duyệt, hệ thống sẽ gửi thông báo để khách hàng lựa chọn cách thu hoạch.
+            </p>
+            {earlyError && <div className="bg-red-50 text-red-600 rounded-lg px-3 py-2 text-xs font-medium border border-red-200">{earlyError}</div>}
+            {earlySuccess && <div className="bg-green-50 text-green-700 rounded-lg px-3 py-2 text-xs font-medium border border-green-200">{earlySuccess}</div>}
+            
+            {eligibleRentals.length > 0 ? (
               <div className="flex flex-col sm:flex-row gap-2">
                 <select
                   className="input text-sm flex-1 bg-white"
@@ -218,13 +220,20 @@ export default function GardenStaffDashboard() {
                   className="btn-primary text-xs py-2 px-4 whitespace-nowrap flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
                   {earlyNotifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sprout className="w-3.5 h-3.5" />}
-                  Báo thu hoạch sớm
+                  Gửi đề xuất thu hoạch sớm
                 </button>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            ) : (
+              <div className="p-3 bg-white/80 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
+                <span>🔒</span>
+                <span>
+                  Bạn chưa nhận việc tại ô vườn / trụ nào để báo thu hoạch sớm. Vui lòng bấm <strong>[Nhận việc]</strong> ở danh sách công việc bên dưới trước.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Danh sách công việc chưa ai nhận */}
       {availableTasks.length > 0 && filteredAvailableGroups.length > 0 && (

@@ -74,7 +74,7 @@ export default function IoTMonitoringPage() {
               capacityHoles: p.capacityHoles,
               slotNumber: rental.slotNumber,
               rentalId: rental.id,
-              treeName: rental.treeName,
+              treeName: p.treeName || (p as any).defaultTreeName || rental.treeName,
             });
           }
         });
@@ -206,7 +206,7 @@ export default function IoTMonitoringPage() {
               <option value="arduino-greenhouse-01">🌐 Tất cả các trụ (Bảng tổng hợp)</option>
               {availablePillars.map((p) => (
                 <option key={p.pillarCode} value={p.pillarCode}>
-                  🌱 Trụ {p.pillarCode} - Ô {p.slotNumber} ({p.capacityHoles || 24} hốc)
+                  🌱 Trụ {p.pillarCode} - Ô {p.slotNumber} ({p.treeName || 'Đang canh tác'})
                 </option>
               ))}
             </select>
@@ -225,7 +225,7 @@ export default function IoTMonitoringPage() {
 
       {/* THANH THÔNG TIN TRẠNG THÁI HIỆN TẠI (STATUS PILLS) */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-green-50/60 border border-green-200/60 px-4 py-3 rounded-2xl text-xs">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 font-bold text-green-900">
             <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
             <span>Đang theo dõi:</span>
@@ -233,11 +233,15 @@ export default function IoTMonitoringPage() {
               {currentPillarInfo ? `Trụ ${currentPillarInfo.pillarCode} (Ô ${currentPillarInfo.slotNumber})` : `Tất cả các trụ (${availablePillars.length} trụ)`}
             </span>
           </div>
-          {currentPillarInfo?.treeName && (
-            <div className="hidden sm:inline-block text-green-800">
-              Giống cây: <strong>{currentPillarInfo.treeName}</strong>
+          {currentPillarInfo?.treeName ? (
+            <div className="text-green-800 bg-white/80 px-2.5 py-0.5 rounded-md border border-green-200">
+              Giống cây: <strong className="text-emerald-900">{currentPillarInfo.treeName}</strong>
             </div>
-          )}
+          ) : isAllView && availablePillars.some(p => p.treeName) ? (
+            <div className="text-green-800 bg-white/80 px-2.5 py-0.5 rounded-md border border-green-200">
+              Giống cây canh tác: <strong className="text-emerald-900">{Array.from(new Set(availablePillars.map(p => p.treeName).filter(Boolean))).join(', ')}</strong>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-3">

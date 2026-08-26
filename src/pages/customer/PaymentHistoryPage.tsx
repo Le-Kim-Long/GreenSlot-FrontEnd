@@ -242,11 +242,23 @@ export default function PaymentHistoryPage() {
                         {t.locationName && (
                           <span className="text-gray-500">· {t.locationName}</span>
                         )}
-                        {t.treeName && (
+                        {t.kind === 'PLANT' && t.targetPillarCode && t.targetPillarCode !== 'Toàn bộ các trụ' ? (
+                          <span className="text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                            🌱 Trụ {t.targetPillarCode}: {t.treeName}
+                          </span>
+                        ) : t.pillars && t.pillars.length > 1 && t.pillars.some(p => p.treeName) ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {t.pillars.map((p, idx) => (
+                              <span key={p.pillarCode || idx} className="text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
+                                🌱 Trụ {p.pillarCode}: {p.treeName || t.treeName || 'Đang canh tác'}
+                              </span>
+                            ))}
+                          </div>
+                        ) : t.treeName ? (
                           <span className="text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
                             🌱 {t.treeName}
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -428,30 +440,55 @@ export default function PaymentHistoryPage() {
                               </tr>
                             )}
 
-                            {/* Dòng 2: Phôi giống cây trồng */}
+                            {/* Dòng 2: Phôi giống cây trồng (Bóc tách từng trụ nếu thuê nhiều trụ) */}
                             {treeSubtotal > 0 && (
-                              <tr>
-                                <td className="py-2.5">
-                                  <div className="font-bold text-emerald-800 flex items-center gap-1">
-                                    <span>🌱</span>
-                                    <span>{selectedTxn.treeName || 'Phôi giống rau thủy canh'}</span>
-                                  </div>
-                                  <div className="text-[11px] text-gray-500 mt-0.5">
-                                    {isSinglePillarPlant
-                                      ? `Cung cấp giống chất lượng cao cho Trụ ${selectedTxn.targetPillarCode} (${selectedTxn.targetPillarHoles || 24} hốc)`
-                                      : `Cung cấp giống chất lượng cao (${pillarsCount} trụ gieo trồng)`}
-                                  </div>
-                                </td>
-                                <td className="py-2.5 text-right font-mono text-gray-700">
-                                  {treePricePerPillar.toLocaleString('vi-VN')} đ/trụ
-                                </td>
-                                <td className="py-2.5 text-center text-gray-600 font-semibold">
-                                  {isSinglePillarPlant ? `1 trụ` : `${pillarsCount} trụ`}
-                                </td>
-                                <td className="py-2.5 text-right font-bold font-mono text-emerald-700">
-                                  {treeSubtotal.toLocaleString('vi-VN')} đ
-                                </td>
-                              </tr>
+                              !isSinglePillarPlant && selectedTxn.pillars && selectedTxn.pillars.length > 1 ? (
+                                selectedTxn.pillars.map((p, pIdx) => (
+                                  <tr key={p.pillarCode || pIdx}>
+                                    <td className="py-2.5">
+                                      <div className="font-bold text-emerald-800 flex items-center gap-1">
+                                        <span>🌱</span>
+                                        <span>{p.treeName || selectedTxn.treeName || 'Phôi giống rau thủy canh'} (Trụ {p.pillarCode})</span>
+                                      </div>
+                                      <div className="text-[11px] text-gray-500 mt-0.5">
+                                        Cung cấp giống chất lượng cao cho Trụ {p.pillarCode} ({p.capacityHoles || 24} hốc)
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 text-right font-mono text-gray-700">
+                                      {treePricePerPillar.toLocaleString('vi-VN')} đ/trụ
+                                    </td>
+                                    <td className="py-2.5 text-center text-gray-600 font-semibold">
+                                      1 trụ
+                                    </td>
+                                    <td className="py-2.5 text-right font-bold font-mono text-emerald-700">
+                                      {treePricePerPillar.toLocaleString('vi-VN')} đ
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td className="py-2.5">
+                                    <div className="font-bold text-emerald-800 flex items-center gap-1">
+                                      <span>🌱</span>
+                                      <span>{selectedTxn.treeName || 'Phôi giống rau thủy canh'}</span>
+                                    </div>
+                                    <div className="text-[11px] text-gray-500 mt-0.5">
+                                      {isSinglePillarPlant
+                                        ? `Cung cấp giống chất lượng cao cho Trụ ${selectedTxn.targetPillarCode} (${selectedTxn.targetPillarHoles || 24} hốc)`
+                                        : `Cung cấp giống chất lượng cao (${pillarsCount} trụ gieo trồng)`}
+                                    </div>
+                                  </td>
+                                  <td className="py-2.5 text-right font-mono text-gray-700">
+                                    {treePricePerPillar.toLocaleString('vi-VN')} đ/trụ
+                                  </td>
+                                  <td className="py-2.5 text-center text-gray-600 font-semibold">
+                                    {isSinglePillarPlant ? `1 trụ` : `${pillarsCount} trụ`}
+                                  </td>
+                                  <td className="py-2.5 text-right font-bold font-mono text-emerald-700">
+                                    {treeSubtotal.toLocaleString('vi-VN')} đ
+                                  </td>
+                                </tr>
+                              )
                             )}
 
                             {/* Dòng 3: Hệ thống châm phân & IoT tự động */}
@@ -523,37 +560,33 @@ export default function PaymentHistoryPage() {
                     </div>
                   )}
 
-                  {selectedTxn.treeName && (
+                  {/* Trụ & Giống cây canh tác */}
+                  {selectedTxn.kind === 'PLANT' && selectedTxn.targetPillarCode && selectedTxn.targetPillarCode !== 'Toàn bộ các trụ' ? (
+                    <div className="flex justify-between items-start">
+                      <span className="text-gray-500">Trụ & Giống trồng mới:</span>
+                      <div className="flex flex-wrap gap-1 justify-end max-w-xs">
+                        <span className="bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-lg font-bold text-[11px] border border-emerald-300 shadow-xs">
+                          🏷️ Trụ {selectedTxn.targetPillarCode} ({selectedTxn.targetPillarHoles || 24} hốc): 🌱 {selectedTxn.treeName}
+                        </span>
+                      </div>
+                    </div>
+                  ) : selectedTxn.pillars && selectedTxn.pillars.length > 0 ? (
+                    <div className="flex justify-between items-start">
+                      <span className="text-gray-500">Trụ & Giống canh tác:</span>
+                      <div className="flex flex-wrap gap-1 justify-end max-w-xs">
+                        {selectedTxn.pillars.map((p, idx) => (
+                          <span key={idx} className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[11px] border border-emerald-200">
+                            Trụ {p.pillarCode} ({p.capacityHoles || 24} hốc): 🌱 {p.treeName || selectedTxn.treeName || 'Đang canh tác'}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : selectedTxn.treeName ? (
                     <div className="flex justify-between">
                       <span className="text-gray-500">Giống cây đăng ký:</span>
                       <span className="font-bold text-emerald-700">🌱 {selectedTxn.treeName}</span>
                     </div>
-                  )}
-
-                  {/* Trụ canh tác */}
-                  {selectedTxn.kind === 'PLANT' && selectedTxn.targetPillarCode && selectedTxn.targetPillarCode !== 'Toàn bộ các trụ' ? (
-                    <div className="flex justify-between items-start">
-                      <span className="text-gray-500">Trụ đăng ký trồng:</span>
-                      <div className="flex flex-wrap gap-1 justify-end max-w-xs">
-                        <span className="bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-lg font-bold text-[11px] border border-emerald-300 shadow-xs">
-                          🏷️ Trụ {selectedTxn.targetPillarCode} ({selectedTxn.targetPillarHoles || 24} hốc)
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    selectedTxn.pillars && selectedTxn.pillars.length > 0 && (
-                      <div className="flex justify-between items-start">
-                        <span className="text-gray-500">Các trụ canh tác:</span>
-                        <div className="flex flex-wrap gap-1 justify-end max-w-xs">
-                          {selectedTxn.pillars.map((p, idx) => (
-                            <span key={idx} className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[11px] border border-emerald-200">
-                              {p.pillarCode} ({p.capacityHoles || 24} hốc)
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  )}
+                  ) : null}
 
                   {/* Thời hạn hợp đồng (Fix triệt để Invalid Date) */}
                   <div className="flex justify-between">
