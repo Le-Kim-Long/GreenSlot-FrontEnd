@@ -22,13 +22,10 @@ export default function MySchedule() {
   const fetchSchedules = async () => {
     setLoading(true);
     try {
-      // The backend needs to know whose schedule to fetch.
-      // Assuming getSchedules() uses the authenticated user context 
-      // or we just fetch it if the endpoint supports it.
-      const data = await staffScheduleApi.getSchedules();
-      setSchedules(data);
+      const data = await staffScheduleApi.getMySchedules();
+      setSchedules(data || []);
     } catch (err: any) {
-      console.error('Error fetching schedules:', err);
+      console.error('Error fetching my schedules:', err);
       setError('Không thể tải lịch trực. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
@@ -41,47 +38,90 @@ export default function MySchedule() {
 
   return (
     <DashboardLayout navItems={navItems} title="Lịch Trực Cá Nhân">
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-gray-600" />
-            <h2 className="font-semibold text-gray-800 text-sm">Danh sách lịch trực của tôi</h2>
+      <div className="p-6 max-w-7xl mx-auto space-y-6">
+        {/* Header Banner */}
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <CalendarIcon className="w-7 h-7 text-emerald-200" />
+              Lịch Trực & Ca Làm Việc Của Tôi
+            </h1>
+            <p className="text-emerald-100 text-sm mt-1">
+              Theo dõi lịch phân công ca trực cá nhân tại cơ sở vườn. Vui lòng có mặt đúng giờ để đảm bảo chất lượng vận hành.
+            </p>
+          </div>
+          <div className="bg-white/15 backdrop-blur-md px-4 py-2 rounded-xl text-center border border-white/20">
+            <span className="text-xs text-emerald-200 block uppercase font-medium">Tổng số ca trực</span>
+            <span className="text-2xl font-black">{schedules.length}</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-emerald-600" />
+              <h2 className="font-semibold text-gray-800 text-base">Danh sách ca trực được phân công</h2>
+            </div>
+            <span className="text-xs text-gray-500 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full font-medium border border-emerald-200/60">
+              Lịch cá nhân
+            </span>
           </div>
           
           {loading ? (
-            <div className="flex flex-col items-center justify-center p-12 text-gray-500">
-              <Loader2 className="w-8 h-8 animate-spin mb-4 text-green-600" />
-              <p>Đang tải dữ liệu...</p>
+            <div className="flex flex-col items-center justify-center p-16 text-gray-500">
+              <Loader2 className="w-10 h-10 animate-spin mb-4 text-emerald-600" />
+              <p className="font-medium text-gray-600">Đang tải lịch trực cá nhân...</p>
             </div>
           ) : error ? (
             <div className="p-8 text-center text-red-500 bg-red-50">{error}</div>
           ) : schedules.length === 0 ? (
-            <div className="p-12 text-center text-gray-500">
-              <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-lg font-medium text-gray-900">Không có lịch trực nào</p>
-              <p className="text-sm mt-1">Bạn chưa được phân công lịch trực nào trong thời gian tới.</p>
+            <div className="p-16 text-center text-gray-500">
+              <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-lg font-bold text-gray-800">Không có lịch trực nào</p>
+              <p className="text-sm text-gray-500 mt-1">Bạn chưa có ca trực nào được phân công trong thời gian tới.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
               {schedules.map((schedule) => (
-                <div key={schedule.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
-                  <div className="bg-green-50 px-4 py-3 border-b border-green-100 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-green-800 font-semibold">
-                      <CalendarIcon className="w-4 h-4" />
-                      <span>{new Date(schedule.scheduleDate).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                    </div>
-                  </div>
-                  <div className="p-4 space-y-3">
-                    <div className="flex items-center gap-3 text-gray-700">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="font-medium">{schedule.startTime.substring(0, 5)} - {schedule.endTime.substring(0, 5)}</span>
-                    </div>
-                    {schedule.notes && (
-                      <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
-                        <span className="font-medium text-gray-700">Ghi chú: </span>
-                        {schedule.notes}
+                <div key={schedule.id} className="bg-white rounded-2xl shadow-sm border border-emerald-100/80 overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3.5 border-b border-emerald-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
+                        <CalendarIcon className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                        <span>{new Date(schedule.scheduleDate).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
                       </div>
-                    )}
+                      <span className="text-xs bg-emerald-600 text-white font-semibold px-2.5 py-0.5 rounded-full shadow-xs">
+                        Đang áp dụng
+                      </span>
+                    </div>
+
+                    <div className="p-5 space-y-3.5">
+                      <div className="flex items-center gap-3 text-gray-800">
+                        <Clock className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                        <span className="font-bold text-base tracking-wide">{schedule.startTime?.substring(0, 5)} - {schedule.endTime?.substring(0, 5)}</span>
+                      </div>
+
+                      {schedule.locationName && (
+                        <div className="text-xs text-gray-600 flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                          <span className="font-semibold text-gray-700">🏢 Cơ sở:</span>
+                          <span className="text-gray-900 font-medium">{schedule.locationName}</span>
+                        </div>
+                      )}
+
+                      {schedule.slotNumber && (
+                        <div className="text-xs text-emerald-800 flex items-center gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
+                          <span className="font-semibold text-emerald-900">🌱 Khu vực phụ trách:</span>
+                          <span className="font-bold text-emerald-700">Ô vườn {schedule.slotNumber}</span>
+                        </div>
+                      )}
+
+                      {schedule.notes && (
+                        <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-xs text-amber-900 space-y-1">
+                          <span className="font-bold block text-amber-950">📝 Ghi chú phân công:</span>
+                          <p className="leading-relaxed">{schedule.notes}</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

@@ -34,4 +34,7 @@ export const iotApi = {
 
   getTypes: (): Promise<SensorTypeInfo[]> =>
     apiClient.get('/iot/sensors/types').then(r => r.data),
+
+  getMonitoredPillars: (): Promise<any[]> =>
+    apiClient.get('/iot/monitored-pillars').then(r => r.data),
 };
