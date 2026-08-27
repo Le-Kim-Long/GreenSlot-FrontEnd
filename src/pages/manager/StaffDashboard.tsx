@@ -314,7 +314,9 @@ export default function StaffDashboard() {
                                   <span className="bg-green-50 text-green-700 font-bold px-2 py-0.5 rounded border border-green-200/50">Ô: {rental.slotNumber}</span>
                                 </td>
                                 <td className="p-3 text-right">
-                                  <span className="bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full text-[10px]">{rental.status}</span>
+                                  <span className="bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                                    {rental.status === 'ACTIVE' ? 'Đang thuê' : rental.status === 'PENDING' ? 'Chờ xác nhận' : rental.status === 'CANCELLED' ? 'Đã hủy' : 'Hoàn thành'}
+                                  </span>
                                 </td>
                               </tr>
                             ))}
@@ -347,8 +349,8 @@ export default function StaffDashboard() {
                                   <div className="text-red-600 font-bold">Thực tế: {alert.actualValue}</div>
                                 </td>
                                 <td className="p-3 text-right">
-                                  <span className={clsx('px-2 py-0.5 rounded-full font-bold text-[10px]', alert.status === 'RESOLVED' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700')}>
-                                    {alert.status}
+                                  <span className={clsx('px-2 py-0.5 rounded-full font-bold text-[10px]', alert.status === 'RESOLVED' ? 'bg-green-100 text-green-700' : alert.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700')}>
+                                    {alert.status === 'RESOLVED' ? 'Đã xử lý' : alert.status === 'IN_PROGRESS' ? 'Đang xử lý' : alert.status === 'FAILED' ? 'Thất bại' : 'Chờ xử lý'}
                                   </span>
                                 </td>
                               </tr>

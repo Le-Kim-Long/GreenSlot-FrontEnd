@@ -653,10 +653,14 @@ export default function RevenueAnalytics() {
                                   ? 'bg-green-100 text-green-700 border border-green-200/50'
                                   : d.status?.toUpperCase() === 'PENDING'
                                   ? 'bg-amber-100 text-amber-700 border border-amber-200/50'
-                                  : 'bg-gray-100 text-gray-700 border border-gray-200/50'
+                                  : 'bg-rose-100 text-rose-700 border border-rose-200/50'
                               )}
                             >
-                              {d.status || 'UNKNOWN'}
+                              {d.status?.toUpperCase() === 'SUCCESS' || d.status?.toUpperCase() === 'COMPLETED' || d.status?.toUpperCase() === 'PAID'
+                                ? 'Thành công'
+                                : d.status?.toUpperCase() === 'PENDING'
+                                ? 'Chờ thanh toán'
+                                : 'Thất bại'}
                             </span>
                           </td>
                           <td className="p-4 text-gray-600 text-xs font-medium whitespace-nowrap">
@@ -806,7 +810,11 @@ export default function RevenueAnalytics() {
                       {formatPaymentMethod(selectedTxDetail.paymentMethod)}
                     </span>
                     <span className="bg-emerald-800/60 text-emerald-100 border border-emerald-400/30 px-2.5 py-0.5 rounded-full text-xs font-bold">
-                      {selectedTxDetail.status || 'SUCCESS'}
+                      {selectedTxDetail.status === 'SUCCESS' || selectedTxDetail.status === 'PAID' || selectedTxDetail.status === 'COMPLETED'
+                        ? 'Thành công'
+                        : selectedTxDetail.status === 'PENDING'
+                        ? 'Chờ thanh toán'
+                        : 'Thất bại'}
                     </span>
                     <span className="text-xs text-green-100">
                       {formatDateTime(selectedTxDetail.paymentDate)}

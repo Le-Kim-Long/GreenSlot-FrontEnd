@@ -31,6 +31,25 @@ interface Slot {
   slotNumber?: string;
 }
 
+const TASK_TYPE_MAP: Record<string, string> = {
+  MAINTENANCE: 'Bảo trì / Chăm sóc',
+  CLEANING: 'Dọn dẹp',
+  PLANTING: 'Gieo giống',
+  HARVEST: 'Thu hoạch',
+  INSPECTION: 'Kiểm tra',
+  INCIDENT: 'Sự cố',
+  REQUEST: 'Yêu cầu dịch vụ',
+};
+
+const TASK_STATUS_MAP: Record<string, string> = {
+  PENDING: 'Chờ gán',
+  IN_PROGRESS: 'Đang thực hiện',
+  PENDING_APPROVAL: 'Chờ duyệt',
+  COMPLETED: 'Hoàn thành',
+  REJECTED: 'Bị từ chối',
+  CANCELLED: 'Đã hủy',
+};
+
 export default function TaskManagement() {
   const { user } = useAuth();
   const toast = useToast();
@@ -379,7 +398,7 @@ export default function TaskManagement() {
                       </td>
                       <td className="p-4 font-medium text-green-700">{task.slotNumber}</td>
                       <td className="p-4 text-gray-600 text-xs">
-                        <span className="bg-gray-100 px-2 py-1 rounded">{task.type}</span>
+                        <span className="bg-gray-100 px-2 py-1 rounded font-medium">{TASK_TYPE_MAP[task.type] || task.type}</span>
                       </td>
                       <td className="p-4">
                         <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -636,7 +655,7 @@ export default function TaskManagement() {
               <div className="bg-purple-50/60 border border-purple-100 p-4 rounded-xl mb-5">
                 <p className="font-semibold text-gray-900 text-base">{selectedTask.name}</p>
                 <div className="flex flex-wrap gap-2 mt-2 text-xs font-medium text-purple-700">
-                  <span className="bg-white px-2 py-1 rounded border border-purple-200">Loại: {selectedTask.type}</span>
+                  <span className="bg-white px-2 py-1 rounded border border-purple-200">Loại: {TASK_TYPE_MAP[selectedTask.type] || selectedTask.type}</span>
                   <span className="bg-white px-2 py-1 rounded border border-purple-200">Ô vườn: {selectedTask.slotNumber}</span>
                   <span className="bg-white px-2 py-1 rounded border border-purple-200">Nhân viên: {selectedTask.assigneeName || 'Chưa gán'}</span>
                 </div>
@@ -751,7 +770,7 @@ export default function TaskManagement() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-bold text-gray-900 text-base">{selectedTask.name}</h3>
-                      <p className="text-xs text-gray-500">Ô vườn: <span className="font-semibold text-green-700">{selectedTask.slotNumber}</span> · Loại: <span className="font-medium text-gray-700">{selectedTask.type}</span></p>
+                      <p className="text-xs text-gray-500">Ô vườn: <span className="font-semibold text-green-700">{selectedTask.slotNumber}</span> · Loại: <span className="font-medium text-gray-700">{TASK_TYPE_MAP[selectedTask.type] || selectedTask.type}</span></p>
                     </div>
                     <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
                       selectedTask.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' : 
@@ -760,7 +779,7 @@ export default function TaskManagement() {
                       selectedTask.status === 'REJECTED' ? 'bg-red-100 text-red-700' :
                       'bg-green-100 text-green-700'
                     }`}>
-                      {selectedTask.status}
+                      {TASK_STATUS_MAP[selectedTask.status] || selectedTask.status}
                     </span>
                   </div>
 
