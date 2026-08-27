@@ -224,10 +224,10 @@ export default function GardenStaffDashboard() {
                 </button>
               </div>
             ) : (
-              <div className="p-3 bg-white/80 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
-                <span>🔒</span>
+              <div className="p-3.5 bg-white/90 rounded-xl border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2.5">
+                <span className="text-base">🌱</span>
                 <span>
-                  Bạn chưa nhận việc tại ô vườn / trụ nào để báo thu hoạch sớm. Vui lòng bấm <strong>[Nhận việc]</strong> ở danh sách công việc bên dưới trước.
+                  Hiện tại tất cả các trụ / cây trồng tại cơ sở bạn phụ trách đều đang được xử lý hoặc đã gửi đề xuất thu hoạch sớm.
                 </span>
               </div>
             )}

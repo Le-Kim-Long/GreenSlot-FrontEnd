@@ -175,7 +175,7 @@ export default function UserManagementPage() {
             <thead>
               <tr className="text-left text-xs text-gray-500 uppercase border-b">
                 <th className="px-4 py-3">Người dùng</th>
-                <th className="px-4 py-3">Cơ sở (Location)</th>
+                <th className="px-4 py-3">Cơ sở vườn</th>
                 <th className="px-4 py-3">Vai trò</th>
                 <th className="px-4 py-3">Trạng thái</th>
                 <th className="px-4 py-3 text-right">Hành động</th>

@@ -192,7 +192,7 @@ export default function IoTMonitoringPage() {
     <DashboardLayout navItems={navItems} title="Giám sát IoT">
       {accessDenied && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 mb-6 text-sm text-yellow-800 flex items-center gap-2">
-          Customer chưa có quyền API IoT trên backend. Chỉ Garden Staff / Manager mới xem được dữ liệu cảm biến.
+          Tài khoản hiện chưa có quyền truy cập dữ liệu cảm biến IoT từ máy chủ.
         </div>
       )}
 
@@ -356,7 +356,7 @@ export default function IoTMonitoringPage() {
                       </td>
                       <td className="p-3.5">
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-green-700 bg-green-100/70 px-2 py-0.5 rounded-full">
-                          <CheckCircle className="w-3 h-3 text-green-600" /> Online
+                          <CheckCircle className="w-3 h-3 text-green-600" /> Trực tuyến
                         </span>
                       </td>
                       <td className="p-3.5 text-right">

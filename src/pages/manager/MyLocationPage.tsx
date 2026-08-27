@@ -224,7 +224,11 @@ export default function MyLocationPage() {
                             <tr key={r.rentalId}>
                               <td className="py-2 text-gray-800">{r.fullName || r.username}</td>
                               <td className="py-2 text-gray-600">{r.slotNumber} · {r.pillarCode}</td>
-                              <td className="py-2 text-gray-600">{r.status}</td>
+                              <td className="py-2 text-gray-600">
+                                <span className="bg-green-50 text-green-700 font-semibold px-2 py-0.5 rounded text-xs">
+                                  {r.status === 'ACTIVE' ? 'Đang thuê' : r.status === 'PENDING' ? 'Chờ xác nhận' : r.status === 'CANCELLED' ? 'Đã hủy' : 'Hoàn thành'}
+                                </span>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

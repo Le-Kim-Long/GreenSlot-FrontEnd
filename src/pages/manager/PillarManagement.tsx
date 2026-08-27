@@ -310,7 +310,7 @@ export default function PillarManagement() {
             {loadingDetail ? (
               <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
                 <Loader2 className="w-8 h-8 animate-spin text-green-600" />
-                <p className="text-sm">Đang tải dữ liệu thực thể từ Server...</p>
+                <p className="text-sm">Đang tải dữ liệu chi tiết từ máy chủ...</p>
               </div>
             ) : (
               <div className="space-y-4">
