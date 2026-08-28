@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Wifi, TrendingUp, Thermometer, Droplets, Sun, Activity, CheckCircle, RefreshCw, Cpu, ArrowLeft, Eye } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
 import { iotApi } from '../../api/iotApi';
 import type { SensorTypeInfo } from '../../types/api';
@@ -117,6 +118,15 @@ export default function IoTMonitoringPage() {
   const currentPillarInfo = useMemo(() => {
     return availablePillars.find(p => p.pillarCode === selectedDeviceId);
   }, [availablePillars, selectedDeviceId]);
+
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
+  const totalPages = Math.ceil(availablePillars.length / pageSize) || 1;
+  const paginatedPillars = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return availablePillars.slice(start, start + pageSize);
+  }, [availablePillars, currentPage, pageSize]);
 
   const isAllView = selectedDeviceId === 'arduino-greenhouse-01';
 
@@ -312,7 +322,7 @@ export default function IoTMonitoringPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {availablePillars.map((p) => {
+                {paginatedPillars.map((p) => {
                   const pData = allPillarsData[p.pillarCode] || latestData;
                   const soilMoisture = pData['SOIL_MOISTURE'];
                   const ph = pData['PH'];
@@ -374,6 +384,19 @@ export default function IoTMonitoringPage() {
               </tbody>
             </table>
           </div>
+
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={availablePillars.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(sz) => {
+              setPageSize(sz);
+              setCurrentPage(1);
+            }}
+            itemName="trụ canh tác"
+          />
         </div>
       )}
 

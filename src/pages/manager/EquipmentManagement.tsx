@@ -7,6 +7,7 @@ import {
   Upload, Image as ImageIcon, Hash, Layers, MapPin
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { Toast, ToastData } from '../../components/common/Toast';
 import { staffNavItems } from './staffNav';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
@@ -93,6 +94,8 @@ export default function EquipmentManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [selectedPillarId, setSelectedPillarId] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Cơ sở (location) của từng pillar — dùng để suy ra cơ sở của từng thiết bị và lọc theo cơ sở
   const pillarLocationMap = React.useMemo(() => {
@@ -308,15 +311,23 @@ export default function EquipmentManagement() {
     }
   };
 
-  const filteredEquipments = equipments.filter(item => {
-    const matchSearch = item.equipmentName?.toLowerCase().includes(search.toLowerCase()) ||
-                        item.serialNumber?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
-    const matchLocation = selectedLocationId === ''
-      ? true
-      : String(pillarLocationMap.get(item.pillarId)) === selectedLocationId;
-    return matchSearch && matchStatus && matchLocation;
-  });
+  const filteredEquipments = equipments
+    .filter(item => {
+      const matchSearch = item.equipmentName?.toLowerCase().includes(search.toLowerCase()) ||
+                          item.serialNumber?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
+      const matchLocation = selectedLocationId === ''
+        ? true
+        : String(pillarLocationMap.get(item.pillarId)) === selectedLocationId;
+      const matchPillar = selectedPillarId === ''
+        ? true
+        : String(item.pillarId) === selectedPillarId;
+      return matchSearch && matchStatus && matchLocation && matchPillar;
+    })
+    .sort((a, b) => b.id - a.id);
+
+  const totalPages = Math.ceil(filteredEquipments.length / pageSize) || 1;
+  const paginatedEquipments = filteredEquipments.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Danh mục Thiết bị">
@@ -334,7 +345,10 @@ export default function EquipmentManagement() {
                 placeholder="Tìm tên thiết bị, Serial Number..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-sm shadow-sm transition-all outline-none"
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
 
@@ -342,7 +356,10 @@ export default function EquipmentManagement() {
             <CustomDropdown
               icon={<Filter className="w-4 h-4 text-green-600 shrink-0" />}
               value={statusFilter}
-              onChange={(val: any) => setStatusFilter(String(val))}
+              onChange={(val: any) => {
+                setStatusFilter(String(val));
+                setCurrentPage(1);
+              }}
               options={[
                 { value: "", label: "Tất cả trạng thái" },
                 { value: "AVAILABLE", label: "Sẵn sàng" },
@@ -357,7 +374,10 @@ export default function EquipmentManagement() {
               <CustomDropdown
                 icon={<MapPin className="w-4 h-4 text-green-600 shrink-0" />}
                 value={selectedLocationId}
-                onChange={(val: any) => handleLocationChange(String(val))}
+                onChange={(val: any) => {
+                  handleLocationChange(String(val));
+                  setCurrentPage(1);
+                }}
                 options={[
                   { value: "", label: "Tất cả cơ sở" },
                   ...locations.map((l: any) => ({ value: String(l.id), label: l.name }))
@@ -369,7 +389,10 @@ export default function EquipmentManagement() {
             <CustomDropdown
               icon={<Layers className="w-4 h-4 text-green-600 shrink-0" />}
               value={selectedPillarId}
-              onChange={(val: any) => setSelectedPillarId(String(val))}
+              onChange={(val: any) => {
+                setSelectedPillarId(String(val));
+                setCurrentPage(1);
+              }}
               options={[
                 { value: "", label: "Tất cả các trụ" },
                 ...pillarOptionsForLocation.map(p => ({ value: String(p.id), label: p.pillarName || p.pillarCode || `Trụ #${p.id}` }))
@@ -411,7 +434,7 @@ export default function EquipmentManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredEquipments.map(item => (
+                paginatedEquipments.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50/80 transition">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
@@ -492,6 +515,23 @@ export default function EquipmentManagement() {
               )}
             </tbody>
           </table>
+
+          {filteredEquipments.length > 0 && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredEquipments.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="thiết bị"
+              />
+            </div>
+          )}
         </div>
 
         {/* Delete Confirmation Modal */}

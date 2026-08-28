@@ -7,6 +7,7 @@ import {
   ChevronDown, X, Eye, Loader2, CreditCard, Layers
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { staffNavItems } from './staffNav';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -77,6 +78,8 @@ export default function TreePlantingManagement() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [selectedLocationId, setSelectedLocationId] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Chỉ manager/admin mới cần chọn cơ sở (location_manager chỉ có đúng 1 cơ sở, backend đã tự lọc sẵn)
   const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
@@ -136,15 +139,25 @@ export default function TreePlantingManagement() {
     }
   };
 
-  const filteredRequests = requests.filter(item => {
-    const matchSearch =
-      item.slotNumber?.toLowerCase().includes(search.toLowerCase()) ||
-      item.newTreeName?.toLowerCase().includes(search.toLowerCase()) ||
-      item.requestedByName?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
-    const matchLocation = selectedLocationId === '' ? true : String(item.locationId) === selectedLocationId;
-    return matchSearch && matchStatus && matchLocation;
-  });
+  const filteredRequests = requests
+    .filter(item => {
+      const matchSearch =
+        item.slotNumber?.toLowerCase().includes(search.toLowerCase()) ||
+        item.newTreeName?.toLowerCase().includes(search.toLowerCase()) ||
+        item.requestedByName?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
+      const matchLocation = selectedLocationId === '' ? true : String(item.locationId) === selectedLocationId;
+      return matchSearch && matchStatus && matchLocation;
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.requestedAt || 0).getTime();
+      const timeB = new Date(b.requestedAt || 0).getTime();
+      if (timeA !== timeB) return timeB - timeA;
+      return b.id - a.id;
+    });
+
+  const totalPages = Math.ceil(filteredRequests.length / pageSize) || 1;
+  const paginatedRequests = filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -171,14 +184,20 @@ export default function TreePlantingManagement() {
                 placeholder="Tìm mã vị trí, tên cây, tên khách..." 
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-sm shadow-sm outline-none transition" 
                 value={search} 
-                onChange={e => setSearch(e.target.value)} 
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }} 
               />
             </div>
 
             <CustomDropdown
               icon={<Filter className="w-4 h-4 text-green-600 shrink-0" />}
               value={statusFilter}
-              onChange={(val: any) => setStatusFilter(String(val))}
+              onChange={(val: any) => {
+                setStatusFilter(String(val));
+                setCurrentPage(1);
+              }}
               options={[
                 { value: "", label: "Tất cả trạng thái" },
                 { value: "PENDING", label: "Chờ phê duyệt" },
@@ -192,7 +211,10 @@ export default function TreePlantingManagement() {
               <CustomDropdown
                 icon={<MapPin className="w-4 h-4 text-green-600 shrink-0" />}
                 value={selectedLocationId}
-                onChange={(val: any) => setSelectedLocationId(String(val))}
+                onChange={(val: any) => {
+                  setSelectedLocationId(String(val));
+                  setCurrentPage(1);
+                }}
                 options={[
                   { value: "", label: "Tất cả cơ sở" },
                   ...locations.map((l: any) => ({ value: String(l.id), label: l.name }))
@@ -229,7 +251,7 @@ export default function TreePlantingManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredRequests.map(item => (
+                paginatedRequests.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50/80 transition">
                     <td className="p-4">
                       <div className="flex items-center gap-2 font-bold text-gray-900">
@@ -295,6 +317,23 @@ export default function TreePlantingManagement() {
               )}
             </tbody>
           </table>
+
+          {filteredRequests.length > 0 && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredRequests.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="yêu cầu trồng cây"
+              />
+            </div>
+          )}
         </div>
 
         {/* Modal Xem chi tiết & Xử lý */}

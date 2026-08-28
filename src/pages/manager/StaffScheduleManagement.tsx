@@ -3,6 +3,7 @@ import { staffScheduleApi, StaffSchedule } from '../../api/staffScheduleApi';
 import { managerApi, LocationItem, GardenStaff } from '../../api/managerApi';
 import { Calendar, Plus, Edit2, Trash2, X, Search, Clock, MapPin, User, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { Toast, ToastData } from '../../components/common/Toast';
 import { useAuth } from '../../context/AuthContext';
 import { staffNavItems } from './staffNav';
@@ -29,6 +30,8 @@ export default function StaffScheduleManagement() {
   // Bộ lọc
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -203,11 +206,23 @@ export default function StaffScheduleManagement() {
     }
   };
 
-  const filteredSchedules = schedules.filter(s => 
-    s.staffName?.toLowerCase().includes(search.toLowerCase()) ||
-    s.locationName?.toLowerCase().includes(search.toLowerCase()) ||
-    s.notes?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredSchedules = schedules
+    .filter(s => {
+      const matchSearch = s.staffName?.toLowerCase().includes(search.toLowerCase()) ||
+        s.locationName?.toLowerCase().includes(search.toLowerCase()) ||
+        s.notes?.toLowerCase().includes(search.toLowerCase());
+      const matchDate = !dateFilter || s.scheduleDate === dateFilter;
+      return matchSearch && matchDate;
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.scheduleDate || 0).getTime();
+      const timeB = new Date(b.scheduleDate || 0).getTime();
+      if (timeA !== timeB) return timeB - timeA;
+      return b.id - a.id;
+    });
+
+  const totalPages = Math.ceil(filteredSchedules.length / pageSize) || 1;
+  const paginatedSchedules = filteredSchedules.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Lịch làm việc & Phân ca Nhân viên">
@@ -224,7 +239,10 @@ export default function StaffScheduleManagement() {
                 placeholder="Tìm theo tên nhân viên, khu vực..." 
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-sm shadow-sm outline-none" 
                 value={search} 
-                onChange={e => setSearch(e.target.value)} 
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }} 
               />
             </div>
 
@@ -233,12 +251,23 @@ export default function StaffScheduleManagement() {
               <Calendar className="w-4 h-4 text-green-600" />
               <input 
                 type="date" 
-                className="text-sm outline-none text-gray-700 bg-transparent"
-                value={dateFilter}
-                onChange={e => setDateFilter(e.target.value)}
+                className="text-sm outline-none text-gray-700 bg-transparent" 
+                value={dateFilter} 
+                onChange={e => {
+                  setDateFilter(e.target.value);
+                  setCurrentPage(1);
+                }} 
               />
               {dateFilter && (
-                <button onClick={() => setDateFilter('')} className="text-xs text-red-500 hover:underline ml-1">Xóa lọc</button>
+                <button 
+                  onClick={() => {
+                    setDateFilter('');
+                    setCurrentPage(1);
+                  }} 
+                  className="text-xs text-red-500 hover:underline ml-1"
+                >
+                  Xóa lọc
+                </button>
               )}
             </div>
           </div>
@@ -278,7 +307,7 @@ export default function StaffScheduleManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredSchedules.map(schedule => (
+                paginatedSchedules.map(schedule => (
                   <tr key={schedule.id} className="hover:bg-gray-50/80 transition">
                     <td className="p-4">
                       <div className="flex items-center gap-2 font-semibold text-gray-900">
@@ -331,6 +360,23 @@ export default function StaffScheduleManagement() {
               )}
             </tbody>
           </table>
+
+          {filteredSchedules.length > 0 && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredSchedules.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="lịch phân ca"
+              />
+            </div>
+          )}
         </div>
 
         {/* Modal Thêm / Sửa Lịch Trực */}

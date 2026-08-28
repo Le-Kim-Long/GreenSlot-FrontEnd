@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Sprout, Calendar, MapPin, User, History, Search } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { staffNavItems } from './staffNav';
 import { harvestHistoryApi, HarvestHistoryItem } from '../../api/harvestHistoryApi';
 
@@ -9,6 +10,9 @@ export default function HarvestHistoryManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<'ALL' | 'EARLY' | 'NORMAL'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     harvestHistoryApi.getManagerHistory()
@@ -17,21 +21,34 @@ export default function HarvestHistoryManagement() {
       .finally(() => setLoading(false));
   }, []);
 
-  const [filterType, setFilterType] = useState<'ALL' | 'EARLY' | 'NORMAL'>('ALL');
+  const filtered = useMemo(() => {
+    return items
+      .filter(item => {
+        const matchSearch =
+          item.treeName?.toLowerCase().includes(search.toLowerCase()) ||
+          item.slotNumber?.toLowerCase().includes(search.toLowerCase()) ||
+          item.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+          item.staffName?.toLowerCase().includes(search.toLowerCase()) ||
+          item.pillarCodes?.toLowerCase().includes(search.toLowerCase());
 
-  const filtered = items.filter(item => {
-    const matchSearch =
-      item.treeName?.toLowerCase().includes(search.toLowerCase()) ||
-      item.slotNumber?.toLowerCase().includes(search.toLowerCase()) ||
-      item.customerName?.toLowerCase().includes(search.toLowerCase()) ||
-      item.staffName?.toLowerCase().includes(search.toLowerCase()) ||
-      item.pillarCodes?.toLowerCase().includes(search.toLowerCase());
+        if (!matchSearch) return false;
+        if (filterType === 'EARLY') return item.isEarlyHarvest;
+        if (filterType === 'NORMAL') return !item.isEarlyHarvest;
+        return true;
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.harvestedAt || a.plantedAt || 0).getTime();
+        const timeB = new Date(b.harvestedAt || b.plantedAt || 0).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        return b.id - a.id;
+      });
+  }, [items, search, filterType]);
 
-    if (!matchSearch) return false;
-    if (filterType === 'EARLY') return item.isEarlyHarvest;
-    if (filterType === 'NORMAL') return !item.isEarlyHarvest;
-    return true;
-  });
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Lịch sử thu hoạch">
@@ -44,19 +61,28 @@ export default function HarvestHistoryManagement() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm text-xs font-semibold">
               <button
-                onClick={() => setFilterType('ALL')}
+                onClick={() => {
+                  setFilterType('ALL');
+                  setCurrentPage(1);
+                }}
                 className={`px-3 py-1.5 rounded-lg transition ${filterType === 'ALL' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
               >
                 Tất cả ({items.length})
               </button>
               <button
-                onClick={() => setFilterType('EARLY')}
+                onClick={() => {
+                  setFilterType('EARLY');
+                  setCurrentPage(1);
+                }}
                 className={`px-3 py-1.5 rounded-lg transition ${filterType === 'EARLY' ? 'bg-amber-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
               >
                 Thu hoạch sớm ({items.filter(i => i.isEarlyHarvest).length})
               </button>
               <button
-                onClick={() => setFilterType('NORMAL')}
+                onClick={() => {
+                  setFilterType('NORMAL');
+                  setCurrentPage(1);
+                }}
                 className={`px-3 py-1.5 rounded-lg transition ${filterType === 'NORMAL' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
               >
                 Đúng chu kỳ ({items.filter(i => !i.isEarlyHarvest).length})
@@ -70,7 +96,10 @@ export default function HarvestHistoryManagement() {
                 placeholder="Tìm cây, ô, trụ, khách..."
                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-xs shadow-sm outline-none bg-white"
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
           </div>
@@ -100,7 +129,7 @@ export default function HarvestHistoryManagement() {
                   </td>
                 </tr>
               ) : (
-                filtered.map(item => (
+                paginatedItems.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50/80 transition">
                     <td className="p-4">
                       <div className="flex items-center gap-1.5 font-bold text-gray-900 text-sm">
@@ -155,6 +184,23 @@ export default function HarvestHistoryManagement() {
               )}
             </tbody>
           </table>
+
+          {filtered.length > 0 && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="lượt thu hoạch"
+              />
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

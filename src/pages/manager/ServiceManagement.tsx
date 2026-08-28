@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit2, X, Tag, Layers, Loader2, Trash2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
@@ -27,6 +28,10 @@ export default function ServiceManagement() {
   const [types, setTypes] = useState<ServiceType[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'categories' | 'types'>('categories');
+  const [catPage, setCatPage] = useState(1);
+  const [catPageSize, setCatPageSize] = useState(6);
+  const [typePage, setTypePage] = useState(1);
+  const [typePageSize, setTypePageSize] = useState(10);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
 
@@ -45,8 +50,8 @@ export default function ServiceManagement() {
   const fetchData = async () => {
     try {
       const [c, t] = await Promise.all([managerApi.getServiceCategories(), managerApi.getServiceTypes()]);
-      setCategories(c);
-      setTypes(t);
+      setCategories((c || []).sort((a: ServiceCategory, b: ServiceCategory) => b.id - a.id));
+      setTypes((t || []).sort((a: ServiceType, b: ServiceType) => b.id - a.id));
     } catch {
       setError('Không thể tải dữ liệu');
     } finally {
@@ -232,27 +237,47 @@ export default function ServiceManagement() {
             <p>Chưa có danh mục dịch vụ</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categories.map(c => (
-              <div key={c.id} className="card hover:border-green-200 transition-colors">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
-                    <Layers className="w-5 h-5 text-orange-600" />
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {categories.slice((catPage - 1) * catPageSize, catPage * catPageSize).map(c => (
+                <div key={c.id} className="card hover:border-green-200 transition-colors">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                      <Layers className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => openEditCat(c)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setConfirmDeleteCat(c)} className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => openEditCat(c)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600">
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setConfirmDeleteCat(c)} className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <h3 className="font-bold text-gray-900 mb-1">{c.name || c.categoryName}</h3>
+                  {c.description && <p className="text-sm text-gray-500">{c.description}</p>}
+                  <p className="text-xs text-gray-400 mt-2">{types.filter(t => t.serviceCategoryId === c.id).length} loại dịch vụ</p>
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1">{c.name || c.categoryName}</h3>
-                {c.description && <p className="text-sm text-gray-500">{c.description}</p>}
-                <p className="text-xs text-gray-400 mt-2">{types.filter(t => t.serviceCategoryId === c.id).length} loại dịch vụ</p>
+              ))}
+            </div>
+
+            {categories.length > 0 && (
+              <div className="card p-4">
+                <Pagination
+                  currentPage={catPage}
+                  totalPages={Math.ceil(categories.length / catPageSize) || 1}
+                  totalItems={categories.length}
+                  pageSize={catPageSize}
+                  onPageChange={setCatPage}
+                  onPageSizeChange={(sz) => {
+                    setCatPageSize(sz);
+                    setCatPage(1);
+                  }}
+                  pageSizeOptions={[6, 12, 18]}
+                  itemName="danh mục"
+                />
               </div>
-            ))}
+            )}
           </div>
         )
       ) : (
@@ -262,7 +287,7 @@ export default function ServiceManagement() {
             <p>Chưa có loại dịch vụ</p>
           </div>
         ) : (
-          <div className="card overflow-x-auto">
+          <div className="card overflow-x-auto space-y-4">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
@@ -273,7 +298,7 @@ export default function ServiceManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {types.map(t => (
+                {types.slice((typePage - 1) * typePageSize, typePage * typePageSize).map(t => (
                   <tr key={t.id} className="hover:bg-gray-50">
                     <td className="py-3">
                       <div className="font-semibold text-gray-900">{t.name || t.serviceName}</div>
@@ -295,6 +320,23 @@ export default function ServiceManagement() {
                 ))}
               </tbody>
             </table>
+
+            {types.length > 0 && (
+              <div className="pt-3 border-t border-gray-100">
+                <Pagination
+                  currentPage={typePage}
+                  totalPages={Math.ceil(types.length / typePageSize) || 1}
+                  totalItems={types.length}
+                  pageSize={typePageSize}
+                  onPageChange={setTypePage}
+                  onPageSizeChange={(sz) => {
+                    setTypePageSize(sz);
+                    setTypePage(1);
+                  }}
+                  itemName="loại dịch vụ"
+                />
+              </div>
+            )}
           </div>
         )
       )}

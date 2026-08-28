@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Columns3, Plus, Edit2, X, Search, Trash2, Loader2, Sprout, Layers } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { managerApi, PillarItem, PillarFormData } from '../../api/managerApi';
 import { treeApi, Tree } from '../../api/treeApi';
 import { staffNavItems } from './staffNav';
@@ -34,6 +35,8 @@ export default function PillarManagement() {
   const [slots, setSlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<PillarItem | null>(null);
   const [form, setForm] = useState<PillarFormData>(emptyForm);
@@ -151,17 +154,31 @@ export default function PillarManagement() {
 
   const getLocationName = (id: number) => locations.find(l => l.id === id)?.name || `#${id}`;
 
-  const filtered = pillars.filter(p =>
-    p.pillarCode.toLowerCase().includes(search.toLowerCase()) ||
-    (p.defaultTreeName && p.defaultTreeName.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = pillars
+    .filter(p =>
+      p.pillarCode.toLowerCase().includes(search.toLowerCase()) ||
+      (p.defaultTreeName && p.defaultTreeName.toLowerCase().includes(search.toLowerCase()))
+    )
+    .sort((a, b) => b.id - a.id);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedPillars = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Trụ vườn">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" placeholder="Tìm mã trụ, rau trồng..." className="input pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Tìm mã trụ, rau trồng..."
+            className="input pl-10"
+            value={search}
+            onChange={e => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
         </div>
         <button onClick={openCreate} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Thêm trụ mới
@@ -178,7 +195,7 @@ export default function PillarManagement() {
           <p>Chưa có trụ vườn nào</p>
         </div>
       ) : (
-        <div className="card overflow-x-auto">
+        <div className="card overflow-x-auto space-y-4">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
@@ -192,7 +209,7 @@ export default function PillarManagement() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map(p => {
+              {paginatedPillars.map(p => {
                 const isSmall = p.pillarType === 'SMALL';
                 const isLarge = p.pillarType === 'LARGE';
                 return (
@@ -276,6 +293,23 @@ export default function PillarManagement() {
               })}
             </tbody>
           </table>
+
+          {filtered.length > 0 && (
+            <div className="pt-3 border-t border-gray-100">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="trụ vườn"
+              />
+            </div>
+          )}
         </div>
       )}
 

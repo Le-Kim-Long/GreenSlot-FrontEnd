@@ -22,6 +22,7 @@ import {
   Users,
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { customerNavItems } from './customerNavItems';
 import { staffNavItems } from '../manager/staffNav';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -60,6 +61,8 @@ export default function CustomerNotificationsPage() {
 
   const [activeCategory, setActiveCategory] = useState<NotificationCategory>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   const handleRefresh = async () => {
@@ -82,26 +85,39 @@ export default function CustomerNotificationsPage() {
   };
 
 
-  // Filter & Search
+  // Filter & Search & Sort
   const filteredNotifications = useMemo(() => {
-    return notifications.filter(item => {
-      // Category filter
-      if (activeCategory === 'unread' && item.isRead) return false;
-      if (activeCategory !== 'unread' && activeCategory !== 'all' && !matchesCategory(item.type, activeCategory)) {
-        return false;
-      }
+    return notifications
+      .filter(item => {
+        // Category filter
+        if (activeCategory === 'unread' && item.isRead) return false;
+        if (activeCategory !== 'unread' && activeCategory !== 'all' && !matchesCategory(item.type, activeCategory)) {
+          return false;
+        }
 
-      // Keyword search
-      if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase();
-        const titleMatch = (item.title || '').toLowerCase().includes(query);
-        const messageMatch = (item.message || '').toLowerCase().includes(query);
-        if (!titleMatch && !messageMatch) return false;
-      }
+        // Keyword search
+        if (searchTerm.trim()) {
+          const query = searchTerm.toLowerCase();
+          const titleMatch = (item.title || '').toLowerCase().includes(query);
+          const messageMatch = (item.message || '').toLowerCase().includes(query);
+          if (!titleMatch && !messageMatch) return false;
+        }
 
-      return true;
-    });
+        return true;
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        return (b.id || 0) - (a.id || 0);
+      });
   }, [notifications, activeCategory, searchTerm]);
+
+  const totalPages = Math.ceil(filteredNotifications.length / pageSize) || 1;
+  const paginatedNotifications = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredNotifications.slice(start, start + pageSize);
+  }, [filteredNotifications, currentPage, pageSize]);
 
   // Tab definitions with dynamic counts
   const categoryTabs: { id: NotificationCategory; label: string; count?: number }[] = [
@@ -193,13 +209,19 @@ export default function CustomerNotificationsPage() {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={e => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
                 placeholder="Tìm kiếm theo tiêu đề hoặc nội dung thông báo..."
                 className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:bg-white transition-all text-gray-800 placeholder-gray-400"
               />
               {searchTerm && (
                 <button
-                  onClick={() => setSearchTerm('')}
+                  onClick={() => {
+                    setSearchTerm('');
+                    setCurrentPage(1);
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -222,7 +244,10 @@ export default function CustomerNotificationsPage() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveCategory(tab.id)}
+                  onClick={() => {
+                    setActiveCategory(tab.id);
+                    setCurrentPage(1);
+                  }}
                   className={`px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
                     isActive
                       ? 'bg-green-600 text-white shadow-sm shadow-green-600/20 ring-2 ring-green-600/20'
@@ -282,109 +307,124 @@ export default function CustomerNotificationsPage() {
             )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {filteredNotifications.map(item => {
-              const meta = getNotificationMeta(item.type, item.title);
-              const IconComponent = meta.icon;
+          <div className="space-y-4">
+            <div className="space-y-3">
+              {paginatedNotifications.map(item => {
+                const meta = getNotificationMeta(item.type, item.title);
+                const IconComponent = meta.icon;
 
-              return (
-                <div
-                  key={item.id}
-                  className={`rounded-2xl p-4 sm:p-5 transition-all duration-200 border ${
-                    !item.isRead
-                      ? 'bg-white border-green-200 shadow-md shadow-green-600/5 ring-1 ring-green-100/80 hover:border-green-300'
-                      : 'bg-white/80 border-gray-100 shadow-sm hover:bg-white hover:border-gray-200'
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                    {/* Icon Box */}
-                    <div
-                      className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border ${meta.bgClasses} ${meta.colorClasses} ${meta.borderClasses}`}
-                    >
-                      <IconComponent className="w-6 h-6" />
-                    </div>
-
-                    {/* Content Section */}
-                    <div className="flex-1 min-w-0 space-y-1.5">
-                      {/* Top Badges & Meta */}
-                      <div className="flex flex-wrap items-center gap-2 justify-between">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${meta.bgClasses} ${meta.colorClasses} ${meta.borderClasses}`}
-                          >
-                            {meta.badgeLabel}
-                          </span>
-
-                          {!item.isRead && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full animate-pulse">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                              Chưa đọc
-                            </span>
-                          )}
-
-                          {item.referenceId && (
-                            <span className="text-[11px] text-gray-400 font-mono">
-                              #Ref-{item.referenceId}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Timestamp */}
-                        <div className="text-right" title={formatExactDateTime(item.createdAt)}>
-                          <span className="text-xs font-medium text-gray-500">
-                            {formatRelativeTime(item.createdAt)}
-                          </span>
-                          <span className="text-[10px] text-gray-400 block">
-                            {formatExactDateTime(item.createdAt)}
-                          </span>
-                        </div>
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-2xl p-4 sm:p-5 transition-all duration-200 border ${
+                      !item.isRead
+                        ? 'bg-white border-green-200 shadow-md shadow-green-600/5 ring-1 ring-green-100/80 hover:border-green-300'
+                        : 'bg-white/80 border-gray-100 shadow-sm hover:bg-white hover:border-gray-200'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                      {/* Icon Box */}
+                      <div
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 border ${meta.bgClasses} ${meta.colorClasses} ${meta.borderClasses}`}
+                      >
+                        <IconComponent className="w-6 h-6" />
                       </div>
 
-                      {/* Title */}
-                      <h2
-                        className={`text-sm sm:text-base ${
-                          !item.isRead ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'
-                        }`}
-                      >
-                        {item.title}
-                      </h2>
-
-                      {/* Message body */}
-                      <p className="text-xs sm:text-sm text-gray-600 leading-relaxed break-words whitespace-pre-line">
-                        {item.message}
-                      </p>
-
-                      {/* Bottom Action Row */}
-                      <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-gray-50 mt-3">
-                        <div className="flex items-center gap-2">
-                          {/* Deep Link Action */}
-                          {(item.actionUrl || item.referenceId) && (
-                            <button
-                              onClick={() => void handleItemAction(item)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 rounded-xl text-xs font-semibold transition-colors"
+                      {/* Content Section */}
+                      <div className="flex-1 min-w-0 space-y-1.5">
+                        {/* Top Badges & Meta */}
+                        <div className="flex flex-wrap items-center gap-2 justify-between">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span
+                              className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${meta.bgClasses} ${meta.colorClasses} ${meta.borderClasses}`}
                             >
-                              <span>{meta.defaultActionLabel}</span>
-                              <ArrowRight className="w-3.5 h-3.5" />
+                              {meta.badgeLabel}
+                            </span>
+
+                            {!item.isRead && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200 px-2 py-0.5 rounded-full animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                Chưa đọc
+                              </span>
+                            )}
+
+                            {item.referenceId && (
+                              <span className="text-[11px] text-gray-400 font-mono">
+                                #Ref-{item.referenceId}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Timestamp */}
+                          <div className="text-right" title={formatExactDateTime(item.createdAt)}>
+                            <span className="text-xs font-medium text-gray-500">
+                              {formatRelativeTime(item.createdAt)}
+                            </span>
+                            <span className="text-[10px] text-gray-400 block">
+                              {formatExactDateTime(item.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Title */}
+                        <h2
+                          className={`text-sm sm:text-base ${
+                            !item.isRead ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'
+                          }`}
+                        >
+                          {item.title}
+                        </h2>
+
+                        {/* Message body */}
+                        <p className="text-xs sm:text-sm text-gray-600 leading-relaxed break-words whitespace-pre-line">
+                          {item.message}
+                        </p>
+
+                        {/* Bottom Action Row */}
+                        <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-gray-50 mt-3">
+                          <div className="flex items-center gap-2">
+                            {/* Deep Link Action */}
+                            {(item.actionUrl || item.referenceId) && (
+                              <button
+                                onClick={() => void handleItemAction(item)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 rounded-xl text-xs font-semibold transition-colors"
+                              >
+                                <span>{meta.defaultActionLabel}</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Read Toggle */}
+                          {!item.isRead && (
+                            <button
+                              onClick={() => void markAsRead(item.id)}
+                              className="inline-flex items-center gap-1 px-3 py-1.5 text-gray-500 hover:text-green-700 hover:bg-green-50 rounded-xl text-xs font-medium transition-colors"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                              <span>Đánh dấu đã đọc</span>
                             </button>
                           )}
                         </div>
-
-                        {/* Read Toggle */}
-                        {!item.isRead && (
-                          <button
-                            onClick={() => void markAsRead(item.id)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-gray-500 hover:text-green-700 hover:bg-green-50 rounded-xl text-xs font-medium transition-colors"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                            <span>Đánh dấu đã đọc</span>
-                          </button>
-                        )}
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredNotifications.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(sz) => {
+                setPageSize(sz);
+                setCurrentPage(1);
+              }}
+              itemName="thông báo"
+            />
           </div>
         )}
       </div>

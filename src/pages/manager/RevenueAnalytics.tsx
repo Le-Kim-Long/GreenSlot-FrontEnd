@@ -35,6 +35,7 @@ import {
   Legend,
 } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import {
   managerApi,
   RevenueAnalyticsResponse,
@@ -56,6 +57,12 @@ export default function RevenueAnalytics() {
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [viewTab, setViewTab] = useState<'TRANSACTIONS' | 'CUSTOMERS'>('TRANSACTIONS');
+
+  // Pagination
+  const [txPage, setTxPage] = useState(1);
+  const [txPageSize, setTxPageSize] = useState(10);
+  const [custPage, setCustPage] = useState(1);
+  const [custPageSize, setCustPageSize] = useState(10);
 
   // Modal detail
   const [selectedTxDetail, setSelectedTxDetail] = useState<TransactionDeclarationItem | null>(null);
@@ -171,25 +178,32 @@ export default function RevenueAnalytics() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [declarations]);
 
-  // Lọc giao dịch
+  // Lọc giao dịch và sắp xếp mới nhất lên đầu
   const filteredDeclarations = useMemo(() => {
-    return declarations.filter((d) => {
-      if (selectedLocation && d.locationName !== selectedLocation) return false;
-      if (selectedCustomer && d.customerUsername !== selectedCustomer) return false;
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        const codeMatch = (d.transactionCode || '').toLowerCase().includes(query);
-        const refMatch = (d.vnpTxnRef || '').toLowerCase().includes(query);
-        const nameMatch = (d.customerName || '').toLowerCase().includes(query);
-        const userMatch = (d.customerUsername || '').toLowerCase().includes(query);
-        const slotMatch = (d.slotNumber || '').toLowerCase().includes(query);
-        const pillarMatch = (d.pillarCode || '').toLowerCase().includes(query);
-        if (!codeMatch && !refMatch && !nameMatch && !userMatch && !slotMatch && !pillarMatch) {
-          return false;
+    return declarations
+      .filter((d) => {
+        if (selectedLocation && d.locationName !== selectedLocation) return false;
+        if (selectedCustomer && d.customerUsername !== selectedCustomer) return false;
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase();
+          const codeMatch = (d.transactionCode || '').toLowerCase().includes(query);
+          const refMatch = (d.vnpTxnRef || '').toLowerCase().includes(query);
+          const nameMatch = (d.customerName || '').toLowerCase().includes(query);
+          const userMatch = (d.customerUsername || '').toLowerCase().includes(query);
+          const slotMatch = (d.slotNumber || '').toLowerCase().includes(query);
+          const pillarMatch = (d.pillarCode || '').toLowerCase().includes(query);
+          if (!codeMatch && !refMatch && !nameMatch && !userMatch && !slotMatch && !pillarMatch) {
+            return false;
+          }
         }
-      }
-      return true;
-    });
+        return true;
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.paymentDate || 0).getTime();
+        const timeB = new Date(b.paymentDate || 0).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        return (b.id || 0) - (a.id || 0);
+      });
   }, [declarations, selectedLocation, selectedCustomer, searchQuery]);
 
   // Tính tổng hợp doanh thu theo từng khách hàng
@@ -256,6 +270,20 @@ export default function RevenueAnalytics() {
     return filteredDeclarations.reduce((sum, item) => sum + (item.amount || 0), 0);
   }, [filteredDeclarations]);
 
+  // Transactions Pagination
+  const totalTxPages = Math.ceil(filteredDeclarations.length / txPageSize) || 1;
+  const paginatedDeclarations = useMemo(() => {
+    const start = (txPage - 1) * txPageSize;
+    return filteredDeclarations.slice(start, start + txPageSize);
+  }, [filteredDeclarations, txPage, txPageSize]);
+
+  // Customers Pagination
+  const totalCustPages = Math.ceil(customerBreakdowns.length / custPageSize) || 1;
+  const paginatedCustomers = useMemo(() => {
+    const start = (custPage - 1) * custPageSize;
+    return customerBreakdowns.slice(start, start + custPageSize);
+  }, [customerBreakdowns, custPage, custPageSize]);
+
   return (
     <DashboardLayout navItems={staffNavItems} title="Phân tích Doanh thu & Kê khai">
       {/* Bộ lọc thanh công cụ */}
@@ -268,14 +296,22 @@ export default function RevenueAnalytics() {
             type="date"
             className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={(e) => {
+              setStartDate(e.target.value);
+              setTxPage(1);
+              setCustPage(1);
+            }}
           />
           <span className="text-gray-400 font-bold">—</span>
           <input
             type="date"
             className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={(e) => {
+              setEndDate(e.target.value);
+              setTxPage(1);
+              setCustPage(1);
+            }}
           />
         </div>
 
@@ -286,7 +322,11 @@ export default function RevenueAnalytics() {
             <select
               className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white font-medium"
               value={selectedLocation}
-              onChange={(e) => setSelectedLocation(e.target.value)}
+              onChange={(e) => {
+                setSelectedLocation(e.target.value);
+                setTxPage(1);
+                setCustPage(1);
+              }}
             >
               <option value="">Tất cả cơ sở</option>
               {locationOptions.map((name) => (
@@ -300,7 +340,11 @@ export default function RevenueAnalytics() {
             <select
               className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white font-medium"
               value={selectedCustomer}
-              onChange={(e) => setSelectedCustomer(e.target.value)}
+              onChange={(e) => {
+                setSelectedCustomer(e.target.value);
+                setTxPage(1);
+                setCustPage(1);
+              }}
             >
               <option value="">Tất cả khách hàng ({customerOptions.length})</option>
               {customerOptions.map((c) => (
@@ -562,12 +606,20 @@ export default function RevenueAnalytics() {
                       : 'Tìm theo tên, username khách...'
                   }
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setTxPage(1);
+                    setCustPage(1);
+                  }}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-1.5 text-xs focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
                 />
                 {searchQuery && (
                   <button
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => {
+                      setSearchQuery('');
+                      setTxPage(1);
+                      setCustPage(1);
+                    }}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
                     <X className="w-3.5 h-3.5" />
@@ -578,119 +630,138 @@ export default function RevenueAnalytics() {
 
             {/* TAB 1: BẢNG LỊCH SỬ GIAO DỊCH */}
             {viewTab === 'TRANSACTIONS' && (
-              <div className="overflow-x-auto">
-                {filteredDeclarations && filteredDeclarations.length > 0 ? (
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead className="bg-green-50/60 border-b border-gray-100 text-xs font-bold text-green-800 uppercase tracking-wider">
-                      <tr>
-                        <th className="p-4">Mã GD VNPay</th>
-                        <th className="p-4">Khách hàng</th>
-                        <th className="p-4">Cơ sở & Ô / Trụ</th>
-                        <th className="p-4">Giống cây & Thời hạn</th>
-                        <th className="p-4">Phương thức</th>
-                        <th className="p-4">Trạng thái</th>
-                        <th className="p-4">Thời gian</th>
-                        <th className="p-4 text-right">Số tiền</th>
-                        <th className="p-4 text-center">Chi tiết</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {filteredDeclarations.map((d) => (
-                        <tr
-                          key={d.id}
-                          onClick={() => setSelectedTxDetail(d)}
-                          className="hover:bg-green-50/40 transition cursor-pointer group"
-                        >
-                          <td className="p-4">
-                            <span className="inline-flex items-center gap-1 bg-gray-100 group-hover:bg-green-100 group-hover:text-green-900 px-2.5 py-1 rounded-md border border-gray-200/60 font-mono text-xs font-bold text-gray-900 transition">
-                              <Hash className="w-3 h-3 text-gray-500" />
-                              {d.transactionCode || `#${d.id}`}
-                            </span>
-                            {d.vnpTxnRef && (
-                              <div className="text-[10px] text-gray-400 font-mono mt-0.5" title="Mã đơn hàng">
-                                {d.vnpTxnRef}
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-4">
-                            <div className="font-bold text-gray-900 group-hover:text-green-700 transition">
-                              {d.customerName || d.customerUsername || 'Khách vãng lai'}
-                            </div>
-                            <div className="text-xs text-gray-400 mt-0.5">@{d.customerUsername || 'N/A'}</div>
-                          </td>
-                          <td className="p-4">
-                            <div className="font-semibold text-gray-800">{d.locationName || 'N/A'}</div>
-                            <div className="text-xs text-emerald-700 font-semibold mt-0.5">
-                              {d.pillarCode && d.pillarCode !== 'N/A' ? `Trụ: ${d.pillarCode}` : `Ô: ${d.slotNumber || '-'}`}
-                            </div>
-                            <div className="text-[11px] text-gray-400">Rental #{d.rentalId}</div>
-                          </td>
-                          <td className="p-4">
-                            <div className="font-semibold text-teal-800 text-xs flex items-center gap-1">
-                              <Sprout className="w-3.5 h-3.5 text-teal-600" />
-                              {d.treeName || 'Chưa chọn giống cây'}
-                            </div>
-                            {d.durationMonths && (
-                              <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                                <Clock className="w-3 h-3 text-gray-400" />
-                                Thuê {d.durationMonths} tháng
-                              </div>
-                            )}
-                          </td>
-                          <td className="p-4">
-                            <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-md text-xs border border-blue-200/50">
-                              <CreditCard className="w-3 h-3" />
-                              {formatPaymentMethod(d.paymentMethod)}
-                            </span>
-                          </td>
-                          <td className="p-4">
-                            <span
-                              className={clsx(
-                                'px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider',
-                                d.status?.toUpperCase() === 'SUCCESS' ||
-                                  d.status?.toUpperCase() === 'COMPLETED' ||
-                                  d.status?.toUpperCase() === 'PAID'
-                                  ? 'bg-green-100 text-green-700 border border-green-200/50'
-                                  : d.status?.toUpperCase() === 'PENDING'
-                                  ? 'bg-amber-100 text-amber-700 border border-amber-200/50'
-                                  : 'bg-rose-100 text-rose-700 border border-rose-200/50'
-                              )}
-                            >
-                              {d.status?.toUpperCase() === 'SUCCESS' || d.status?.toUpperCase() === 'COMPLETED' || d.status?.toUpperCase() === 'PAID'
-                                ? 'Thành công'
-                                : d.status?.toUpperCase() === 'PENDING'
-                                ? 'Chờ thanh toán'
-                                : 'Thất bại'}
-                            </span>
-                          </td>
-                          <td className="p-4 text-gray-600 text-xs font-medium whitespace-nowrap">
-                            {formatDateTime(d.paymentDate)}
-                          </td>
-                          <td className="p-4 text-right font-black text-green-600 text-base whitespace-nowrap">
-                            {(d.amount || 0).toLocaleString('vi-VN')}đ
-                          </td>
-                          <td className="p-4 text-center">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedTxDetail(d);
-                              }}
-                              className="p-1.5 hover:bg-green-100 text-green-700 rounded-lg transition"
-                              title="Xem chi tiết"
-                            >
-                              <Info className="w-4 h-4" />
-                            </button>
-                          </td>
+              <div>
+                <div className="overflow-x-auto">
+                  {filteredDeclarations && filteredDeclarations.length > 0 ? (
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead className="bg-green-50/60 border-b border-gray-100 text-xs font-bold text-green-800 uppercase tracking-wider">
+                        <tr>
+                          <th className="p-4">Mã GD VNPay</th>
+                          <th className="p-4">Khách hàng</th>
+                          <th className="p-4">Cơ sở & Ô / Trụ</th>
+                          <th className="p-4">Giống cây & Thời hạn</th>
+                          <th className="p-4">Phương thức</th>
+                          <th className="p-4">Trạng thái</th>
+                          <th className="p-4">Thời gian</th>
+                          <th className="p-4 text-right">Số tiền</th>
+                          <th className="p-4 text-center">Chi tiết</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="p-12 text-center text-gray-400 font-medium">
-                    {selectedLocation || selectedCustomer || searchQuery
-                      ? 'Không tìm thấy giao dịch nào phù hợp với bộ lọc'
-                      : 'Chưa có dữ liệu lịch sử giao dịch trong khoảng thời gian này'}
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {paginatedDeclarations.map((d) => (
+                          <tr
+                            key={d.id}
+                            onClick={() => setSelectedTxDetail(d)}
+                            className="hover:bg-green-50/40 transition cursor-pointer group"
+                          >
+                            <td className="p-4">
+                              <span className="inline-flex items-center gap-1 bg-gray-100 group-hover:bg-green-100 group-hover:text-green-900 px-2.5 py-1 rounded-md border border-gray-200/60 font-mono text-xs font-bold text-gray-900 transition">
+                                <Hash className="w-3 h-3 text-gray-500" />
+                                {d.transactionCode || `#${d.id}`}
+                              </span>
+                              {d.vnpTxnRef && (
+                                <div className="text-[10px] text-gray-400 font-mono mt-0.5" title="Mã đơn hàng">
+                                  {d.vnpTxnRef}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-4">
+                              <div className="font-bold text-gray-900 group-hover:text-green-700 transition">
+                                {d.customerName || d.customerUsername || 'Khách vãng lai'}
+                              </div>
+                              <div className="text-xs text-gray-400 mt-0.5">@{d.customerUsername || 'N/A'}</div>
+                            </td>
+                            <td className="p-4">
+                              <div className="font-semibold text-gray-800">{d.locationName || 'N/A'}</div>
+                              <div className="text-xs text-emerald-700 font-semibold mt-0.5">
+                                {d.pillarCode && d.pillarCode !== 'N/A' ? `Trụ: ${d.pillarCode}` : `Ô: ${d.slotNumber || '-'}`}
+                              </div>
+                              <div className="text-[11px] text-gray-400">Rental #{d.rentalId}</div>
+                            </td>
+                            <td className="p-4">
+                              <div className="font-semibold text-teal-800 text-xs flex items-center gap-1">
+                                <Sprout className="w-3.5 h-3.5 text-teal-600" />
+                                {d.treeName || 'Chưa chọn giống cây'}
+                              </div>
+                              {d.durationMonths && (
+                                <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+                                  <Clock className="w-3 h-3 text-gray-400" />
+                                  Thuê {d.durationMonths} tháng
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-4">
+                              <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 font-bold px-2.5 py-1 rounded-md text-xs border border-blue-200/50">
+                                <CreditCard className="w-3 h-3" />
+                                {formatPaymentMethod(d.paymentMethod)}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <span
+                                className={clsx(
+                                  'px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider',
+                                  d.status?.toUpperCase() === 'SUCCESS' ||
+                                    d.status?.toUpperCase() === 'COMPLETED' ||
+                                    d.status?.toUpperCase() === 'PAID'
+                                    ? 'bg-green-100 text-green-700 border border-green-200/50'
+                                    : d.status?.toUpperCase() === 'PENDING'
+                                    ? 'bg-amber-100 text-amber-700 border border-amber-200/50'
+                                    : 'bg-rose-100 text-rose-700 border border-rose-200/50'
+                                )}
+                              >
+                                {d.status?.toUpperCase() === 'SUCCESS' || d.status?.toUpperCase() === 'COMPLETED' || d.status?.toUpperCase() === 'PAID'
+                                  ? 'Thành công'
+                                  : d.status?.toUpperCase() === 'PENDING'
+                                  ? 'Chờ thanh toán'
+                                  : 'Thất bại'}
+                              </span>
+                            </td>
+                            <td className="p-4 text-gray-600 text-xs font-medium whitespace-nowrap">
+                              {formatDateTime(d.paymentDate)}
+                            </td>
+                            <td className="p-4 text-right font-black text-green-600 text-base whitespace-nowrap">
+                              {(d.amount || 0).toLocaleString('vi-VN')}đ
+                            </td>
+                            <td className="p-4 text-center">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedTxDetail(d);
+                                }}
+                                className="p-1.5 hover:bg-green-100 text-green-700 rounded-lg transition"
+                                title="Xem chi tiết"
+                              >
+                                <Info className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-12 text-center text-gray-400 font-medium">
+                      {selectedLocation || selectedCustomer || searchQuery
+                        ? 'Không tìm thấy giao dịch nào phù hợp với bộ lọc'
+                        : 'Chưa có dữ liệu lịch sử giao dịch trong khoảng thời gian này'}
+                    </div>
+                  )}
+                </div>
+
+                {filteredDeclarations.length > 0 && (
+                  <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+                    <Pagination
+                      currentPage={txPage}
+                      totalPages={totalTxPages}
+                      totalItems={filteredDeclarations.length}
+                      pageSize={txPageSize}
+                      onPageChange={setTxPage}
+                      onPageSizeChange={(sz) => {
+                        setTxPageSize(sz);
+                        setTxPage(1);
+                      }}
+                      itemName="giao dịch"
+                    />
                   </div>
                 )}
               </div>
@@ -698,82 +769,102 @@ export default function RevenueAnalytics() {
 
             {/* TAB 2: BẢNG DOANH THU THEO TỪNG KHÁCH HÀNG */}
             {viewTab === 'CUSTOMERS' && (
-              <div className="overflow-x-auto">
-                {customerBreakdowns && customerBreakdowns.length > 0 ? (
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead className="bg-green-50/60 border-b border-gray-100 text-xs font-bold text-green-800 uppercase tracking-wider">
-                      <tr>
-                        <th className="p-4">#</th>
-                        <th className="p-4">Khách hàng</th>
-                        <th className="p-4">Thông tin liên hệ</th>
-                        <th className="p-4 text-center">Số giao dịch</th>
-                        <th className="p-4">Khu vườn & Ô đã thuê</th>
-                        <th className="p-4">Giao dịch gần nhất</th>
-                        <th className="p-4 text-right">Tổng chi tiêu</th>
-                        <th className="p-4 text-center">Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {customerBreakdowns.map((c, idx) => (
-                        <tr key={c.username} className="hover:bg-green-50/30 transition">
-                          <td className="p-4 font-bold text-gray-400">#{idx + 1}</td>
-                          <td className="p-4">
-                            <div className="font-bold text-gray-900 text-base">{c.fullName}</div>
-                            <div className="text-xs text-gray-400 mt-0.5">@{c.username}</div>
-                          </td>
-                          <td className="p-4 text-xs space-y-1">
-                            {c.email && (
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <Mail className="w-3 h-3 text-gray-400" />
-                                <span>{c.email}</span>
-                              </div>
-                            )}
-                            {c.phone && (
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <Phone className="w-3 h-3 text-gray-400" />
-                                <span>{c.phone}</span>
-                              </div>
-                            )}
-                            {!c.email && !c.phone && <span className="text-gray-400 italic">Chưa cập nhật</span>}
-                          </td>
-                          <td className="p-4 text-center">
-                            <span className="inline-block bg-green-100 text-green-800 font-bold px-3 py-1 rounded-full text-xs">
-                              {c.transactionCount} đơn
-                            </span>
-                          </td>
-                          <td className="p-4 text-xs">
-                            <div className="font-semibold text-gray-800">
-                              {Array.from(c.locations).join(', ') || 'N/A'}
-                            </div>
-                            <div className="text-gray-500 mt-0.5">
-                              {Array.from(c.slots).map((s) => `Ô ${s}`).join(', ') || '-'}
-                            </div>
-                          </td>
-                          <td className="p-4 text-xs text-gray-600 whitespace-nowrap">
-                            {formatDateTime(c.latestPaymentDate)}
-                          </td>
-                          <td className="p-4 text-right font-black text-green-600 text-base whitespace-nowrap">
-                            {c.totalAmount.toLocaleString('vi-VN')}đ
-                          </td>
-                          <td className="p-4 text-center">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedCustomer(c.username);
-                                setViewTab('TRANSACTIONS');
-                              }}
-                              className="btn-outline-green text-xs py-1.5 px-3 whitespace-nowrap"
-                            >
-                              Xem {c.transactionCount} giao dịch
-                            </button>
-                          </td>
+              <div>
+                <div className="overflow-x-auto">
+                  {customerBreakdowns && customerBreakdowns.length > 0 ? (
+                    <table className="w-full text-left border-collapse text-sm">
+                      <thead className="bg-green-50/60 border-b border-gray-100 text-xs font-bold text-green-800 uppercase tracking-wider">
+                        <tr>
+                          <th className="p-4">#</th>
+                          <th className="p-4">Khách hàng</th>
+                          <th className="p-4">Thông tin liên hệ</th>
+                          <th className="p-4 text-center">Số giao dịch</th>
+                          <th className="p-4">Khu vườn & Ô đã thuê</th>
+                          <th className="p-4">Giao dịch gần nhất</th>
+                          <th className="p-4 text-right">Tổng chi tiêu</th>
+                          <th className="p-4 text-center">Thao tác</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="p-12 text-center text-gray-400 font-medium">
-                    Không tìm thấy dữ liệu khách hàng phù hợp
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {paginatedCustomers.map((c, idx) => (
+                          <tr key={c.username} className="hover:bg-green-50/30 transition">
+                            <td className="p-4 font-bold text-gray-400">#{(custPage - 1) * custPageSize + idx + 1}</td>
+                            <td className="p-4">
+                              <div className="font-bold text-gray-900 text-base">{c.fullName}</div>
+                              <div className="text-xs text-gray-400 mt-0.5">@{c.username}</div>
+                            </td>
+                            <td className="p-4 text-xs space-y-1">
+                              {c.email && (
+                                <div className="flex items-center gap-1 text-gray-600">
+                                  <Mail className="w-3 h-3 text-gray-400" />
+                                  <span>{c.email}</span>
+                                </div>
+                              )}
+                              {c.phone && (
+                                <div className="flex items-center gap-1 text-gray-600">
+                                  <Phone className="w-3 h-3 text-gray-400" />
+                                  <span>{c.phone}</span>
+                                </div>
+                              )}
+                              {!c.email && !c.phone && <span className="text-gray-400 italic">Chưa cập nhật</span>}
+                            </td>
+                            <td className="p-4 text-center">
+                              <span className="inline-block bg-green-100 text-green-800 font-bold px-3 py-1 rounded-full text-xs">
+                                {c.transactionCount} đơn
+                              </span>
+                            </td>
+                            <td className="p-4 text-xs">
+                              <div className="font-semibold text-gray-800">
+                                {Array.from(c.locations).join(', ') || 'N/A'}
+                              </div>
+                              <div className="text-gray-500 mt-0.5">
+                                {Array.from(c.slots).map((s) => `Ô ${s}`).join(', ') || '-'}
+                              </div>
+                            </td>
+                            <td className="p-4 text-xs text-gray-600 whitespace-nowrap">
+                              {formatDateTime(c.latestPaymentDate)}
+                            </td>
+                            <td className="p-4 text-right font-black text-green-600 text-base whitespace-nowrap">
+                              {c.totalAmount.toLocaleString('vi-VN')}đ
+                            </td>
+                            <td className="p-4 text-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedCustomer(c.username);
+                                  setViewTab('TRANSACTIONS');
+                                  setTxPage(1);
+                                }}
+                                className="btn-outline-green text-xs py-1.5 px-3 whitespace-nowrap"
+                              >
+                                Xem {c.transactionCount} giao dịch
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="p-12 text-center text-gray-400 font-medium">
+                      Không tìm thấy dữ liệu khách hàng phù hợp
+                    </div>
+                  )}
+                </div>
+
+                {customerBreakdowns.length > 0 && (
+                  <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+                    <Pagination
+                      currentPage={custPage}
+                      totalPages={totalCustPages}
+                      totalItems={customerBreakdowns.length}
+                      pageSize={custPageSize}
+                      onPageChange={setCustPage}
+                      onPageSizeChange={(sz) => {
+                        setCustPageSize(sz);
+                        setCustPage(1);
+                      }}
+                      itemName="khách hàng"
+                    />
                   </div>
                 )}
               </div>

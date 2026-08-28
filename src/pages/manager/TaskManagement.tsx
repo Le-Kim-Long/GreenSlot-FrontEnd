@@ -9,6 +9,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { staffNavItems } from './staffNav'; 
 
 // Interfaces
@@ -32,9 +33,9 @@ interface Slot {
 }
 
 const TASK_TYPE_MAP: Record<string, string> = {
-  MAINTENANCE: 'Bảo trì / Chăm sóc',
-  CLEANING: 'Dọn dẹp',
-  PLANTING: 'Gieo giống',
+  MAINTENANCE: 'Bảo trì / Kỹ thuật',
+  CLEANING: 'Vệ sinh',
+  PLANTING: 'Gieo trồng & Chăm sóc',
   HARVEST: 'Thu hoạch',
   INSPECTION: 'Kiểm tra',
   INCIDENT: 'Sự cố',
@@ -58,6 +59,8 @@ export default function TaskManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // States cho Dropdown Lọc
   const [locations, setLocations] = useState<LocationItem[]>([]);
@@ -309,13 +312,18 @@ export default function TaskManagement() {
     }
   };
 
-  const filteredTasks = tasks.filter(t => {
-    const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || 
-      (t.slotNumber && t.slotNumber.toLowerCase().includes(search.toLowerCase())) ||
-      (t.assigneeName && t.assigneeName.toLowerCase().includes(search.toLowerCase()));
-    const matchStatus = statusFilter === 'ALL' || t.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const filteredTasks = tasks
+    .filter(t => {
+      const matchSearch = t.name.toLowerCase().includes(search.toLowerCase()) || 
+        (t.slotNumber && t.slotNumber.toLowerCase().includes(search.toLowerCase())) ||
+        (t.assigneeName && t.assigneeName.toLowerCase().includes(search.toLowerCase()));
+      const matchStatus = statusFilter === 'ALL' || t.status === statusFilter;
+      return matchSearch && matchStatus;
+    })
+    .sort((a, b) => b.id - a.id);
+
+  const totalPages = Math.ceil(filteredTasks.length / pageSize) || 1;
+  const paginatedTasks = filteredTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Công việc">
@@ -331,12 +339,18 @@ export default function TaskManagement() {
                 placeholder="Tìm tên công việc, ô vườn, nhân viên..." 
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-sm outline-none transition" 
                 value={search} 
-                onChange={e => setSearch(e.target.value)} 
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }} 
               />
             </div>
             <select
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+              onChange={e => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
             >
               <option value="ALL">Tất cả trạng thái</option>
@@ -387,7 +401,7 @@ export default function TaskManagement() {
                 ) : filteredTasks.length === 0 ? (
                   <tr><td colSpan={8} className="p-8 text-center text-gray-500">Chưa có công việc nào phù hợp.</td></tr>
                 ) : (
-                  filteredTasks.map((task) => (
+                  paginatedTasks.map((task) => (
                     <tr key={task.id} className="hover:bg-gray-50 transition">
                       <td className="p-4 text-gray-500 font-mono">#{task.id}</td>
                       <td className="p-4">
@@ -495,6 +509,23 @@ export default function TaskManagement() {
               </tbody>
             </table>
           </div>
+
+          {filteredTasks.length > 0 && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredTasks.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="công việc"
+              />
+            </div>
+          )}
         </div>
 
         {/* =========================================
