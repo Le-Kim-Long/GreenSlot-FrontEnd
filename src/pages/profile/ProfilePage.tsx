@@ -258,7 +258,7 @@ export default function ProfilePage() {
                 onClick={() => !uploadingAvatar && fileInputRef.current?.click()}
                 disabled={uploadingAvatar}
                 className="absolute bottom-0 right-0 p-1.5 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-md border-2 border-white transition-transform active:scale-95 disabled:opacity-50 z-20"
-                title="Tải ảnh lên từ máy"
+                title="Gửi ảnh đại diện"
               >
                 <Upload className="w-3.5 h-3.5" />
               </button>

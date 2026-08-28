@@ -657,7 +657,7 @@ export default function EquipmentManagement() {
                             isUploadingImage && "opacity-50 pointer-events-none"
                           )}>
                             <Upload className="w-4 h-4 text-green-600" />
-                            <span>{isUploadingImage ? 'Đang tải lên Server...' : 'Chọn ảnh từ máy...'}</span>
+                            <span>{isUploadingImage ? 'Đang gửi ảnh...' : formData.imageUrl ? 'Gửi ảnh khác' : 'Gửi ảnh'}</span>
                             <input 
                               type="file" 
                               accept="image/*" 
