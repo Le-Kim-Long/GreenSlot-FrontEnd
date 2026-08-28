@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { 
   CreditCard, Loader2, RotateCw, ShoppingBag, Sprout, 
   Eye, Download, Printer, X, CheckCircle2, AlertCircle, 
-  XCircle, Clock, MapPin, Calendar, FileText, Building2,
+  XCircle, Clock, FileText, Building2,
   Receipt, ShieldCheck
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
 import { customerNavItems as navItems } from './customerNavItems';
 import type { PillarInfo, PaymentTransactionInfo } from '../../types/api';
@@ -52,6 +53,8 @@ export default function PaymentHistoryPage() {
   const [rentals, setRentals] = useState<BookingHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKind>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [selectedTxn, setSelectedTxn] = useState<DetailedTransaction | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const toast = useToast();
@@ -84,6 +87,12 @@ export default function PaymentHistoryPage() {
   ).sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()), [rentals]);
 
   const transactions = filter === 'ALL' ? allTransactions : allTransactions.filter(t => t.kind === filter);
+  const totalPages = Math.ceil(transactions.length / pageSize) || 1;
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return transactions.slice(start, start + pageSize);
+  }, [transactions, currentPage, pageSize]);
+
   const bookCount = allTransactions.filter(t => t.kind === 'BOOK').length;
   const extendCount = allTransactions.filter(t => t.kind === 'EXTEND').length;
   const plantCount = allTransactions.filter(t => t.kind === 'PLANT').length;
@@ -155,7 +164,10 @@ export default function PaymentHistoryPage() {
           {filters.map(f => (
             <button
               key={f.key}
-              onClick={() => setFilter(f.key)}
+              onClick={() => {
+                setFilter(f.key);
+                setCurrentPage(1);
+              }}
               className={clsx(
                 'px-4 py-2 rounded-xl text-sm font-semibold border transition-all duration-150',
                 filter === f.key
@@ -190,103 +202,105 @@ export default function PaymentHistoryPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3">
-            {transactions.map(t => {
-              const status = statusLabel[t.status] || { label: t.status, cls: 'bg-gray-100 text-gray-700 border-gray-200', icon: AlertCircle };
-              const StatusIcon = status.icon;
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-3">
+              {paginatedTransactions.map(t => {
+                const status = statusLabel[t.status] || { label: t.status, cls: 'bg-gray-100 text-gray-700 border-gray-200', icon: AlertCircle };
+                const StatusIcon = status.icon;
 
-              return (
-                <div
-                  key={t.id}
-                  onClick={() => setSelectedTxn(t)}
-                  className="bg-white hover:bg-green-50/40 border border-gray-200/80 hover:border-green-300 rounded-2xl p-4 sm:p-5 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
-                >
-                  <div className="flex items-start gap-3.5">
-                    <div className={clsx(
-                      "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 font-bold transition-transform group-hover:scale-105",
-                      t.kind === 'EXTEND' ? "bg-blue-100 text-blue-700" : t.kind === 'PLANT' ? "bg-emerald-100 text-emerald-700" : "bg-green-100 text-green-700"
-                    )}>
-                      {t.kind === 'EXTEND' ? <RotateCw className="w-5 h-5" /> : t.kind === 'PLANT' ? <Sprout className="w-5 h-5" /> : <ShoppingBag className="w-5 h-5" />}
-                    </div>
-
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={clsx(
-                          'inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full border',
-                          t.kind === 'EXTEND' 
-                            ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                            : t.kind === 'PLANT'
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                            : 'bg-green-50 text-green-700 border-green-200'
-                        )}>
-                          {t.kind === 'EXTEND' 
-                            ? `Gia hạn hợp đồng${t.extendedMonths ? ` (+${t.extendedMonths} tháng)` : ''}` 
-                            : t.kind === 'PLANT'
-                            ? 'Mua phôi giống rau'
-                            : 'Thuê ô vườn mới'}
-                        </span>
-                        <span className="text-xs text-gray-400 font-mono">
-                          Mã: {t.vnpTxnRef}
-                        </span>
-                      </div>
-
-                      <div className="text-lg font-bold text-gray-900">
-                        {Number(t.amount).toLocaleString('vi-VN')} VNĐ
-                      </div>
-
-                      <div className="flex items-center gap-3 text-xs text-gray-600 flex-wrap">
-                        <span className="font-semibold text-gray-800 flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-green-600" />
-                          Ô {t.slotNumber}
-                        </span>
-                        {t.locationName && (
-                          <span className="text-gray-500">· {t.locationName}</span>
-                        )}
-                        {t.kind === 'PLANT' && t.targetPillarCode && t.targetPillarCode !== 'Toàn bộ các trụ' ? (
-                          <span className="text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
-                            🌱 Trụ {t.targetPillarCode}: {t.treeName}
-                          </span>
-                        ) : t.pillars && t.pillars.length > 1 && t.pillars.some(p => p.treeName) ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {t.pillars.map((p, idx) => (
-                              <span key={p.pillarCode || idx} className="text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
-                                🌱 Trụ {p.pillarCode}: {p.treeName || t.treeName || 'Đang canh tác'}
-                              </span>
-                            ))}
-                          </div>
-                        ) : t.treeName ? (
-                          <span className="text-emerald-700 font-medium bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60">
-                            🌱 {t.treeName}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className={clsx(
-                        'inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full border',
-                        status.cls
+                return (
+                  <div
+                    key={t.id}
+                    onClick={() => setSelectedTxn(t)}
+                    className="bg-white hover:bg-green-50/40 border border-gray-200/80 hover:border-green-300 rounded-2xl p-4 sm:p-5 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                  >
+                    <div className="flex items-start gap-3.5">
+                      <div className={clsx(
+                        "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 font-bold transition-transform group-hover:scale-105",
+                        t.kind === 'EXTEND' ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                        t.kind === 'PLANT' ? "bg-teal-50 text-teal-700 border border-teal-200" :
+                        "bg-green-50 text-green-700 border border-green-200"
                       )}>
-                        <StatusIcon className="w-3.5 h-3.5" />
-                        {status.label}
-                      </span>
+                        {t.kind === 'EXTEND' ? <RotateCw className="w-5 h-5" /> :
+                         t.kind === 'PLANT' ? <Sprout className="w-5 h-5" /> :
+                         <ShoppingBag className="w-5 h-5" />}
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-xs font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">
+                            {t.vnpTxnRef ? t.vnpTxnRef.substring(0, 18) + '...' : `#${t.id}`}
+                          </span>
+                          <span className={clsx(
+                            'text-[11px] font-bold px-2.5 py-0.5 rounded-full border',
+                            t.kind === 'EXTEND' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            t.kind === 'PLANT' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                            'bg-green-50 text-green-700 border-green-200'
+                          )}>
+                            {t.kind === 'EXTEND' ? 'Gia hạn' : t.kind === 'PLANT' ? 'Mua giống cây' : 'Thuê mới'}
+                          </span>
+                        </div>
+
+                        <h3 className="font-bold text-gray-900 text-sm group-hover:text-green-700 transition-colors">
+                          {t.slotNumber ? `Ô vườn ${t.slotNumber}` : `Giao dịch #${t.id}`}
+                          {t.locationName ? ` · ${t.locationName}` : ''}
+                        </h3>
+
+                        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+                          {t.targetPillarCode && t.targetPillarCode !== 'Toàn bộ các trụ' ? (
+                            <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                              🌱 Trụ: {t.targetPillarCode} {t.treeName ? `(${t.treeName})` : ''}
+                            </span>
+                          ) : t.treeName ? (
+                            <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                              🌱 Giống: {t.treeName}
+                            </span>
+                          ) : null}
+
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {new Date(t.paymentDate).toLocaleDateString('vi-VN')} {new Date(t.paymentDate).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="text-xs text-gray-400 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" />
-                      {new Date(t.paymentDate).toLocaleString('vi-VN')}
-                    </div>
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-100 gap-2">
+                      <div className="text-right">
+                        <div className="text-base sm:text-lg font-black text-emerald-700">
+                          {Number(t.amount).toLocaleString('vi-VN')}đ
+                        </div>
+                        <span className={clsx(
+                          'inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full border',
+                          status.cls
+                        )}>
+                          <StatusIcon className="w-3 h-3" />
+                          {status.label}
+                        </span>
+                      </div>
 
-                    <div className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-green-600 group-hover:translate-x-0.5 transition-transform mt-1">
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Xem chi tiết hóa đơn →</span>
+                      <div className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-green-600 group-hover:translate-x-0.5 transition-transform mt-1">
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>Xem chi tiết hóa đơn →</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={transactions.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(sz) => {
+                setPageSize(sz);
+                setCurrentPage(1);
+              }}
+              itemName="giao dịch"
+            />
           </div>
         )}
 

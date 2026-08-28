@@ -78,9 +78,9 @@ export default function GardenStaffDashboard() {
     setLoading(true);
     Promise.all([taskApi.getMyTasks(), taskApi.getAvailableTasks(), taskApi.getEligibleEarlyHarvestRentals()])
       .then(([mine, available, eligible]) => {
-        setTasks(mine);
-        setAvailableTasks(available);
-        setEligibleRentals(eligible);
+        setTasks((mine || []).sort((a, b) => b.id - a.id));
+        setAvailableTasks((available || []).sort((a, b) => b.id - a.id));
+        setEligibleRentals(eligible || []);
       })
       .catch(() => setError('Không thể tải danh sách công việc'))
       .finally(() => setLoading(false));

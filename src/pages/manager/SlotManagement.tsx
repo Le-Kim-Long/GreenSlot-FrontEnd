@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Grid3X3, Plus, Edit2, X, Search, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle, Filter } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { managerApi, type SlotItem, type PillarItem, type LocationItem, type SlotFormData } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
@@ -23,6 +24,8 @@ export default function SlotManagement() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [locationFilter, setLocationFilter] = useState<number | 'all'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
   
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<SlotItem | null>(null);
@@ -233,13 +236,18 @@ export default function SlotManagement() {
     INACTIVE: { label: 'Ngưng', cls: 'bg-gray-100 text-gray-600' },
   };
 
-  const filtered = slots.filter(s => {
-    const matchSearch = s.slotNumber.toLowerCase().includes(search.toLowerCase()) ||
-      (s.locationName && s.locationName.toLowerCase().includes(search.toLowerCase())) ||
-      (s.pillarCodes && s.pillarCodes.some(c => c.toLowerCase().includes(search.toLowerCase())));
-    const matchLoc = locationFilter === 'all' || s.locationId === locationFilter;
-    return matchSearch && matchLoc;
-  });
+  const filtered = slots
+    .filter(s => {
+      const matchSearch = s.slotNumber.toLowerCase().includes(search.toLowerCase()) ||
+        (s.locationName && s.locationName.toLowerCase().includes(search.toLowerCase())) ||
+        (s.pillarCodes && s.pillarCodes.some(c => c.toLowerCase().includes(search.toLowerCase())));
+      const matchLoc = locationFilter === 'all' || s.locationId === locationFilter;
+      return matchSearch && matchLoc;
+    })
+    .sort((a, b) => b.id - a.id);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedSlots = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Ô vườn">
@@ -252,7 +260,10 @@ export default function SlotManagement() {
               placeholder="Tìm theo mã ô, mã trụ, cơ sở..."
               className="input pl-10"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
           <div className="flex items-center gap-2">
@@ -260,7 +271,10 @@ export default function SlotManagement() {
             <select
               className="input py-2 text-sm"
               value={locationFilter}
-              onChange={e => setLocationFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+              onChange={e => {
+                setLocationFilter(e.target.value === 'all' ? 'all' : Number(e.target.value));
+                setCurrentPage(1);
+              }}
             >
               <option value="all">Tất cả cơ sở ({locations.length})</option>
               {locations.map(l => (
@@ -293,99 +307,119 @@ export default function SlotManagement() {
           <p className="text-xs text-gray-400 mt-1">Bấm "Thêm ô vườn" để tạo mới hoặc chọn bộ lọc khác.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(s => {
-            const st = statusConfig[s.status] || statusConfig.INACTIVE;
-            const slotArea = s.area || 3.0;
-            const codes = s.pillarCodes && s.pillarCodes.length > 0
-              ? s.pillarCodes
-              : (s.pillarId ? [`#${s.pillarId}`] : []);
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {paginatedSlots.map(s => {
+              const st = statusConfig[s.status] || statusConfig.INACTIVE;
+              const slotArea = s.area || 3.0;
+              const codes = s.pillarCodes && s.pillarCodes.length > 0
+                ? s.pillarCodes
+                : (s.pillarId ? [`#${s.pillarId}`] : []);
 
-            return (
-              <div key={s.id} className="card hover:border-green-300 transition-all shadow-sm hover:shadow-md flex flex-col justify-between overflow-hidden">
-                <div>
-                  {s.imageUrl && (
-                    <img
-                      src={formatFirebaseUrl(s.imageUrl)}
-                      alt={s.slotNumber}
-                      className="w-full h-32 object-cover rounded-xl mb-3 -mt-1"
-                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700">
-                      <Grid3X3 className="w-5 h-5" />
-                    </div>
-                    <span className={clsx('text-xs px-2.5 py-0.5 rounded-full font-medium', st.cls)}>{st.label}</span>
-                  </div>
-
-                  <h3 className="font-bold text-gray-900 text-lg">{s.slotNumber}</h3>
-                  {s.locationName && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3 text-gray-400" /> {s.locationName}
-                    </p>
-                  )}
-
-                  {/* Diện tích & Năng suất hốc trồng */}
-                  <div className="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-gray-100 text-xs">
-                    <div className="bg-gray-50 p-2 rounded-xl">
-                      <span className="text-gray-400 block text-[11px]">Diện tích</span>
-                      <span className="font-semibold text-gray-800 flex items-center gap-1 mt-0.5">
-                        <Maximize2 className="w-3 h-3 text-emerald-600" /> {slotArea} m²
-                      </span>
-                    </div>
-                    <div className="bg-emerald-50/60 border border-emerald-100 p-2 rounded-xl">
-                      <span className="text-emerald-700 block text-[11px] font-medium">Năng suất</span>
-                      <span className="font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
-                        <Layers className="w-3 h-3 text-emerald-600" /> {s.totalHoles || (codes.length * 36)} hốc rau
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Danh sách các Trụ */}
-                  <div className="mt-3">
-                    <span className="text-xs text-gray-400 block mb-1 font-medium">Trụ canh tác ({codes.length} trụ):</span>
-                    {codes.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {codes.map((code, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-xs"
-                          >
-                            {code}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">Chưa gán trụ nào</span>
+              return (
+                <div key={s.id} className="card hover:border-green-300 transition-all shadow-sm hover:shadow-md flex flex-col justify-between overflow-hidden">
+                  <div>
+                    {s.imageUrl && (
+                      <img
+                        src={formatFirebaseUrl(s.imageUrl)}
+                        alt={s.slotNumber}
+                        className="w-full h-32 object-cover rounded-xl mb-3 -mt-1"
+                        onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                      />
                     )}
-                  </div>
-                </div>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-700">
+                        <Grid3X3 className="w-5 h-5" />
+                      </div>
+                      <span className={clsx('text-xs px-2.5 py-0.5 rounded-full font-medium', st.cls)}>{st.label}</span>
+                    </div>
 
-                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-                    <Maximize2 className="w-3.5 h-3.5 text-emerald-600" /> Sức chứa: {slotArea} m²
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => openEdit(s)}
-                      className="p-1.5 hover:bg-emerald-50 text-emerald-700 rounded-lg transition-colors"
-                      title="Chỉnh sửa"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setConfirmDelete(s)}
-                      className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
-                      title="Xóa"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <h3 className="font-bold text-gray-900 text-lg">{s.slotNumber}</h3>
+                    {s.locationName && (
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3 text-gray-400" /> {s.locationName}
+                      </p>
+                    )}
+
+                    {/* Diện tích & Năng suất hốc trồng */}
+                    <div className="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-gray-100 text-xs">
+                      <div className="bg-gray-50 p-2 rounded-xl">
+                        <span className="text-gray-400 block text-[11px]">Diện tích</span>
+                        <span className="font-semibold text-gray-800 flex items-center gap-1 mt-0.5">
+                          <Maximize2 className="w-3 h-3 text-emerald-600" /> {slotArea} m²
+                        </span>
+                      </div>
+                      <div className="bg-emerald-50/60 border border-emerald-100 p-2 rounded-xl">
+                        <span className="text-emerald-700 block text-[11px] font-medium">Năng suất</span>
+                        <span className="font-bold text-emerald-800 flex items-center gap-1 mt-0.5">
+                          <Layers className="w-3 h-3 text-emerald-600" /> {s.totalHoles || (codes.length * 36)} hốc rau
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Danh sách các Trụ */}
+                    <div className="mt-3">
+                      <span className="text-xs text-gray-400 block mb-1 font-medium">Trụ canh tác ({codes.length} trụ):</span>
+                      {codes.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {codes.map((code, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-xs"
+                            >
+                              {code}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400 italic">Chưa gán trụ nào</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-xs font-semibold text-gray-500 flex items-center gap-1">
+                      <Maximize2 className="w-3.5 h-3.5 text-emerald-600" /> Sức chứa: {slotArea} m²
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => openEdit(s)}
+                        className="p-1.5 hover:bg-emerald-50 text-emerald-700 rounded-lg transition-colors"
+                        title="Chỉnh sửa"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(s)}
+                        className="p-1.5 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
+                        title="Xóa"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {filtered.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                pageSizeOptions={[8, 16, 24]}
+                itemName="ô vườn"
+              />
+            </div>
+          )}
         </div>
       )}
 

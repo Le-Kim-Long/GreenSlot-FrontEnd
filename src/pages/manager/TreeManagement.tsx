@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { Toast, ToastData } from '../../components/common/Toast';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
@@ -104,6 +105,8 @@ export default function TreeManagement() {
   // Search & Filters
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -394,12 +397,17 @@ export default function TreeManagement() {
     }
   };
 
-  const filteredTrees = trees.filter(t => {
-    const matchSearch = t.treeName?.toLowerCase().includes(search.toLowerCase()) ||
-                        t.scientificName?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === '' ? true : String(t.isActive) === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  const filteredTrees = trees
+    .filter(t => {
+      const matchSearch = t.treeName?.toLowerCase().includes(search.toLowerCase()) ||
+                          t.scientificName?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === '' ? true : String(t.isActive) === statusFilter;
+      return matchSearch && matchStatus;
+    })
+    .sort((a, b) => b.id - a.id);
+
+  const totalPages = Math.ceil(filteredTrees.length / pageSize) || 1;
+  const paginatedTrees = filteredTrees.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Danh mục Cây trồng">
@@ -417,7 +425,10 @@ export default function TreeManagement() {
                 placeholder="Tìm tên cây, tên khoa học..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-sm shadow-sm transition-all outline-none"
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
 
@@ -425,7 +436,10 @@ export default function TreeManagement() {
             <CustomDropdown
               icon={<Filter className="w-4 h-4 text-green-600 shrink-0" />}
               value={statusFilter}
-              onChange={(val: any) => setStatusFilter(String(val))}
+              onChange={(val: any) => {
+                setStatusFilter(String(val));
+                setCurrentPage(1);
+              }}
               options={[
                 { value: "", label: "Tất cả trạng thái" },
                 { value: "true", label: "Đang kinh doanh" },
@@ -469,7 +483,7 @@ export default function TreeManagement() {
                   </td>
                 </tr>
               ) : (
-                filteredTrees.map(tree => (
+                paginatedTrees.map(tree => (
                   <tr key={tree.id} className="hover:bg-gray-50/80 transition">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
@@ -541,6 +555,23 @@ export default function TreeManagement() {
               )}
             </tbody>
           </table>
+
+          {filteredTrees.length > 0 && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filteredTrees.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="giống cây"
+              />
+            </div>
+          )}
         </div>
 
         {/* Delete Confirmation Modal */}

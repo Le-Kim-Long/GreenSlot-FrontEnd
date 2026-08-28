@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapPin, Plus, Edit2, X, Search, Phone, Ruler, Trash2, Loader2, LayoutDashboard, Calendar, DollarSign, AlertTriangle } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { managerApi } from '../../api/managerApi';
 import { dashboardApi, DashboardMetrics } from '../../api/dashboardApi';
 import { staffNavItems } from './staffNav';
@@ -21,6 +22,8 @@ export default function LocationManagement() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Location | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -159,17 +162,31 @@ export default function LocationManagement() {
     }
   };
 
-  const filtered = locations.filter(l =>
-    l.name.toLowerCase().includes(search.toLowerCase()) ||
-    l.address.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = locations
+    .filter(l =>
+      l.name.toLowerCase().includes(search.toLowerCase()) ||
+      l.address.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => b.id - a.id);
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedLocations = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Quản lý Cơ sở">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" placeholder="Tìm cơ sở..." className="input pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Tìm cơ sở..."
+            className="input pl-10"
+            value={search}
+            onChange={e => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
         </div>
         <button onClick={openCreate} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Thêm cơ sở
@@ -186,36 +203,56 @@ export default function LocationManagement() {
           <p>Chưa có cơ sở nào</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(loc => (
-            <div key={loc.id} className="card hover:border-green-200 transition-colors">
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                  <MapPin className="w-5 h-5 text-green-600" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {paginatedLocations.map(loc => (
+              <div key={loc.id} className="card hover:border-green-200 transition-colors">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-green-600" />
+                  </div>
+                  <span className={clsx('text-xs px-2 py-1 rounded-full font-medium', loc.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600')}>
+                    {loc.status === 'ACTIVE' ? 'Hoạt động' : loc.status}
+                  </span>
                 </div>
-                <span className={clsx('text-xs px-2 py-1 rounded-full font-medium', loc.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600')}>
-                  {loc.status === 'ACTIVE' ? 'Hoạt động' : loc.status}
-                </span>
+                <h3 className="font-bold text-gray-900 mb-1">{loc.name}</h3>
+                <p className="text-sm text-gray-500 mb-3">{loc.address}</p>
+                <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                  <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{loc.contactPhone}</span>
+                  <span className="flex items-center gap-1"><Ruler className="w-3.5 h-3.5" />{loc.area} m²</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button onClick={() => openDashboard(loc)} className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                    <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
+                  </button>
+                  <button onClick={() => openEdit(loc)} className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1">
+                    <Edit2 className="w-3.5 h-3.5" /> Chỉnh sửa
+                  </button>
+                  <button onClick={() => setConfirmDelete(loc)} className="text-sm text-red-500 hover:text-red-600 font-medium flex items-center gap-1">
+                    <Trash2 className="w-3.5 h-3.5" /> Xóa
+                  </button>
+                </div>
               </div>
-              <h3 className="font-bold text-gray-900 mb-1">{loc.name}</h3>
-              <p className="text-sm text-gray-500 mb-3">{loc.address}</p>
-              <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" />{loc.contactPhone}</span>
-                <span className="flex items-center gap-1"><Ruler className="w-3.5 h-3.5" />{loc.area} m²</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={() => openDashboard(loc)} className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
-                  <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
-                </button>
-                <button onClick={() => openEdit(loc)} className="text-sm text-green-600 hover:text-green-700 font-medium flex items-center gap-1">
-                  <Edit2 className="w-3.5 h-3.5" /> Chỉnh sửa
-                </button>
-                <button onClick={() => setConfirmDelete(loc)} className="text-sm text-red-500 hover:text-red-600 font-medium flex items-center gap-1">
-                  <Trash2 className="w-3.5 h-3.5" /> Xóa
-                </button>
-              </div>
+            ))}
+          </div>
+
+          {filtered.length > 0 && (
+            <div className="card p-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                pageSizeOptions={[6, 12, 18]}
+                itemName="cơ sở"
+              />
             </div>
-          ))}
+          )}
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Users, Phone, Mail, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { useAuth } from '../../context/AuthContext';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
@@ -20,6 +21,8 @@ export default function StaffListPage() {
   const [loadingLocations, setLoadingLocations] = useState(true);
   const [loadingStaffs, setLoadingStaffs] = useState(false);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     managerApi.getLocations()
@@ -38,11 +41,15 @@ export default function StaffListPage() {
     if (!locationId) return;
     setLoadingStaffs(true);
     setError('');
+    setCurrentPage(1);
     managerApi.getStaffs(locationId)
-      .then(setStaffs)
+      .then(data => setStaffs((data || []).sort((a: UserAdmin, b: UserAdmin) => b.id - a.id)))
       .catch(() => setError('Không thể tải danh sách nhân viên'))
       .finally(() => setLoadingStaffs(false));
   }, [locationId]);
+
+  const totalPages = Math.ceil(staffs.length / pageSize) || 1;
+  const paginatedStaffs = staffs.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Nhân viên">
@@ -54,7 +61,10 @@ export default function StaffListPage() {
         <select
           className="input max-w-xs"
           value={locationId}
-          onChange={e => setLocationId(Number(e.target.value))}
+          onChange={e => {
+            setLocationId(Number(e.target.value));
+            setCurrentPage(1);
+          }}
           disabled={loadingLocations || locations.length === 0}
         >
           {locations.length === 0 ? (
@@ -75,7 +85,7 @@ export default function StaffListPage() {
           <p>Chưa có nhân viên nào tại cơ sở này</p>
         </div>
       ) : (
-        <div className="card overflow-x-auto">
+        <div className="card overflow-x-auto space-y-4">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-gray-500 uppercase border-b">
@@ -86,7 +96,7 @@ export default function StaffListPage() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {staffs.map(s => (
+              {paginatedStaffs.map(s => (
                 <tr key={s.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <div className="font-semibold">{s.fullName || s.username}</div>
@@ -108,6 +118,23 @@ export default function StaffListPage() {
               ))}
             </tbody>
           </table>
+
+          {staffs.length > 0 && (
+            <div className="pt-3 border-t border-gray-100">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={staffs.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="nhân viên"
+              />
+            </div>
+          )}
         </div>
       )}
     </DashboardLayout>

@@ -14,6 +14,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { alertApi, AlertDTO, AlertProcessingLogDTO } from '../../api/alertApi';
 import { managerApi } from '../../api/managerApi';
 import { useAuth } from '../../context/AuthContext';
@@ -177,6 +178,8 @@ export default function AlertHistory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const fetchAlerts = async () => {
     setLoading(true);
@@ -225,9 +228,20 @@ export default function AlertHistory() {
 
   const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
 
-  const visibleAlerts = selectedLocationId
-    ? alerts.filter((a) => a.pillarId != null && String(pillarLocationMap.get(a.pillarId)) === selectedLocationId)
-    : alerts;
+  const visibleAlerts = useMemo(() => {
+    const filtered = selectedLocationId
+      ? alerts.filter((a) => a.pillarId != null && String(pillarLocationMap.get(a.pillarId)) === selectedLocationId)
+      : alerts;
+    return [...filtered].sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      if (timeA !== timeB) return timeB - timeA;
+      return b.id - a.id;
+    });
+  }, [alerts, selectedLocationId, pillarLocationMap]);
+
+  const totalPages = Math.ceil(visibleAlerts.length / pageSize) || 1;
+  const paginatedAlerts = visibleAlerts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <DashboardLayout navItems={staffNavItems} title="Lịch sử Xử lý Cảnh báo">
@@ -237,7 +251,10 @@ export default function AlertHistory() {
           <span className="text-sm font-semibold text-gray-700 mr-2">Trạng thái:</span>
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
           >
             {STATUS_FILTERS.map((opt) => (
@@ -251,7 +268,10 @@ export default function AlertHistory() {
               <span className="text-sm font-semibold text-gray-700 mr-2">Cơ sở:</span>
               <select
                 value={selectedLocationId}
-                onChange={(e) => setSelectedLocationId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedLocationId(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="border border-gray-300 rounded-xl px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
               >
                 <option value="">Tất cả cơ sở</option>
@@ -291,7 +311,7 @@ export default function AlertHistory() {
         </div>
       ) : (
         <div className="space-y-4">
-          {visibleAlerts.map((alert) => {
+          {paginatedAlerts.map((alert) => {
             const isExpanded = expandedId === alert.id;
             return (
               <div key={alert.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -379,6 +399,23 @@ export default function AlertHistory() {
               </div>
             );
           })}
+
+          {visibleAlerts.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={visibleAlerts.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="cảnh báo"
+              />
+            </div>
+          )}
         </div>
       )}
     </DashboardLayout>

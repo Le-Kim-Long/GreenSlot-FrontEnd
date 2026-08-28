@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Search, MapPin, SlidersHorizontal, X, Grid3X3, LogIn, Phone, Ruler, Building2, CheckCircle2, ChevronRight } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
+import Pagination from '../../components/common/Pagination';
 import { useAuth } from '../../context/AuthContext';
 import { bookingApi, type AvailableSlot } from '../../api/bookingApi';
 import { locationApi, type LocationDTO } from '../../api/locationApi';
@@ -19,6 +20,8 @@ export default function GardenListPage() {
   const [priceRange, setPriceRange] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [sortBy, setSortBy] = useState('price_asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
 
   // 1. Tải danh sách các cơ sở (public)
   useEffect(() => {
@@ -57,7 +60,7 @@ export default function GardenListPage() {
     .sort((a, b) => {
       if (sortBy === 'price_asc') return a.price - b.price;
       if (sortBy === 'price_desc') return b.price - a.price;
-      return 0;
+      return b.id - a.id;
     });
 
   return (
@@ -92,7 +95,10 @@ export default function GardenListPage() {
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
               <button
                 type="button"
-                onClick={() => setSelectedLocationId('')}
+                onClick={() => {
+                  setSelectedLocationId('');
+                  setCurrentPage(1);
+                }}
                 className={clsx(
                   'flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all whitespace-nowrap border shadow-sm',
                   selectedLocationId === ''
@@ -116,7 +122,10 @@ export default function GardenListPage() {
                   <button
                     key={loc.id}
                     type="button"
-                    onClick={() => setSelectedLocationId(loc.id)}
+                    onClick={() => {
+                      setSelectedLocationId(loc.id);
+                      setCurrentPage(1);
+                    }}
                     className={clsx(
                       'flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all whitespace-nowrap border shadow-sm',
                       isSelected
@@ -164,7 +173,10 @@ export default function GardenListPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedLocationId('')}
+                  onClick={() => {
+                    setSelectedLocationId('');
+                    setCurrentPage(1);
+                  }}
                   className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 underline self-start sm:self-center"
                 >
                   Xem tất cả cơ sở
@@ -182,7 +194,10 @@ export default function GardenListPage() {
                 className="input pl-10 py-3 text-sm"
                 placeholder="Tìm kiếm theo mã ô, mã trụ, địa chỉ cơ sở..."
                 value={search}
-                onChange={e => setSearch(e.target.value)}
+                onChange={e => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             </div>
             <button
@@ -208,7 +223,10 @@ export default function GardenListPage() {
                 <select
                   className="input bg-white text-sm"
                   value={selectedLocationId}
-                  onChange={e => setSelectedLocationId(e.target.value ? Number(e.target.value) : '')}
+                  onChange={e => {
+                    setSelectedLocationId(e.target.value ? Number(e.target.value) : '');
+                    setCurrentPage(1);
+                  }}
                 >
                   <option value="">Tất cả cơ sở</option>
                   {locations.map(loc => (
@@ -218,7 +236,10 @@ export default function GardenListPage() {
               </div>
               <div>
                 <label className="label text-xs font-bold text-gray-700 mb-1">Khoảng giá</label>
-                <select className="input bg-white text-sm" value={priceRange} onChange={e => setPriceRange(e.target.value)}>
+                <select className="input bg-white text-sm" value={priceRange} onChange={e => {
+                  setPriceRange(e.target.value);
+                  setCurrentPage(1);
+                }}>
                   <option value="">Tất cả mức giá</option>
                   <option value="under500k">Dưới 500.000đ</option>
                   <option value="500k-1m">500.000đ - 1.000.000đ</option>
@@ -227,7 +248,10 @@ export default function GardenListPage() {
               </div>
               <div>
                 <label className="label text-xs font-bold text-gray-700 mb-1">Sắp xếp</label>
-                <select className="input bg-white text-sm" value={sortBy} onChange={e => setSortBy(e.target.value)}>
+                <select className="input bg-white text-sm" value={sortBy} onChange={e => {
+                  setSortBy(e.target.value);
+                  setCurrentPage(1);
+                }}>
                   <option value="price_asc">Giá tăng dần (thấp nhất)</option>
                   <option value="price_desc">Giá giảm dần (cao nhất)</option>
                 </select>
@@ -235,7 +259,13 @@ export default function GardenListPage() {
               <div className="sm:col-span-3 flex justify-end pt-2 border-t border-gray-200">
                 <button
                   type="button"
-                  onClick={() => { setSelectedLocationId(''); setPriceRange(''); setSortBy('price_asc'); setSearch(''); }}
+                  onClick={() => {
+                    setSelectedLocationId('');
+                    setPriceRange('');
+                    setSortBy('price_asc');
+                    setSearch('');
+                    setCurrentPage(1);
+                  }}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-red-600 hover:text-red-700 transition"
                 >
                   <X className="w-4 h-4" /> Xóa bộ lọc
@@ -275,88 +305,113 @@ export default function GardenListPage() {
             </p>
             <button
               type="button"
-              onClick={() => { setSelectedLocationId(''); setPriceRange(''); setSearch(''); }}
+              onClick={() => {
+                setSelectedLocationId('');
+                setPriceRange('');
+                setSearch('');
+                setCurrentPage(1);
+              }}
               className="btn-secondary text-xs px-4 py-2"
             >
               Xem tất cả cơ sở khác
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filtered.map(slot => {
-              const allPillars = slot.pillars || [];
-              const availablePillars = allPillars.filter(p => !p.isRented && p.status !== 'RENTED');
-              const pCount = allPillars.length || slot.pillarCodes?.length || 1;
-              const availCount = allPillars.length > 0 ? availablePillars.length : pCount;
-              const holes = slot.totalHoles || (pCount * 36);
-              const slotArea = slot.area || 3.0;
-              const startingPrice = availablePillars.length > 0 
-                ? availablePillars.reduce((sum, p) => sum + (p.price || 0), 0)
-                : (slot.calculatedPillarsPrice || slot.price || 0);
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize).map(slot => {
+                const allPillars = slot.pillars || [];
+                const availablePillars = allPillars.filter(p => !p.isRented && p.status !== 'RENTED');
+                const pCount = allPillars.length || slot.pillarCodes?.length || 1;
+                const availCount = allPillars.length > 0 ? availablePillars.length : pCount;
+                const holes = slot.totalHoles || (pCount * 36);
+                const slotArea = slot.area || 3.0;
+                const startingPrice = availablePillars.length > 0 
+                  ? availablePillars.reduce((sum, p) => sum + (p.price || 0), 0)
+                  : (slot.calculatedPillarsPrice || slot.price || 0);
 
-              return (
-                <Link
-                  key={slot.id}
-                  to={`/gardens/slot/${slot.id}`}
-                  className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:border-emerald-300 transition-all duration-200 hover:-translate-y-1 flex flex-col justify-between"
-                >
-                  <div className="p-5">
-                    <div className="flex items-start justify-between mb-3.5">
-                      <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center border border-emerald-100 group-hover:scale-105 transition-transform text-emerald-700">
-                        <Grid3X3 className="w-6 h-6" />
-                      </div>
-                      <span className={clsx(
-                        "text-xs px-3 py-1 rounded-full font-bold border flex items-center gap-1",
-                        availCount > 0
-                          ? "bg-emerald-100 text-emerald-800 border-emerald-200/60"
-                          : "bg-gray-100 text-gray-700 border-gray-200"
-                      )}>
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        {availCount > 0 ? `${availCount}/${pCount} trụ trống` : 'Hết trụ'}
-                      </span>
-                    </div>
-
-                    <h3 className="font-black text-gray-900 text-lg mb-1 group-hover:text-emerald-600 transition-colors">
-                      Ô {slot.slotNumber}
-                    </h3>
-
-                    {/* Badge năng suất & diện tích */}
-                    <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        🌱 {holes} hốc rau
-                      </span>
-                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-lg bg-gray-50 text-gray-600 border border-gray-100">
-                        {slotArea} m² ({pCount} trụ)
-                      </span>
-                    </div>
-
-                    {slot.locationName && (
-                      <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                        <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span className="font-semibold text-gray-800 truncate" title={slot.locationName}>
-                          {slot.locationName}
+                return (
+                  <Link
+                    key={slot.id}
+                    to={`/gardens/slot/${slot.id}`}
+                    className="group bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl hover:border-emerald-300 transition-all duration-200 hover:-translate-y-1 flex flex-col justify-between"
+                  >
+                    <div className="p-5">
+                      <div className="flex items-start justify-between mb-3.5">
+                        <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center border border-emerald-100 group-hover:scale-105 transition-transform text-emerald-700">
+                          <Grid3X3 className="w-6 h-6" />
+                        </div>
+                        <span className={clsx(
+                          "text-xs px-3 py-1 rounded-full font-bold border flex items-center gap-1",
+                          availCount > 0
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-200/60"
+                            : "bg-gray-100 text-gray-700 border-gray-200"
+                        )}>
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          {availCount > 0 ? `${availCount}/${pCount} trụ trống` : 'Hết trụ'}
                         </span>
                       </div>
-                    )}
-                  </div>
 
-                  <div className="p-5 pt-0">
-                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                      <div>
-                        <div className="text-[11px] font-medium text-gray-400">Giá thuê trọn gói từ</div>
-                        <div className="text-lg font-black text-emerald-700">
-                          {startingPrice.toLocaleString('vi-VN')}đ
-                          <span className="text-gray-400 text-xs font-normal">/tháng</span>
-                        </div>
+                      <h3 className="font-black text-gray-900 text-lg mb-1 group-hover:text-emerald-600 transition-colors">
+                        Ô {slot.slotNumber}
+                      </h3>
+
+                      {/* Badge năng suất & diện tích */}
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          🌱 {holes} hốc rau
+                        </span>
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-lg bg-gray-50 text-gray-600 border border-gray-100">
+                          {slotArea} m² ({pCount} trụ)
+                        </span>
                       </div>
-                      <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-xs">
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
+
+                      {slot.locationName && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-600 mb-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span className="font-semibold text-gray-800 truncate" title={slot.locationName}>
+                            {slot.locationName}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </Link>
-              );
-            })}
+
+                    <div className="p-5 pt-0">
+                      <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <div>
+                          <div className="text-[11px] font-medium text-gray-400">Giá thuê trọn gói từ</div>
+                          <div className="text-lg font-black text-emerald-700">
+                            {startingPrice.toLocaleString('vi-VN')}đ
+                            <span className="text-gray-400 text-xs font-normal">/tháng</span>
+                          </div>
+                        </div>
+                        <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors shadow-xs">
+                          <ChevronRight className="w-4 h-4" />
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {filtered.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(filtered.length / pageSize) || 1}
+                  totalItems={filtered.length}
+                  pageSize={pageSize}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(sz) => {
+                    setPageSize(sz);
+                    setCurrentPage(1);
+                  }}
+                  pageSizeOptions={[8, 16, 24, 32]}
+                  itemName="ô vườn"
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

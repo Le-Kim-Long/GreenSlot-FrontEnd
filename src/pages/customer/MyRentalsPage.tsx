@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
 import { managerApi } from '../../api/managerApi';
 import { taskApi } from '../../api/taskApi';
@@ -27,6 +28,8 @@ export default function MyRentalsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [extendModal, setExtendModal] = useState<BookingHistory | null>(null);
   const [extendMonths, setExtendMonths] = useState(1);
   const [extendMonthsInput, setExtendMonthsInput] = useState('1');
@@ -99,7 +102,15 @@ export default function MyRentalsPage() {
     fetchServiceTypes();
   }, []);
 
-  const filtered = tab === 'all' ? rentals : rentals.filter(r => r.status === tab);
+  const filtered = useMemo(() => {
+    const list = tab === 'all' ? rentals : rentals.filter(r => r.status === tab);
+    return [...list].sort((a, b) => {
+      const tA = new Date(a.startTime || a.startDate || 0).getTime();
+      const tB = new Date(b.startTime || b.startDate || 0).getTime();
+      if (tA !== tB) return tB - tA;
+      return b.id - a.id;
+    });
+  }, [rentals, tab]);
 
   const tabs = [
     { key: 'all', label: 'Tất cả', count: rentals.length },
@@ -227,7 +238,10 @@ export default function MyRentalsPage() {
 
       <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-6 overflow-x-auto">
         {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => {
+            setTab(t.key);
+            setCurrentPage(1);
+          }}
             className={clsx('flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium', tab === t.key ? 'bg-white shadow-sm' : 'text-gray-500')}>
             {t.label} ({t.count})
           </button>
@@ -245,147 +259,173 @@ export default function MyRentalsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filtered.map(rental => {
-            const st = statusConfig[rental.status] || { label: rental.status, cls: 'badge-gray' };
-            const pay = rental.paymentStatus ? paymentConfig[rental.paymentStatus] : null;
+          {(() => {
+            const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+            const paginatedRentals = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
             return (
-              <div key={rental.id} className="card">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="w-16 h-16 bg-green-50 rounded-xl flex items-center justify-center">
-                    <Leaf className="w-8 h-8 text-green-400" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-lg font-bold">{rental.slotNumber}</h3>
-                      {(() => {
-                        const uniquePillars = Array.from(
-                          new Map(
-                            (rental.pillars || [])
-                              .filter(p => p.pillarCode && p.pillarCode !== 'arduino-greenhouse-01')
-                              .map(p => [p.pillarCode, p])
-                          ).values()
-                        );
-                        if (uniquePillars.length > 0) {
-                          return (
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {uniquePillars.map(p => (
-                                <span key={p.id || p.pillarCode} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                  Trụ: {p.pillarCode}
-                                </span>
-                              ))}
+              <>
+                {paginatedRentals.map((rental: BookingHistory) => {
+                  const st = statusConfig[rental.status] || { label: rental.status, cls: 'badge-gray' };
+                  const pay = rental.paymentStatus ? paymentConfig[rental.paymentStatus] : null;
+                  return (
+                    <div key={rental.id} className="card">
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="w-16 h-16 bg-green-50 rounded-xl flex items-center justify-center">
+                          <Leaf className="w-8 h-8 text-green-400" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-lg font-bold">{rental.slotNumber}</h3>
+                            {(() => {
+                              const uniquePillars = Array.from(
+                                new Map(
+                                  (rental.pillars || [])
+                                    .filter((p: any) => p.pillarCode && p.pillarCode !== 'arduino-greenhouse-01')
+                                    .map((p: any) => [p.pillarCode, p])
+                                ).values()
+                              );
+                              if (uniquePillars.length > 0) {
+                                return (
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {uniquePillars.map((p: any) => (
+                                      <span key={p.id || p.pillarCode} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        Trụ: {p.pillarCode}
+                                      </span>
+                                    ))}
+                                  </div>
+                                );
+                              }
+                              if (rental.pillarCode && rental.pillarCode !== 'N/A' && rental.pillarCode !== 'arduino-greenhouse-01') {
+                                return (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    Trụ: {rental.pillarCode}
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+                          {rental.locationName && <div className="text-sm text-gray-500">{rental.locationName}</div>}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <span className={st.cls}>{st.label}</span>
+                            {pay && <span className={pay.cls}>{pay.label}</span>}
+                          </div>
+                          <div className="text-sm text-gray-500 mt-2 flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" /> {rental.startDate} — {rental.endDate}
+                          </div>
+                          <div className="font-bold text-green-600 mt-1">{rental.totalPrice.toLocaleString('vi-VN')}đ</div>
+
+                          {rental.status === 'ACTIVE' && rental.treeName && rental.expectedHarvestAt && !rental.harvestNotifiedAt && (
+                            <div className="text-sm text-gray-600 mt-2 flex items-center gap-1.5">
+                              <Sprout className="w-3.5 h-3.5 text-green-600" />
+                              Đang trồng <span className="font-semibold text-gray-800">{rental.treeName}</span> · Dự kiến thu hoạch:{' '}
+                              <span className="font-semibold text-gray-800">
+                                {new Date(rental.expectedHarvestAt).toLocaleDateString('vi-VN')}
+                              </span>
+                              {(() => {
+                                const daysLeft = Math.ceil((new Date(rental.expectedHarvestAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                return daysLeft > 0 ? <span className="text-gray-400">(còn {daysLeft} ngày)</span> : null;
+                              })()}
                             </div>
-                          );
-                        }
-                        if (rental.pillarCode && rental.pillarCode !== 'N/A' && rental.pillarCode !== 'arduino-greenhouse-01') {
-                          return (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              Trụ: {rental.pillarCode}
-                            </span>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                    {rental.locationName && <div className="text-sm text-gray-500">{rental.locationName}</div>}
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <span className={st.cls}>{st.label}</span>
-                      {pay && <span className={pay.cls}>{pay.label}</span>}
-                    </div>
-                    <div className="text-sm text-gray-500 mt-2 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5" /> {rental.startDate} — {rental.endDate}
-                    </div>
-                    <div className="font-bold text-green-600 mt-1">{rental.totalPrice.toLocaleString('vi-VN')}đ</div>
+                          )}
 
-                    {rental.status === 'ACTIVE' && rental.treeName && rental.expectedHarvestAt && !rental.harvestNotifiedAt && (
-                      <div className="text-sm text-gray-600 mt-2 flex items-center gap-1.5">
-                        <Sprout className="w-3.5 h-3.5 text-green-600" />
-                        Đang trồng <span className="font-semibold text-gray-800">{rental.treeName}</span> · Dự kiến thu hoạch:{' '}
-                        <span className="font-semibold text-gray-800">
-                          {new Date(rental.expectedHarvestAt).toLocaleDateString('vi-VN')}
-                        </span>
-                        {(() => {
-                          const daysLeft = Math.ceil((new Date(rental.expectedHarvestAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                          return daysLeft > 0 ? <span className="text-gray-400">(còn {daysLeft} ngày)</span> : null;
-                        })()}
-                      </div>
-                    )}
-
-                    {rental.status === 'ACTIVE' && rental.harvestNotifiedAt && !rental.harvestDecision && (
-                      <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
-                        <div className="text-sm font-bold text-amber-900 flex items-center gap-2 mb-1 flex-wrap">
-                          <Sprout className="w-4 h-4 text-amber-600" />
-                          <span>Cây {rental.treeName || ''} tại ô {rental.slotNumber} đã sẵn sàng thu hoạch!</span>
-                          {rental.expectedHarvestAt && new Date(rental.expectedHarvestAt).getTime() > Date.now() && (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-200/80 border border-amber-400 px-2 py-0.5 rounded-full">
-                              ⚡ Thu hoạch sớm
-                            </span>
+                          {rental.status === 'ACTIVE' && rental.harvestNotifiedAt && !rental.harvestDecision && (
+                            <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
+                              <div className="text-sm font-bold text-amber-900 flex items-center gap-2 mb-1 flex-wrap">
+                                <Sprout className="w-4 h-4 text-amber-600" />
+                                <span>Cây {rental.treeName || ''} tại ô {rental.slotNumber} đã sẵn sàng thu hoạch!</span>
+                                {rental.expectedHarvestAt && new Date(rental.expectedHarvestAt).getTime() > Date.now() && (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-200/80 border border-amber-400 px-2 py-0.5 rounded-full">
+                                    ⚡ Thu hoạch sớm
+                                  </span>
+                                )}
+                              </div>
+                              {((rental.pillarCodes && rental.pillarCodes.length > 0) || rental.pillarCode) && (
+                                <div className="text-xs text-amber-800 font-semibold mb-2 flex items-center gap-1">
+                                  🏷️ Vị trí: Trụ {rental.pillarCodes && rental.pillarCodes.length > 0 ? rental.pillarCodes.join(', ') : rental.pillarCode}
+                                </div>
+                              )}
+                              <p className="text-xs text-amber-700 mb-3">Bạn muốn tự thu hoạch hay nhờ nhân viên hỗ trợ thu hoạch và bàn giao?</p>
+                              <div className="flex gap-2">
+                                <button
+                                  disabled={decidingId === rental.id}
+                                  onClick={() => handleHarvestDecision(rental.id, 'SELF')}
+                                  className="btn-outline-green text-xs flex-1 py-2 font-medium"
+                                >
+                                  Tôi tự thu hoạch
+                                </button>
+                                <button
+                                  disabled={decidingId === rental.id}
+                                  onClick={() => handleHarvestDecision(rental.id, 'STAFF')}
+                                  className="btn-primary text-xs flex-1 py-2 font-medium"
+                                >
+                                  {decidingId === rental.id ? <Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> : null}
+                                  Nhờ nhân viên giúp
+                                </button>
+                              </div>
+                            </div>
                           )}
                         </div>
-                        {((rental.pillarCodes && rental.pillarCodes.length > 0) || rental.pillarCode) && (
-                          <div className="text-xs text-amber-800 font-semibold mb-2 flex items-center gap-1">
-                            🏷️ Vị trí: Trụ {rental.pillarCodes && rental.pillarCodes.length > 0 ? rental.pillarCodes.join(', ') : rental.pillarCode}
-                          </div>
-                        )}
-                        <p className="text-xs text-amber-700 mb-3">Bạn muốn tự thu hoạch hay nhờ nhân viên hỗ trợ thu hoạch và bàn giao?</p>
-                        <div className="flex gap-2">
-                          <button
-                            disabled={decidingId === rental.id}
-                            onClick={() => handleHarvestDecision(rental.id, 'SELF')}
-                            className="btn-outline-green text-xs flex-1 py-2 font-medium"
-                          >
-                            Tôi tự thu hoạch
-                          </button>
-                          <button
-                            disabled={decidingId === rental.id}
-                            onClick={() => handleHarvestDecision(rental.id, 'STAFF')}
-                            className="btn-primary text-xs flex-1 py-2 font-medium"
-                          >
-                            {decidingId === rental.id ? <Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> : null}
-                            Nhờ nhân viên giúp
-                          </button>
+                        <div className="flex flex-row sm:flex-col gap-2 h-fit">
+                          {rental.status === 'ACTIVE' && (
+                            <>
+                              <Link
+                                to={`/dashboard/customer/tree-planting?rentalId=${rental.id}`}
+                                className="btn-primary text-xs flex items-center gap-1 h-fit shadow-xs bg-emerald-600 hover:bg-emerald-700"
+                              >
+                                <Sprout className="w-3.5 h-3.5" /> Trồng cây mới
+                              </Link>
+                              <button onClick={() => { setExtendModal(rental); setExtendMonths(1); }}
+                                className="btn-outline-green text-xs flex items-center gap-1 h-fit">
+                                <Clock className="w-3.5 h-3.5" /> Gia hạn
+                              </button>
+                              <button onClick={() => setReportModal(rental)}
+                                className="btn-outline-red text-xs flex items-center gap-1 h-fit mt-2 sm:mt-0">
+                                <AlertTriangle className="w-3.5 h-3.5" /> Báo cáo sự cố
+                              </button>
+                            </>
+                          )}
+                          {(rental.status === 'PENDING' || rental.paymentStatus === 'PENDING') && rental.status !== 'CANCELLED' && (
+                            <>
+                              <button onClick={() => handlePay(rental)} disabled={payingId === rental.id}
+                                className="btn-primary text-xs flex items-center gap-1 h-fit">
+                                {payingId === rental.id
+                                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  : <CreditCard className="w-3.5 h-3.5" />}
+                                Thanh toán
+                              </button>
+                              <button onClick={() => setCancelModal(rental)}
+                                className="btn-outline-red text-xs flex items-center gap-1 h-fit">
+                                <X className="w-3.5 h-3.5" /> Hủy
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
-                    )}
+                    </div>
+                  );
+                })}
+
+                {filtered.length > 0 && (
+                  <div className="card p-4">
+                    <Pagination
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={filtered.length}
+                      pageSize={pageSize}
+                      onPageChange={setCurrentPage}
+                      onPageSizeChange={(sz) => {
+                        setPageSize(sz);
+                        setCurrentPage(1);
+                      }}
+                      pageSizeOptions={[5, 10, 20]}
+                      itemName="hợp đồng"
+                    />
                   </div>
-                  <div className="flex flex-row sm:flex-col gap-2 h-fit">
-                    {rental.status === 'ACTIVE' && (
-                      <>
-                        <Link
-                          to={`/dashboard/customer/tree-planting?rentalId=${rental.id}`}
-                          className="btn-primary text-xs flex items-center gap-1 h-fit shadow-xs bg-emerald-600 hover:bg-emerald-700"
-                        >
-                          <Sprout className="w-3.5 h-3.5" /> Trồng cây mới
-                        </Link>
-                        <button onClick={() => { setExtendModal(rental); setExtendMonths(1); }}
-                          className="btn-outline-green text-xs flex items-center gap-1 h-fit">
-                          <Clock className="w-3.5 h-3.5" /> Gia hạn
-                        </button>
-                        <button onClick={() => setReportModal(rental)}
-                          className="btn-outline-red text-xs flex items-center gap-1 h-fit mt-2 sm:mt-0">
-                          <AlertTriangle className="w-3.5 h-3.5" /> Báo cáo sự cố
-                        </button>
-                      </>
-                    )}
-                    {(rental.status === 'PENDING' || rental.paymentStatus === 'PENDING') && rental.status !== 'CANCELLED' && (
-                      <>
-                        <button onClick={() => handlePay(rental)} disabled={payingId === rental.id}
-                          className="btn-primary text-xs flex items-center gap-1 h-fit">
-                          {payingId === rental.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <CreditCard className="w-3.5 h-3.5" />}
-                          Thanh toán
-                        </button>
-                        <button onClick={() => setCancelModal(rental)}
-                          className="btn-outline-red text-xs flex items-center gap-1 h-fit">
-                          <X className="w-3.5 h-3.5" /> Hủy
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
+                )}
+              </>
             );
-          })}
+          })()}
         </div>
       )}
 

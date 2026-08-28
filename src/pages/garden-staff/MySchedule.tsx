@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Calendar as CalendarIcon, Clock, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { staffScheduleApi, StaffSchedule } from '../../api/staffScheduleApi';
 import { ClipboardList, Wifi, ShieldAlert, CheckCircle, History, Camera } from 'lucide-react';
 
@@ -18,12 +19,26 @@ export default function MySchedule() {
   const [schedules, setSchedules] = useState<StaffSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(6);
+
+  const totalPages = Math.ceil(schedules.length / pageSize) || 1;
+  const paginatedSchedules = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return schedules.slice(start, start + pageSize);
+  }, [schedules, currentPage, pageSize]);
 
   const fetchSchedules = async () => {
     setLoading(true);
     try {
       const data = await staffScheduleApi.getMySchedules();
-      setSchedules(data || []);
+      const sorted = (data || []).sort((a: StaffSchedule, b: StaffSchedule) => {
+        const timeA = new Date(a.scheduleDate || 0).getTime();
+        const timeB = new Date(b.scheduleDate || 0).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        return b.id - a.id;
+      });
+      setSchedules(sorted);
     } catch (err: any) {
       console.error('Error fetching my schedules:', err);
       setError('Không thể tải lịch trực. Vui lòng thử lại sau.');
@@ -81,50 +96,70 @@ export default function MySchedule() {
               <p className="text-sm text-gray-500 mt-1">Bạn chưa có ca trực nào được phân công trong thời gian tới.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
-              {schedules.map((schedule) => (
-                <div key={schedule.id} className="bg-white rounded-2xl shadow-sm border border-emerald-100/80 overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
-                  <div>
-                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3.5 border-b border-emerald-100 flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
-                        <CalendarIcon className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                        <span>{new Date(schedule.scheduleDate).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                      </div>
-                      <span className="text-xs bg-emerald-600 text-white font-semibold px-2.5 py-0.5 rounded-full shadow-xs">
-                        Đang áp dụng
-                      </span>
-                    </div>
-
-                    <div className="p-5 space-y-3.5">
-                      <div className="flex items-center gap-3 text-gray-800">
-                        <Clock className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                        <span className="font-bold text-base tracking-wide">{schedule.startTime?.substring(0, 5)} - {schedule.endTime?.substring(0, 5)}</span>
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
+                {paginatedSchedules.map((schedule) => (
+                  <div key={schedule.id} className="bg-white rounded-2xl shadow-sm border border-emerald-100/80 overflow-hidden hover:shadow-md transition-all flex flex-col justify-between">
+                    <div>
+                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 px-4 py-3.5 border-b border-emerald-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
+                          <CalendarIcon className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <span>{new Date(schedule.scheduleDate).toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                        </div>
+                        <span className="text-xs bg-emerald-600 text-white font-semibold px-2.5 py-0.5 rounded-full shadow-xs">
+                          Đang áp dụng
+                        </span>
                       </div>
 
-                      {schedule.locationName && (
-                        <div className="text-xs text-gray-600 flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                          <span className="font-semibold text-gray-700">🏢 Cơ sở:</span>
-                          <span className="text-gray-900 font-medium">{schedule.locationName}</span>
+                      <div className="p-5 space-y-3.5">
+                        <div className="flex items-center gap-3 text-gray-800">
+                          <Clock className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                          <span className="font-bold text-base tracking-wide">{schedule.startTime?.substring(0, 5)} - {schedule.endTime?.substring(0, 5)}</span>
                         </div>
-                      )}
 
-                      {schedule.slotNumber && (
-                        <div className="text-xs text-emerald-800 flex items-center gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
-                          <span className="font-semibold text-emerald-900">🌱 Khu vực phụ trách:</span>
-                          <span className="font-bold text-emerald-700">Ô vườn {schedule.slotNumber}</span>
-                        </div>
-                      )}
+                        {schedule.locationName && (
+                          <div className="text-xs text-gray-600 flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                            <span className="font-semibold text-gray-700">🏢 Cơ sở:</span>
+                            <span className="text-gray-900 font-medium">{schedule.locationName}</span>
+                          </div>
+                        )}
 
-                      {schedule.notes && (
-                        <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-xs text-amber-900 space-y-1">
-                          <span className="font-bold block text-amber-950">📝 Ghi chú phân công:</span>
-                          <p className="leading-relaxed">{schedule.notes}</p>
-                        </div>
-                      )}
+                        {schedule.slotNumber && (
+                          <div className="text-xs text-emerald-800 flex items-center gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
+                            <span className="font-semibold text-emerald-900">🌱 Khu vực phụ trách:</span>
+                            <span className="font-bold text-emerald-700">Ô vườn {schedule.slotNumber}</span>
+                          </div>
+                        )}
+
+                        {schedule.notes && (
+                          <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-xs text-amber-900 space-y-1">
+                            <span className="font-bold block text-amber-950">📝 Ghi chú phân công:</span>
+                            <p className="leading-relaxed">{schedule.notes}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+
+              {schedules.length > 0 && (
+                <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={schedules.length}
+                    pageSize={pageSize}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={(sz) => {
+                      setPageSize(sz);
+                      setCurrentPage(1);
+                    }}
+                    pageSizeOptions={[6, 12, 24]}
+                    itemName="ca trực"
+                  />
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>

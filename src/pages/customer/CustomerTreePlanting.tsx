@@ -11,6 +11,7 @@ import {
 import clsx from 'clsx';
 import { useToast } from '../../context/ToastContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { customerNavItems as navItems } from './customerNavItems';
 
 // Component Dropdown bo tròn
@@ -164,6 +165,8 @@ export default function CustomerTreePlanting() {
   // Lọc & Tìm kiếm
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   // Modal Tạo yêu cầu mới
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -341,15 +344,25 @@ export default function CustomerTreePlanting() {
     }
   };
 
-  // Lọc danh sách hiển thị
-  const filteredRequests = requests.filter(item => {
-    const matchSearch = 
-      item.slotNumber?.toLowerCase().includes(search.toLowerCase()) ||
-      item.newTreeName?.toLowerCase().includes(search.toLowerCase()) ||
-      item.reason?.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
+  // Lọc danh sách hiển thị và sắp xếp mới nhất lên đầu
+  const filteredRequests = requests
+    .filter(item => {
+      const matchSearch = 
+        item.slotNumber?.toLowerCase().includes(search.toLowerCase()) ||
+        item.newTreeName?.toLowerCase().includes(search.toLowerCase()) ||
+        item.reason?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
+      return matchSearch && matchStatus;
+    })
+    .sort((a, b) => {
+      const timeA = new Date(a.requestedAt || 0).getTime();
+      const timeB = new Date(b.requestedAt || 0).getTime();
+      if (timeA !== timeB) return timeB - timeA;
+      return b.id - a.id;
+    });
+
+  const totalPages = Math.ceil(filteredRequests.length / pageSize) || 1;
+  const paginatedRequests = filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Thống kê nhanh
   const stats = {
@@ -443,14 +456,20 @@ export default function CustomerTreePlanting() {
             placeholder="Tìm theo mã khu đất, tên cây, lý do..." 
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-sm shadow-sm outline-none transition" 
             value={search} 
-            onChange={e => setSearch(e.target.value)} 
+            onChange={e => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }} 
           />
         </div>
 
         <CustomDropdown
           icon={<Filter className="w-4 h-4 text-green-600 shrink-0" />}
           value={statusFilter}
-          onChange={(val: any) => setStatusFilter(String(val))}
+          onChange={(val: any) => {
+            setStatusFilter(String(val));
+            setCurrentPage(1);
+          }}
           options={[
             { value: "", label: "Tất cả trạng thái" },
             { value: "PENDING", label: "Chờ nhà vườn phản hồi" },
@@ -490,7 +509,7 @@ export default function CustomerTreePlanting() {
                 </td>
               </tr>
             ) : (
-              filteredRequests.map(item => (
+              paginatedRequests.map(item => (
                 <tr key={item.id} className="hover:bg-green-50/30 transition duration-150">
                   <td className="p-4">
                     <div className="flex items-center gap-2 font-bold text-gray-900 flex-wrap">
@@ -554,6 +573,23 @@ export default function CustomerTreePlanting() {
             )}
           </tbody>
         </table>
+
+        {filteredRequests.length > 0 && (
+          <div className="p-4 border-t border-gray-100 bg-gray-50/50">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredRequests.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(sz) => {
+                setPageSize(sz);
+                setCurrentPage(1);
+              }}
+              itemName="yêu cầu trồng cây"
+            />
+          </div>
+        )}
       </div>
 
       {/* 💥 MODAL 1: TẠO YÊU CẦU TRỒNG CÂY MỚI (POST /api/tree-planting) */}

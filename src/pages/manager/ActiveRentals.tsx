@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Search } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
+import Pagination from '../../components/common/Pagination';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
 import type { ActiveRental } from '../../types/api';
@@ -10,6 +11,8 @@ export default function ActiveRentals() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     managerApi.getActiveRentals()
@@ -18,9 +21,19 @@ export default function ActiveRentals() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = rentals.filter(r =>
-    JSON.stringify(r).toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = rentals
+    .filter(r =>
+      JSON.stringify(r).toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      const timeA = new Date(a.startTime || 0).getTime();
+      const timeB = new Date(b.startTime || 0).getTime();
+      if (timeA !== timeB) return timeB - timeA;
+      return b.rentalId - a.rentalId;
+    });
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginatedRentals = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const fmt = (iso: string) => new Date(iso).toLocaleDateString('vi-VN');
 
@@ -29,7 +42,16 @@ export default function ActiveRentals() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input type="text" placeholder="Tìm kiếm..." className="input pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+          <input
+            type="text"
+            placeholder="Tìm kiếm..."
+            className="input pl-10"
+            value={search}
+            onChange={e => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
         </div>
         <div className="text-sm text-gray-500">{rentals.length} đơn đang thuê</div>
       </div>
@@ -44,7 +66,7 @@ export default function ActiveRentals() {
           <p>Không có đơn thuê nào đang hoạt động</p>
         </div>
       ) : (
-        <div className="card overflow-x-auto">
+        <div className="card overflow-x-auto space-y-4">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500 border-b text-xs uppercase">
@@ -57,7 +79,7 @@ export default function ActiveRentals() {
               </tr>
             </thead>
             <tbody className="divide-y">
-              {filtered.map(r => (
+              {paginatedRentals.map(r => (
                 <tr key={r.rentalId} className="hover:bg-gray-50">
                   <td className="py-3 font-medium">#{r.rentalId}</td>
                   <td className="py-3">{r.slotNumber} ({r.pillarCode})</td>
@@ -72,6 +94,23 @@ export default function ActiveRentals() {
               ))}
             </tbody>
           </table>
+
+          {filtered.length > 0 && (
+            <div className="pt-3 border-t border-gray-100">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={filtered.length}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                itemName="đơn thuê"
+              />
+            </div>
+          )}
         </div>
       )}
     </DashboardLayout>
