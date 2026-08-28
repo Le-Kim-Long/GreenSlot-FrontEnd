@@ -579,50 +579,70 @@ export default function EquipmentManagement() {
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6 text-sm">
                   
-                  {/* PHẦN 1: THÔNG TIN CƠ BẢN */}
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-green-700 bg-green-50 px-3 py-1.5 rounded-lg mb-3">
-                      1. Thông tin định danh Thiết bị
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block font-medium text-gray-700 mb-1">Tên thiết bị <span className="text-red-500">*</span></label>
-                        <input
-                          required
-                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
-                          value={formData.equipmentName || ''}
-                          onChange={e => setFormData({...formData, equipmentName: e.target.value})}
-                          placeholder="VD: Máy bơm tự động 500W"
-                        />
-                      </div>
-                      {canFilterByLocation && (
-                        <div>
-                          <label className="block font-medium text-gray-700 mb-1">Cơ sở <span className="text-red-500">*</span></label>
-                          <CustomDropdown
-                            icon={<MapPin className="w-4 h-4 text-green-600 shrink-0" />}
-                            value={formLocationId}
-                            onChange={(val: any) => handleFormLocationChange(String(val))}
-                            options={locations.map((l: any) => ({ value: String(l.id), label: l.name }))}
-                            placeholder="Chọn cơ sở"
-                            className="w-full"
-                          />
-                        </div>
-                      )}
-                      <div>
-                        <label className="block font-medium text-gray-700 mb-1">Trụ vườn <span className="text-red-500">*</span></label>
-                        <CustomDropdown
-                          icon={<Layers className="w-4 h-4 text-green-600 shrink-0" />}
-                          value={formData.pillarId ?? ''}
-                          onChange={(val: any) => setFormData({...formData, pillarId: Number(val)})}
-                          options={formPillarOptions.map((p: any) => ({
-                            value: String(p.id),
-                            label: p.pillarName ? `${p.pillarName}${p.pillarCode ? ` (${p.pillarCode})` : ''}` : (p.pillarCode || `Trụ #${p.id}`),
-                          }))}
-                          placeholder={canFilterByLocation && !formLocationId ? 'Chọn cơ sở trước' : 'Chọn trụ vườn'}
-                          className="w-full"
-                        />
-                      </div>
-                    </div>
+{/* PHẦN 1: THÔNG TIN CƠ BẢN */}
+<div>
+  <h3 className="text-xs font-bold uppercase tracking-wider text-green-700 bg-green-50 px-3 py-1.5 rounded-lg mb-3">
+    1. Thông tin định danh Thiết bị
+  </h3>
+  
+  {/* Đổi thành grid-cols-1 sm:grid-cols-2 và thêm ô Serial Number */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    
+    {/* Ô 1: Tên thiết bị */}
+    <div>
+      <label className="block font-medium text-gray-700 mb-1">Tên thiết bị <span className="text-red-500">*</span></label>
+      <input
+        required
+        className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
+        value={formData.equipmentName || ''}
+        onChange={e => setFormData({...formData, equipmentName: e.target.value})}
+        placeholder="VD: Mạch ESP32 Master"
+      />
+    </div>
+
+    {/* Ô 2: Serial Number (THÊM MỚI QUAN TRỌNG) */}
+    <div>
+      <label className="block font-medium text-gray-700 mb-1">Mã thiết bị (Serial Number) <span className="text-red-500">*</span></label>
+      <input
+        required
+        className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition uppercase"
+        value={formData.serialNumber || ''}
+        onChange={e => setFormData({...formData, serialNumber: e.target.value})}
+        placeholder="VD: S-Q1-03 (Khớp với code C++)"
+      />
+    </div>
+
+    {/* Ô 3: Cơ sở */}
+    {canFilterByLocation && (
+      <div>
+        <label className="block font-medium text-gray-700 mb-1">Cơ sở <span className="text-red-500">*</span></label>
+        <CustomDropdown
+          icon={<MapPin className="w-4 h-4 text-green-600 shrink-0" />}
+          value={formLocationId}
+          onChange={(val: any) => handleFormLocationChange(String(val))}
+          options={locations.map((l: any) => ({ value: String(l.id), label: l.name }))}
+          placeholder="Chọn cơ sở"
+          className="w-full"
+        />
+      </div>
+    )}
+
+    {/* Ô 4: Trụ Vườn */}
+    <div>
+      <label className="block font-medium text-gray-700 mb-1">Gắn vào Trụ vườn</label>
+      <CustomDropdown
+        icon={<Layers className="w-4 h-4 text-green-600 shrink-0" />}
+        value={formData.pillarId ?? ''}
+        onChange={(val: any) => setFormData({...formData, pillarId: Number(val)})}
+        options={formPillarOptions.map((p: any) => ({
+          value: String(p.id),
+          label: p.pillarName ? `${p.pillarName}${p.pillarCode ? ` (${p.pillarCode})` : ''}` : (p.pillarCode || `Trụ #${p.id}`),
+        }))}
+        placeholder={canFilterByLocation && !formLocationId ? 'Chọn cơ sở trước' : 'Chọn trụ vườn (Để trống nếu cất kho)'}
+        className="w-full"
+      />
+    </div>
+  </div>
                     
                     {/* KHU VỰC UPLOAD ẢNH QUA API BACKEND */}
                     <div className="mt-4">
