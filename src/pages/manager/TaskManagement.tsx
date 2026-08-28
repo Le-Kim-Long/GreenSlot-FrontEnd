@@ -33,9 +33,9 @@ interface Slot {
 }
 
 const TASK_TYPE_MAP: Record<string, string> = {
-  MAINTENANCE: 'Bảo trì / Chăm sóc',
-  CLEANING: 'Dọn dẹp',
-  PLANTING: 'Gieo giống',
+  MAINTENANCE: 'Bảo trì / Kỹ thuật',
+  CLEANING: 'Vệ sinh',
+  PLANTING: 'Gieo trồng & Chăm sóc',
   HARVEST: 'Thu hoạch',
   INSPECTION: 'Kiểm tra',
   INCIDENT: 'Sự cố',
