@@ -3,7 +3,7 @@ import { ClipboardList, Calendar, Wifi, ShieldAlert, CheckCircle, History, Camer
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { staffNavItems } from '../manager/staffNav';
 import { customerNavItems } from '../customer/customerNavItems';
-import apiClient from '../../api/axiosConfig'; // Tận dụng axiosInstance của dự án
+import apiClient from '../../api/axiosConfig';
 
 const gardenStaffNavItems = [
   { label: 'Công việc', path: '/dashboard/garden-staff', icon: <ClipboardList className="w-full h-full" /> },
@@ -23,40 +23,53 @@ export default function CameraAllPage() {
     ? gardenStaffNavItems
     : staffNavItems;
 
-  const [cameraStreamUrl, setCameraStreamUrl] = useState<string>("");
-  const [statusMsg, setStatusMsg] = useState<string>("Đang tìm địa chỉ IP của Camera...");
+  const [cameraSrc, setCameraSrc] = useState<string>("");
+  const [statusMsg, setStatusMsg] = useState<string>("Đang kết nối luồng video...");
 
   useEffect(() => {
-    // Hàm gọi lên Backend (Render) để hỏi URL trực tiếp của Camera
-    const fetchCameraInfo = async () => {
-      try {
-        // LƯU Ý: Thay '/cameras' bằng đúng API GET thông tin Camera của bạn
-        // (API mà trả về cái json có chứa "stream_url" mà ESP32 vừa gửi lên)
-        const response = await apiClient.get('/cameras'); 
-        
-        // Giả sử backend trả về 1 mảng camera, ta lấy cái đầu tiên
-        const cameraData = Array.isArray(response.data) ? response.data[0] : response.data;
+    let currentObjectUrl = "";
+    let isMounted = true;
 
-        if (cameraData && (cameraData.streamUrl || cameraData.stream_url)) {
-          const url = cameraData.streamUrl || cameraData.stream_url;
-          setCameraStreamUrl(url); // VD: http://192.168.1.14:81/stream
+    const fetchCameraFrame = async () => {
+      try {
+        // Dùng apiClient lấy ảnh thô (blob) thay vì fetch thủ công
+        // Nó sẽ tự động lấy Token từ cấu hình của bạn gắn vào Header
+        const response = await apiClient.get(`/iot/camera/snapshot?t=${new Date().getTime()}`, {
+          responseType: 'blob'
+        });
+
+        if (isMounted) {
+          // Xóa ảnh cũ khỏi RAM trước khi load ảnh mới để tránh giật lag máy
+          if (currentObjectUrl) {
+            URL.revokeObjectURL(currentObjectUrl);
+          }
+          
+          // Chuyển đổi dữ liệu thô thành đường link ảnh ảo trên trình duyệt
+          currentObjectUrl = URL.createObjectURL(response.data);
+          setCameraSrc(currentObjectUrl);
           setStatusMsg("");
-        } else {
-          setStatusMsg("Server chưa nhận được IP. Vui lòng kiểm tra nguồn ESP32-CAM.");
         }
       } catch (error) {
-        console.error("Lỗi lấy thông tin Camera:", error);
-        setStatusMsg("Không thể kết nối đến máy chủ Backend.");
+        if (isMounted) {
+          setStatusMsg("Camera đang offline hoặc lỗi kết nối.");
+        }
       }
     };
 
-    // Gọi lần đầu tiên khi vào trang
-    fetchCameraInfo();
+    // Gọi lần đầu ngay khi mở trang
+    fetchCameraFrame();
 
-    // Cứ mỗi 10 giây hỏi lại Backend 1 lần, đề phòng cục WiFi nhà bạn cấp lại IP mới cho ESP32
-    const interval = setInterval(fetchCameraInfo, 10000);
+    // Tốc độ cập nhật: 300ms (0.3s/ảnh) để tạo luồng video mượt mà
+    const timer = setInterval(fetchCameraFrame, 300);
 
-    return () => clearInterval(interval);
+    // Dọn dẹp rác bộ nhớ (RAM) khi người dùng chuyển sang trang khác
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+      }
+    };
   }, []);
 
   return (
@@ -73,28 +86,24 @@ export default function CameraAllPage() {
           </h3>
           <span className="flex items-center gap-2 text-sm text-green-600 font-medium bg-green-50 px-3 py-1 rounded-full border border-green-200">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            Live Stream (Direct)
+            Live (Polling)
           </span>
         </div>
 
         <div className="flex justify-center items-center bg-gray-900 rounded-lg min-h-[450px] overflow-hidden border-2 border-gray-800 p-1 relative">
           
           {/* Nếu đang tìm IP hoặc có lỗi thì hiện thông báo */}
-          {statusMsg ? (
+          {statusMsg && !cameraSrc ? (
             <div className="text-gray-400 flex flex-col items-center gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-green-500" />
               <span className="font-medium text-sm">{statusMsg}</span>
             </div>
           ) : (
-            // Nếu có URL rồi thì thẻ <img> sẽ tự động render luồng video liên tục của ESP32
+            // Thẻ <img> sẽ tự động cập nhật src mỗi 300ms tạo hiệu ứng Video
             <img 
-              src={cameraStreamUrl} 
+              src={cameraSrc} 
               alt="Luồng Camera" 
               className="w-full h-full max-h-[600px] rounded-md object-contain bg-black"
-              onError={() => {
-                setStatusMsg("Không thể tải Video! Đảm bảo Laptop của bạn và Camera đang dùng chung 1 mạng WiFi.");
-                setCameraStreamUrl("");
-              }}
             />
           )}
 
