@@ -967,14 +967,22 @@ function CompleteTaskModal({
 
         <div className="space-y-3">
           <label className="block text-xs font-bold text-gray-700">
-            Tải lên hình ảnh bằng chứng kết quả công việc <span className="text-rose-500">*</span>
+            Hình ảnh bằng chứng kết quả công việc <span className="text-rose-500">*</span>
           </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer border border-gray-200 rounded-xl p-1 bg-white"
-          />
+          
+          <div className="flex items-center gap-3">
+            <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm transition-all">
+              <Upload className="w-4 h-4" />
+              <span>{file ? 'Gửi ảnh khác' : 'Gửi ảnh'}</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </label>
+            {!preview && <span className="text-xs text-gray-400">Chưa có ảnh nào được đính kèm</span>}
+          </div>
 
           {preview && (
             <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">

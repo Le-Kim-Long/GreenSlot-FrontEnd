@@ -308,7 +308,9 @@ export default function MyRentalsPage() {
                           {rental.locationName && <div className="text-sm text-gray-500">{rental.locationName}</div>}
                           <div className="flex flex-wrap gap-2 mt-2">
                             <span className={st.cls}>{st.label}</span>
-                            {pay && <span className={pay.cls}>{pay.label}</span>}
+                            {pay && rental.status !== 'ACTIVE' && rental.paymentStatus !== 'SUCCESS' && rental.paymentStatus !== 'PAID' && (
+                              <span className={pay.cls}>{pay.label}</span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-500 mt-2 flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" /> {rental.startDate} — {rental.endDate}

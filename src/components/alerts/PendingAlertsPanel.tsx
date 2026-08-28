@@ -197,7 +197,7 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
             isUploadingImage && 'opacity-50 pointer-events-none'
           )}>
             <Upload className="w-4 h-4 text-green-600" />
-            <span>{isUploadingImage ? 'Đang tải lên...' : 'Chọn ảnh...'}</span>
+            <span>{isUploadingImage ? 'Đang gửi ảnh...' : evidenceImageUrl ? 'Gửi ảnh khác' : 'Gửi ảnh'}</span>
             <input type="file" accept="image/*" onChange={handleImageChange} disabled={isUploadingImage} className="hidden" />
           </label>
         </div>
