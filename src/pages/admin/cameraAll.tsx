@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   ClipboardList, 
   Calendar, 
@@ -54,7 +54,8 @@ export default function CameraAllPage() {
   const [snapshotUri, setSnapshotUri] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   
-  const intervalRef = useRef<number | null>(null);
+  // Đã sửa kiểu dữ liệu ở đây để tương thích với môi trường build của Vercel
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadCameras = useCallback(async () => {
     try {
@@ -77,12 +78,10 @@ export default function CameraAllPage() {
     loadCameras();
   };
 
-  // Làm mới ảnh im lặng bằng cách cập nhật timestamp
   const refreshSnapshot = useCallback((captureUrl: string) => {
     setSnapshotUri(`${captureUrl}?t=${Date.now()}`);
   }, []);
 
-  // Vòng lặp ngầm: Lấy khung hình mới mỗi 3 giây
   const startAutoRefresh = useCallback((captureUrl: string) => {
     if (intervalRef.current) clearInterval(intervalRef.current);
 
