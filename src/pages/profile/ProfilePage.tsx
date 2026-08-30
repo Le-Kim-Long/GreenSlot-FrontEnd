@@ -286,7 +286,7 @@ export default function ProfilePage() {
         </div>
 
         {/* Edit form */}
-        <form onSubmit={handleSubmit} className="card">
+        <form onSubmit={handleSubmit} noValidate className="card">
           <h3 className="text-lg font-bold text-gray-900 mb-5">Chỉnh sửa thông tin</h3>
 
           <div className="space-y-4">

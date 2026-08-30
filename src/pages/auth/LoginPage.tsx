@@ -35,8 +35,18 @@ export default function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!form.username.trim()) {
+      setError('Vui lòng nhập tên đăng nhập.');
+      return;
+    }
+    if (!form.password) {
+      setError('Vui lòng nhập mật khẩu.');
+      return;
+    }
+
     setLoading(true);
-    const ok = await login(form.username, form.password);
+    const ok = await login(form.username.trim(), form.password);
     setLoading(false);
     if (ok) {
       const stored = localStorage.getItem('user');
@@ -187,7 +197,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} noValidate className="space-y-5">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tên đăng nhập</label>
                 <div className={`relative rounded-xl border-2 transition-all duration-300 ${focused === 'username' ? 'border-green-500 shadow-lg shadow-green-500/10' : 'border-gray-200 hover:border-gray-300'}`}>

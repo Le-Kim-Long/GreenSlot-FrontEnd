@@ -77,7 +77,7 @@ export default function ResetPasswordPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} noValidate className="space-y-4">
                 <div>
                   <label className="label">Mật khẩu mới</label>
                   <div className="relative">

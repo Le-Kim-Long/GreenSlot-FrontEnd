@@ -123,7 +123,7 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
   };
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-gray-100 bg-gray-50/60 p-5 space-y-4 text-sm">
+    <form onSubmit={handleSubmit} noValidate className="border-t border-gray-100 bg-gray-50/60 p-5 space-y-4 text-sm">
       <div>
         <label className="block font-bold text-gray-800 mb-2 text-xs uppercase tracking-wider flex items-center gap-1.5">
           <Activity className="w-4 h-4 text-green-600" /> Trạng thái xử lý
