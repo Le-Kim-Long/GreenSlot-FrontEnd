@@ -392,7 +392,7 @@ export default function StaffScheduleManagement() {
                 {editingItem ? 'Cập nhật lịch phân ca' : 'Phân ca trực mới'}
               </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+              <form onSubmit={handleSubmit} noValidate className="space-y-4 text-sm">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block font-medium text-gray-700 mb-1">Cơ sở <span className="text-red-500">*</span></label>

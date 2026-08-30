@@ -345,7 +345,7 @@ export default function UserManagementPage() {
               </div>
             )}
 
-            <form onSubmit={handleCreateUser} className="space-y-4" autoComplete="off">
+            <form onSubmit={handleCreateUser} noValidate className="space-y-4" autoComplete="off">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold mb-1">Tên đăng nhập <span className="text-red-500">*</span></label>

@@ -613,7 +613,7 @@ export default function CustomerTreePlanting() {
               </div>
             </div>
 
-            <form onSubmit={handleSubmitCreate} className="space-y-4 text-sm">
+            <form onSubmit={handleSubmitCreate} noValidate className="space-y-4 text-sm">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">

@@ -87,6 +87,8 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
     setInfoMsg('');
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+
     if (!form.username.trim()) {
       setError('Vui lòng nhập tên đăng nhập');
       return;
@@ -95,12 +97,24 @@ export default function RegisterPage() {
       setError('Tên đăng nhập phải có ít nhất 3 ký tự');
       return;
     }
-    if (form.password !== form.confirmPwd) {
-      setError('Mật khẩu xác nhận không khớp');
+    if (!form.email.trim() || !emailRegex.test(form.email.trim())) {
+      setError('Vui lòng nhập địa chỉ email hợp lệ (ví dụ: user@example.com)');
+      return;
+    }
+    if (!form.password) {
+      setError('Vui lòng nhập mật khẩu');
       return;
     }
     if (form.password.length < 6) {
       setError('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+    if (form.password !== form.confirmPwd) {
+      setError('Mật khẩu xác nhận không khớp');
+      return;
+    }
+    if (form.phone && !/^(\+84|0)(3|5|7|8|9)\d{8}$/.test(form.phone.trim())) {
+      setError('Số điện thoại không đúng định dạng (ví dụ: 0912345678)');
       return;
     }
     setLoading(true);
@@ -311,7 +325,7 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} noValidate className="space-y-4">
                   {/* Username */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Tên đăng nhập</label>
@@ -482,7 +496,7 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <form onSubmit={handleVerifyOtp} noValidate className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2 text-center">
                       Nhập mã OTP 6 chữ số

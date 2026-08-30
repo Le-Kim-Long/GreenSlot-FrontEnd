@@ -577,7 +577,7 @@ export default function EquipmentManagement() {
                   <p className="text-sm">Đang tải thông số thiết bị từ máy chủ...</p>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6 text-sm">
+                <form onSubmit={handleSubmit} noValidate className="space-y-6 text-sm">
                   
 {/* PHẦN 1: THÔNG TIN CƠ BẢN */}
 <div>

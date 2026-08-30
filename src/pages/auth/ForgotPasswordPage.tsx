@@ -12,9 +12,15 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!email.trim() || !emailRegex.test(email.trim())) {
+      setError('Vui lòng nhập địa chỉ email hợp lệ (ví dụ: email@example.com)');
+      return;
+    }
+
     setLoading(true);
     try {
-      await authApi.forgotPassword({ email });
+      await authApi.forgotPassword({ email: email.trim() });
       setSuccess(true);
     } catch {
       setError('Không tìm thấy tài khoản với email này');
@@ -61,7 +67,7 @@ export default function ForgotPasswordPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} noValidate className="space-y-4">
                 <div>
                   <label className="label">Email</label>
                   <input

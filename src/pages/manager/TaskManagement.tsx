@@ -540,7 +540,7 @@ export default function TaskManagement() {
               </button>
               
               <h2 className="text-xl font-bold mb-5 text-gray-900">Tạo công việc mới</h2>
-              <form onSubmit={handleCreateSubmit} className="space-y-4 text-sm">
+              <form onSubmit={handleCreateSubmit} noValidate className="space-y-4 text-sm">
                 <div>
                   <label className="block font-medium text-gray-700 mb-1.5">Tên công việc <span className="text-red-500">*</span></label>
                   <input required className="w-full border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 p-2.5 outline-none" 
@@ -629,7 +629,7 @@ export default function TaskManagement() {
                 </div>
               </div>
 
-              <form onSubmit={handleAssignSubmit} className="space-y-4 text-sm">
+              <form onSubmit={handleAssignSubmit} noValidate className="space-y-4 text-sm">
                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-200/80 space-y-4">
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                     <MapPin className="w-3.5 h-3.5 text-green-600" />
@@ -730,7 +730,7 @@ export default function TaskManagement() {
                 )}
               </div>
 
-              <form onSubmit={handleReviewSubmit} className="space-y-4 text-sm">
+              <form onSubmit={handleReviewSubmit} noValidate className="space-y-4 text-sm">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Quyết định phê duyệt</label>
                   <div className="flex gap-4">
