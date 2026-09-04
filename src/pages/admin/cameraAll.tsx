@@ -87,7 +87,7 @@ export default function CameraAllPage() {
 
     intervalRef.current = setInterval(() => {
       refreshSnapshot(captureUrl);
-    }, 3000);
+    }, 500);
   }, [refreshSnapshot]);
 
   const stopAutoRefresh = useCallback(() => {
