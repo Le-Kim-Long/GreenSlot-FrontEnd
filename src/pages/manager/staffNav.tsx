@@ -14,7 +14,7 @@ import {
   AlertTriangle,
   ShieldAlert,
   History,
-  Video,
+  // Video,
   Camera,
 } from 'lucide-react';
 
