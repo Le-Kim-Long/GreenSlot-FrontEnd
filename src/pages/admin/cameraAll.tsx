@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   ClipboardList, 
   Calendar, 
@@ -53,9 +53,6 @@ export default function CameraAllPage() {
   const [selectedCamera, setSelectedCamera] = useState<CameraDTO | null>(null);
   const [snapshotUri, setSnapshotUri] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  
-  // Đã sửa kiểu dữ liệu ở đây để tương thích với môi trường build của Vercel
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadCameras = useCallback(async () => {
     try {
@@ -78,46 +75,23 @@ export default function CameraAllPage() {
     loadCameras();
   };
 
-  const refreshSnapshot = useCallback((captureUrl: string) => {
-    setSnapshotUri(`${captureUrl}?t=${Date.now()}`);
-  }, []);
-
-  const startAutoRefresh = useCallback((captureUrl: string) => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-
-    intervalRef.current = setInterval(() => {
-      refreshSnapshot(captureUrl);
-    }, 3000);
-  }, [refreshSnapshot]);
-
-  const stopAutoRefresh = useCallback(() => {
-    if (intervalRef.current) { 
-      clearInterval(intervalRef.current); 
-      intervalRef.current = null; 
-    }
-  }, []);
-
   const handleViewCamera = (camera: CameraDTO) => {
     setSelectedCamera(camera);
     setModalVisible(true);
-    if (camera.capture_url) {
-      refreshSnapshot(camera.capture_url);
-      startAutoRefresh(camera.capture_url);
+    
+    // Trực tiếp dùng luồng stream mượt mà
+    if (camera.stream_url) {
+      setSnapshotUri(camera.stream_url); 
     } else {
       setSnapshotUri(null);
     }
   };
 
   const handleCloseModal = () => {
-    stopAutoRefresh();
     setModalVisible(false);
     setSelectedCamera(null);
     setSnapshotUri(null);
   };
-
-  useEffect(() => {
-    return () => stopAutoRefresh();
-  }, [stopAutoRefresh]);
 
   return (
     <DashboardLayout navItems={navItems} title="Giám Sát Camera">

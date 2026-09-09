@@ -33,6 +33,29 @@ interface PillarOption {
   treeName?: string;
 }
 
+// Hàm kiểm tra an toàn xem dữ liệu có phải là mới (trong 5 phút) hay không
+const checkIsActive = (latestReadings: any[], historyReadings: any[]) => {
+  const now = Date.now();
+  let maxTime = 0;
+  const allRecords = [...(latestReadings || []), ...(historyReadings || [])];
+  
+  for (const r of allRecords) {
+    if (!r) continue;
+    const timeVal = r.recordedAt || r.createdAt || r.timestamp || r.time;
+    if (timeVal) {
+      const t = new Date(timeVal).getTime();
+      if (!isNaN(t) && t > maxTime) {
+        maxTime = t;
+      }
+    }
+  }
+
+  if (maxTime === 0) return true; 
+  
+  // Kiểm tra: Nếu quá 5 phút (300,000 ms) không có dữ liệu mới -> Trụ đã bị tháo thiết bị hoặc mất mạng
+  return Math.abs(now - maxTime) < 60 * 1000;
+};
+
 export default function IoTMonitoringPage() {
   const isStaffView = window.location.pathname.includes('garden-staff');
   const navItems = isStaffView ? staffNav : customerNav;
@@ -40,15 +63,17 @@ export default function IoTMonitoringPage() {
   const [activeRentals, setActiveRentals] = useState<BookingHistory[]>([]);
   const [staffPillars, setStaffPillars] = useState<PillarOption[]>([]);
   const [sensorTypes, setSensorTypes] = useState<SensorTypeInfo[]>([]);
+  
   const [selectedDeviceId, setSelectedDeviceId] = useState('arduino-greenhouse-01');
   const [latestData, setLatestData] = useState<Record<string, number>>({});
-  const [allPillarsData, setAllPillarsData] = useState<Record<string, Record<string, number>>>({});
+  
+  const [allPillarsData, setAllPillarsData] = useState<Record<string, { data: Record<string, number>, isActive: boolean }>>({});
+  
   const [chartData, setChartData] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [accessDenied, setAccessDenied] = useState(false);
 
-  // Tải danh sách hợp đồng đang thuê (Customer) hoặc danh sách trụ tại cơ sở (Staff) & loại cảm biến
   useEffect(() => {
     if (!isStaffView) {
       bookingApi.getHistory()
@@ -75,7 +100,6 @@ export default function IoTMonitoringPage() {
     iotApi.getTypes().then(setSensorTypes).catch(() => setSensorTypes([]));
   }, [isStaffView]);
 
-  // Trích xuất danh sách duy nhất các trụ (Loại bỏ trùng lặp và loại bỏ gateway tổng)
   const availablePillars = useMemo<PillarOption[]>(() => {
     if (isStaffView) {
       return staffPillars.filter(p => p.pillarCode && p.pillarCode !== 'arduino-greenhouse-01');
@@ -114,7 +138,6 @@ export default function IoTMonitoringPage() {
     return Array.from(map.values());
   }, [activeRentals, isStaffView, staffPillars]);
 
-  // Tìm thông tin trụ đang được chọn
   const currentPillarInfo = useMemo(() => {
     return availablePillars.find(p => p.pillarCode === selectedDeviceId);
   }, [availablePillars, selectedDeviceId]);
@@ -130,46 +153,70 @@ export default function IoTMonitoringPage() {
 
   const isAllView = selectedDeviceId === 'arduino-greenhouse-01';
 
-  // Tải dữ liệu cảm biến (Latest & History)
   const fetchIoT = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [latest, history] = await Promise.all([
-        iotApi.getLatest(selectedDeviceId).catch(() => []),
-        iotApi.getHistory(selectedDeviceId, undefined, 100).catch(() => []),
-      ]);
-      setAccessDenied(false);
+      // CHẾ ĐỘ XEM RIÊNG LẺ
+      if (!isAllView) {
+        const [latest, history] = await Promise.all([
+          iotApi.getLatest(selectedDeviceId).catch(() => []),
+          iotApi.getHistory(selectedDeviceId, undefined, 100).catch(() => []),
+        ]);
 
-      const latestMap: Record<string, number> = {};
-      latest.forEach(r => { latestMap[r.sensorType] = r.value; });
-      setLatestData(latestMap);
+        const isActive = (latest && latest.length > 0) && checkIsActive(latest, history);
 
-      const timeMap: Record<string, Record<string, unknown>> = {};
-      history.forEach(r => {
-        const time = new Date(r.recordedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        if (!timeMap[time]) timeMap[time] = { time, timestamp: new Date(r.recordedAt).getTime() };
-        timeMap[time][r.sensorType] = r.value;
-      });
-      setChartData(Object.values(timeMap).sort((a, b) => (a.timestamp as number) - (b.timestamp as number)).slice(-20));
+        if (isActive) {
+          const latestMap: Record<string, number> = {};
+          latest.forEach(r => { latestMap[r.sensorType] = r.value; });
+          setLatestData(latestMap);
 
-      // Khi chọn "Tất cả các trụ", tải đồng thời số liệu tức thời của từng trụ riêng lẻ
+          const timeMap: Record<string, Record<string, unknown>> = {};
+          history.forEach(r => {
+            const time = new Date(r.recordedAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            if (!timeMap[time]) timeMap[time] = { time, timestamp: new Date(r.recordedAt).getTime() };
+            timeMap[time][r.sensorType] = r.value;
+          });
+          setChartData(Object.values(timeMap).sort((a, b) => (a.timestamp as number) - (b.timestamp as number)).slice(-20));
+        } else {
+          setLatestData({});
+          setChartData([]);
+        }
+      }
+
+      // CHẾ ĐỘ TẤT CẢ (ALL VIEW)
       if (isAllView && availablePillars.length > 0) {
         const pillarResults = await Promise.all(
-          availablePillars.map(p =>
-            iotApi.getLatest(p.pillarCode)
-              .then(readings => ({ pillarCode: p.pillarCode, readings }))
-              .catch(() => ({ pillarCode: p.pillarCode, readings: [] }))
-          )
+          availablePillars.map(async p => {
+            try {
+              const [latest, history] = await Promise.all([
+                iotApi.getLatest(p.pillarCode).catch(() => []),
+                iotApi.getHistory(p.pillarCode, undefined, 5).catch(() => [])
+              ]);
+              return { pillarCode: p.pillarCode, latest, history };
+            } catch {
+              return { pillarCode: p.pillarCode, latest: [], history: [] };
+            }
+          })
         );
-        const mapAll: Record<string, Record<string, number>> = {};
+        
+        const mapAll: Record<string, { data: Record<string, number>, isActive: boolean }> = {};
+        
         pillarResults.forEach(res => {
           const map: Record<string, number> = {};
-          res.readings.forEach(r => { map[r.sensorType] = r.value; });
-          mapAll[res.pillarCode] = map;
+          let isActive = false;
+          
+          if (res.latest && res.latest.length > 0) {
+            isActive = checkIsActive(res.latest, res.history);
+            if (isActive) {
+              res.latest.forEach((r: any) => { map[r.sensorType] = r.value; });
+            }
+          }
+          mapAll[res.pillarCode] = { data: map, isActive };
         });
         setAllPillarsData(mapAll);
       }
 
+      setAccessDenied(false);
       setLastUpdated(new Date().toLocaleTimeString('vi-VN'));
     } catch {
       setAccessDenied(!isStaffView);
@@ -206,7 +253,7 @@ export default function IoTMonitoringPage() {
         </div>
       )}
 
-      {/* THANH ĐIỀU KHIỂN & CHỌN TRỤ CANH TÁC (DROPDOWN & QUICK SELECTOR) */}
+      {/* THANH ĐIỀU KHIỂN & CHỌN TRỤ CANH TÁC */}
       <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center font-bold shrink-0">
@@ -220,7 +267,6 @@ export default function IoTMonitoringPage() {
           </div>
         </div>
 
-        {/* BỘ CHỌN DROPDOWN THEO TỪNG TRỤ HOẶC TẤT CẢ */}
         <div className="flex items-center gap-3">
           <div className="relative min-w-[280px]">
             <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-1">
@@ -251,7 +297,7 @@ export default function IoTMonitoringPage() {
         </div>
       </div>
 
-      {/* THANH THÔNG TIN TRẠNG THÁI HIỆN TẠI (STATUS PILLS) */}
+      {/* THANH THÔNG TIN TRẠNG THÁI HIỆN TẠI */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-green-50/60 border border-green-200/60 px-4 py-3 rounded-2xl text-xs">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 font-bold text-green-900">
@@ -288,7 +334,7 @@ export default function IoTMonitoringPage() {
         </div>
       </div>
 
-      {/* 💥 BẢNG TỔNG HỢP SỐ LIỆU CỦA TỪNG TRỤ (HIỂN THỊ KHI CHỌN "TẤT CẢ") */}
+      {/* 💥 BẢNG TỔNG HỢP SỐ LIỆU CỦA TỪNG TRỤ */}
       {isAllView && availablePillars.length > 0 && (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -315,7 +361,6 @@ export default function IoTMonitoringPage() {
                   <th className="p-3.5">Giống Cây</th>
                   <th className="p-3.5">Độ Ẩm Đất</th>
                   <th className="p-3.5">Độ pH Đất</th>
-                  <th className="p-3.5">Nhiệt Độ</th>
                   <th className="p-3.5">Ánh Sáng</th>
                   <th className="p-3.5">Trạng Thái</th>
                   <th className="p-3.5 text-right">Chi Tiết</th>
@@ -323,17 +368,19 @@ export default function IoTMonitoringPage() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {paginatedPillars.map((p) => {
-                  const pData = allPillarsData[p.pillarCode] || latestData;
+                  const pInfo = allPillarsData[p.pillarCode] || { data: {}, isActive: false };
+                  const isActive = pInfo.isActive;
+                  const pData = pInfo.data;
+                  
                   const soilMoisture = pData['SOIL_MOISTURE'];
                   const ph = pData['PH'];
-                  const temp = pData['TEMPERATURE'];
                   const light = pData['LIGHT_INTENSITY'];
 
                   return (
                     <tr key={p.pillarCode} className="hover:bg-green-50/30 transition">
                       <td className="p-3.5 font-bold text-gray-900">
                         <div className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-green-500" />
+                          <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
                           <span>Trụ {p.pillarCode}</span>
                         </div>
                         <span className="text-[11px] text-gray-400 font-normal block pl-4">
@@ -348,25 +395,23 @@ export default function IoTMonitoringPage() {
                           {p.treeName || 'Đang canh tác'}
                         </span>
                       </td>
+                      
                       <td className="p-3.5 font-bold text-gray-800">
-                        {soilMoisture != null ? (
+                        {isActive && soilMoisture != null ? (
                           <span className={soilMoisture < 40 ? 'text-amber-600' : 'text-green-600'}>
                             {soilMoisture} %
                           </span>
                         ) : '--'}
                       </td>
                       <td className="p-3.5 font-bold text-gray-800">
-                        {ph != null ? `${ph} pH` : '--'}
+                        {isActive && ph != null ? `${ph} pH` : '--'}
                       </td>
                       <td className="p-3.5 font-bold text-gray-800">
-                        {temp != null ? `${temp} °C` : '--'}
-                      </td>
-                      <td className="p-3.5 font-bold text-gray-800">
-                        {light != null ? `${light} Lux` : '--'}
+                        {isActive && light != null ? `${light} Lux` : '--'}
                       </td>
                       <td className="p-3.5">
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-green-700 bg-green-100/70 px-2 py-0.5 rounded-full">
-                          <CheckCircle className="w-3 h-3 text-green-600" /> Trực tuyến
+                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${isActive ? 'text-green-700 bg-green-100/70' : 'text-gray-500 bg-gray-100'}`}>
+                          <CheckCircle className={`w-3 h-3 ${isActive ? 'text-green-600' : 'text-gray-400'}`} /> {isActive ? 'Trực tuyến' : 'Ngoại tuyến'}
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
@@ -400,63 +445,69 @@ export default function IoTMonitoringPage() {
         </div>
       )}
 
-      {/* THẺ SỐ LIỆU TỨC THỜI & BIỂU ĐỒ DIỄN BIẾN (CHỈ HIỂN THỊ KHI XEM RIÊNG TỪNG TRỤ) */}
+      {/* THẺ SỐ LIỆU TỨC THỜI & BIỂU ĐỒ (SINGLE VIEW) */}
       {!isAllView && (
-        <>
-          {/* THẺ SỐ LIỆU TỨC THỜI (REALTIME GAUGES) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
-            {sensorTypes.map(st => {
-              const val = latestData[st.name];
-              return (
-                <div key={st.name} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
-                  <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center mb-3 text-green-600">
-                    {SENSOR_ICONS[st.name] || <Activity className="w-5 h-5" />}
-                  </div>
-                  <div className="text-2xl font-black text-gray-900 tracking-tight">
-                    {val != null ? `${val} ${st.unit}` : '--'}
-                  </div>
-                  <div className="text-xs text-gray-500 font-medium mt-0.5">{st.description || st.name}</div>
-                </div>
-              );
-            })}
+        (!currentPillarInfo?.pillarCode || (Object.keys(latestData).length === 0 && !loading)) ? (
+          <div className="bg-white rounded-3xl border border-gray-100 p-8 text-center py-16 text-gray-500 mb-6 shadow-sm">
+            <Wifi className="w-12 h-12 mx-auto mb-3 opacity-20 text-gray-400" />
+            <h3 className="text-lg font-bold text-gray-700 mb-1">Trụ Chưa Có Dữ Liệu IoT</h3>
+            <p className="text-sm text-gray-500">Trụ này hiện chưa được gắn thiết bị cảm biến hoặc đang tạm ngoại tuyến.</p>
           </div>
-
-          {/* BIỂU ĐỒ DIỄN BIẾN THEO THỜI GIAN (LINE CHARTS) */}
-          {chartData.length > 0 && sensorTypes.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-              {sensorTypes.map((st, index) => (
-                <div key={st.name} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-                  <div className="flex items-center gap-2 mb-4 text-gray-800 font-bold text-sm">
-                    <div style={{ color: CHART_COLORS[index % CHART_COLORS.length] }}>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
+              {sensorTypes.map(st => {
+                const val = latestData[st.name];
+                return (
+                  <div key={st.name} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
+                    <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center mb-3 text-green-600">
                       {SENSOR_ICONS[st.name] || <Activity className="w-5 h-5" />}
                     </div>
-                    <span>{st.description || st.name} ({st.unit})</span>
+                    <div className="text-2xl font-black text-gray-900 tracking-tight">
+                      {val != null ? `${val} ${st.unit}` : '--'}
+                    </div>
+                    <div className="text-xs text-gray-500 font-medium mt-0.5">{st.description || st.name}</div>
                   </div>
-                  
-                  <ResponsiveContainer width="100%" height={190}>
-                    <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                      <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#9ca3af' }} tickMargin={8} />
-                      <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey={st.name} 
-                        name={st.description || st.name} 
-                        stroke={CHART_COLORS[index % CHART_COLORS.length]} 
-                        strokeWidth={2.5}
-                        dot={{ r: 2 }}
-                        activeDot={{ r: 5 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          )}
-        </>
+
+            {chartData.length > 0 && sensorTypes.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+                {sensorTypes.map((st, index) => (
+                  <div key={st.name} className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-2 mb-4 text-gray-800 font-bold text-sm">
+                      <div style={{ color: CHART_COLORS[index % CHART_COLORS.length] }}>
+                        {SENSOR_ICONS[st.name] || <Activity className="w-5 h-5" />}
+                      </div>
+                      <span>{st.description || st.name} ({st.unit})</span>
+                    </div>
+                    
+                    <ResponsiveContainer width="100%" height={190}>
+                      <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                        <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#9ca3af' }} tickMargin={8} />
+                        <YAxis tick={{ fontSize: 10, fill: '#9ca3af' }} />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey={st.name} 
+                          name={st.description || st.name} 
+                          stroke={CHART_COLORS[index % CHART_COLORS.length]} 
+                          strokeWidth={2.5}
+                          dot={{ r: 2 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )
       )}
 
       {!loading && sensorTypes.length === 0 && (
