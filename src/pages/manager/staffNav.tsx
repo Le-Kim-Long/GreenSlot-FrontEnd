@@ -28,7 +28,7 @@ export const staffNavItems = [
   { label: 'Yêu cầu trồng cây', path: '/dashboard/staff/tree-planting', icon: <Sprout className="w-full h-full" /> },
 
   // Giám sát & theo dõi
-  { label: 'Camera IoT', path: '/dashboard/staff/cameras', icon: <Video className="w-full h-full" />, roles: ['manager'] },
+  // { label: 'Camera IoT', path: '/dashboard/staff/cameras', icon: <Video className="w-full h-full" />, roles: ['manager'] },
   { label: 'Camera Tổng', path: '/dashboard/staff/cameras/all', icon: <Camera className="w-full h-full" /> },
   { label: 'Thống kê Cảnh báo', path: '/dashboard/staff/alert-analytics', icon: <AlertTriangle className="w-full h-full" /> },
   { label: 'Lịch sử Cảnh báo', path: '/dashboard/staff/alert-history', icon: <History className="w-full h-full" /> },
