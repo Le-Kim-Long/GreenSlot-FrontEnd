@@ -97,12 +97,14 @@ export default function CameraAllPage() {
     }
   }, []);
 
-  const handleViewCamera = (camera: CameraDTO) => {
+const handleViewCamera = (camera: CameraDTO) => {
     setSelectedCamera(camera);
     setModalVisible(true);
-    if (camera.capture_url) {
-      refreshSnapshot(camera.capture_url);
-      startAutoRefresh(camera.capture_url);
+    
+    // Tối ưu: Dùng trực tiếp luồng stream video thay vì gọi ảnh liên tục
+    if (camera.stream_url) {
+      setSnapshotUri(camera.stream_url); 
+      // Không gọi hàm startAutoRefresh() nữa vì stream đã tự động chạy
     } else {
       setSnapshotUri(null);
     }
