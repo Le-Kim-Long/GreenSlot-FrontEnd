@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Columns3, Plus, Edit2, X, Search, Trash2, Loader2, Sprout, Layers } from 'lucide-react';
+import { Columns3, Plus, Edit2, X, Search, Trash2, Loader2, Sprout, Layers, AlertCircle } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { managerApi, PillarItem, PillarFormData } from '../../api/managerApi';
@@ -43,6 +43,7 @@ export default function PillarManagement() {
   const [saving, setSaving] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<PillarItem | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -67,6 +68,12 @@ export default function PillarManagement() {
 
   useEffect(() => { fetchData(); }, []);
 
+  const determinePillarType = (holes: number): string => {
+    if (holes <= 24) return 'SMALL';
+    if (holes <= 36) return 'MEDIUM';
+    return 'LARGE';
+  };
+
   const handlePillarTypeChange = (newType: string) => {
     const matched = PILLAR_TYPES.find(t => t.value === newType);
     setForm(f => ({
@@ -77,9 +84,22 @@ export default function PillarManagement() {
     }));
   };
 
+  const handleHolesChange = (holesVal: number) => {
+    const safeHoles = isNaN(holesVal) ? 0 : holesVal;
+    const newType = determinePillarType(safeHoles);
+    const matched = PILLAR_TYPES.find(t => t.value === newType);
+    setForm(f => ({
+      ...f,
+      capacityHoles: safeHoles,
+      pillarType: newType,
+      price: matched ? matched.defaultPrice : f.price,
+    }));
+  };
+
   const openCreate = () => {
     setEditing(null);
     setError('');
+    setFormError('');
     setForm({
       ...emptyForm,
       locationId: locations[0]?.id || 0,
@@ -90,6 +110,7 @@ export default function PillarManagement() {
 
   const openEdit = async (p: PillarItem) => {
     setError('');
+    setFormError('');
     setEditing(p);
     setShowForm(true);
     setLoadingDetail(true);
@@ -118,10 +139,14 @@ export default function PillarManagement() {
 
   const handleSubmit = async () => {
     if (!form.pillarCode?.trim() || !form.locationId || form.locationId === 0) {
-      setError('Vui lòng nhập đầy đủ Mã trụ và chọn Cơ sở.');
+      setFormError('Vui lòng nhập đầy đủ Mã trụ và chọn Cơ sở.');
       return;
     }
-    setError('');
+    if (form.capacityHoles === undefined || form.capacityHoles === null || form.capacityHoles < 1 || form.capacityHoles > 100) {
+      setFormError('Số hốc trồng phải từ 1 đến 100 hốc.');
+      return;
+    }
+    setFormError('');
     setSaving(true);
     try {
       if (editing) {
@@ -132,7 +157,7 @@ export default function PillarManagement() {
       setShowForm(false);
       fetchData();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Lưu thất bại');
+      setFormError(err?.response?.data?.message || 'Lưu thất bại');
     } finally {
       setSaving(false);
     }
@@ -210,8 +235,10 @@ export default function PillarManagement() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {paginatedPillars.map(p => {
-                const isSmall = p.pillarType === 'SMALL';
-                const isLarge = p.pillarType === 'LARGE';
+                const holes = p.capacityHoles || (p.pillarType === 'LARGE' ? 48 : p.pillarType === 'SMALL' ? 24 : 36);
+                const isSmall = holes <= 24;
+                const isLarge = holes > 36;
+                const typeName = p.pillarTypeName || (isLarge ? 'Trụ Lớn' : isSmall ? 'Trụ Nhỏ' : 'Trụ Vừa');
                 return (
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                     <td className="py-3.5">
@@ -233,7 +260,7 @@ export default function PillarManagement() {
                               isSmall ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                               'bg-blue-50 text-blue-700 border border-blue-200'
                             )}>
-                              {p.pillarTypeName || (isLarge ? 'Trụ Lớn' : isSmall ? 'Trụ Nhỏ' : 'Trụ Vừa')}
+                              {typeName}
                             </span>
                           </div>
                           {p.slotNumber ? (
@@ -274,8 +301,15 @@ export default function PillarManagement() {
                     </td>
                     <td className="py-3.5 text-gray-600 text-xs font-medium">{getLocationName(p.locationId)}</td>
                     <td className="py-3.5">
-                      <span className={clsx('text-xs px-2.5 py-1 rounded-full font-semibold shadow-xs', p.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : p.status === 'MAINTENANCE' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600')}>
-                        {p.status === 'ACTIVE' ? 'Hoạt động' : p.status === 'MAINTENANCE' ? 'Bảo trì' : p.status}
+                      <span className={clsx(
+                        'text-xs px-2.5 py-1 rounded-full font-semibold shadow-xs',
+                        p.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                        p.status === 'RENTED' ? 'bg-blue-100 text-blue-700' :
+                        p.status === 'MAINTENANCE' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600'
+                      )}>
+                        {p.status === 'ACTIVE' ? 'Hoạt động' :
+                         p.status === 'RENTED' ? 'Đang thuê' :
+                         p.status === 'MAINTENANCE' ? 'Bảo trì' : p.status}
                       </span>
                     </td>
                     <td className="py-3.5 text-right">
@@ -336,10 +370,17 @@ export default function PillarManagement() {
       {showForm && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
               <h2 className="text-xl font-bold text-gray-900">{editing ? 'Chỉnh sửa Trụ Vườn' : 'Thêm Trụ Vườn Mới'}</h2>
               <button onClick={() => setShowForm(false)} className="p-1.5 hover:bg-gray-100 rounded-xl text-gray-400"><X className="w-5 h-5" /></button>
             </div>
+            
+            {formError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-3.5 mb-4 text-xs flex items-start gap-2.5 font-medium leading-relaxed shadow-xs animate-in fade-in duration-200">
+                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-600" />
+                <span className="flex-1">{formError}</span>
+              </div>
+            )}
             
             {loadingDetail ? (
               <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
@@ -364,18 +405,28 @@ export default function PillarManagement() {
                       <option key={t.value} value={t.value}>{t.label}</option>
                     ))}
                   </select>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    Hệ thống sẽ tự động xác định Loại trụ và Giá đề xuất khi bạn nhập số hốc trồng (≤24: Trụ Nhỏ, 25-36: Trụ Vừa, &gt;36: Trụ Lớn).
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="label font-medium text-gray-700">Số hốc trồng</label>
+                    <label className="label font-medium text-gray-700">Số hốc trồng (1 - 100) *</label>
                     <input
                       type="number"
-                      className="input rounded-xl"
+                      className={clsx(
+                        "input rounded-xl",
+                        formError && (form.capacityHoles === undefined || form.capacityHoles === null || form.capacityHoles < 1 || form.capacityHoles > 100) && "border-red-500 ring-1 ring-red-500 bg-red-50/20"
+                      )}
                       value={form.capacityHoles}
-                      onChange={e => setForm(f => ({ ...f, capacityHoles: Number(e.target.value) }))}
+                      onChange={e => handleHolesChange(Number(e.target.value))}
                       min={1}
+                      max={100}
                     />
+                    {formError && (form.capacityHoles === undefined || form.capacityHoles === null || form.capacityHoles < 1 || form.capacityHoles > 100) && (
+                      <p className="text-[11px] text-red-600 mt-1 font-medium">Hốc trồng phải từ 1 đến 100</p>
+                    )}
                   </div>
                   <div>
                     <label className="label font-medium text-gray-700">Giá thuê trụ (VNĐ/tháng)</label>
@@ -442,7 +493,8 @@ export default function PillarManagement() {
                 <div>
                   <label className="label font-medium text-gray-700">Trạng thái</label>
                   <select className="input rounded-xl" value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                    <option value="ACTIVE">Hoạt động</option>
+                    <option value="ACTIVE">Hoạt động (Sẵn sàng)</option>
+                    <option value="RENTED">Đang thuê</option>
                     <option value="MAINTENANCE">Bảo trì</option>
                   </select>
                 </div>
