@@ -87,57 +87,51 @@ export default function GardenListPage() {
             )}
           </div>
 
-          {/* Location Selector Tabs / Pills */}
-          <div className="mb-6">
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5">
-              Chọn cơ sở vườn:
-            </label>
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedLocationId('');
-                  setCurrentPage(1);
-                }}
-                className={clsx(
-                  'flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all whitespace-nowrap border shadow-sm',
-                  selectedLocationId === ''
-                    ? 'bg-green-600 text-white border-green-600 shadow-green-600/20'
-                    : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                )}
-              >
-                <Grid3X3 className="w-4 h-4" />
-                <span>Tất cả cơ sở</span>
-                <span className={clsx(
-                  'text-xs px-2 py-0.5 rounded-full font-bold',
-                  selectedLocationId === '' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
-                )}>
-                  {slots.length} ô
-                </span>
-              </button>
+          {/* Location Selector Dropdown */}
+          <div className="mb-6 bg-gray-50/70 p-4 rounded-2xl border border-gray-200/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-green-100 text-green-700 rounded-xl">
+                  <MapPin className="w-4 h-4" />
+                </div>
+                <div>
+                  <label htmlFor="location-select" className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
+                    Chọn cơ sở vườn gần bạn:
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    {selectedLocationId === '' 
+                      ? `Đang hiển thị toàn bộ ${slots.length} ô vườn từ ${locations.length} cơ sở GreenSlot` 
+                      : `Đang lọc ô vườn tại ${activeLocation?.name || ''}`}
+                  </p>
+                </div>
+              </div>
 
-              {locations.map((loc) => {
-                const isSelected = selectedLocationId === loc.id;
-                return (
-                  <button
-                    key={loc.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedLocationId(loc.id);
+              <div className="w-full sm:w-auto min-w-[280px] md:min-w-[340px]">
+                <div className="relative">
+                  <select
+                    id="location-select"
+                    value={selectedLocationId}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? '' : Number(e.target.value);
+                      setSelectedLocationId(val);
                       setCurrentPage(1);
                     }}
-                    className={clsx(
-                      'flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all whitespace-nowrap border shadow-sm',
-                      isSelected
-                        ? 'bg-green-600 text-white border-green-600 shadow-green-600/20'
-                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-                    )}
+                    className="w-full pl-4 pr-10 py-2.5 bg-white hover:bg-gray-50/80 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all cursor-pointer shadow-sm appearance-none"
                   >
-                    <MapPin className={clsx('w-4 h-4', isSelected ? 'text-white' : 'text-green-600')} />
-                    <span>{loc.name}</span>
-                  </button>
-                );
-              })}
+                    <option value="">
+                      🌐 Tất cả cơ sở ({locations.length} cơ sở • {slots.length} ô khả dụng)
+                    </option>
+                    {locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        📍 {loc.name} {loc.address ? `(${loc.address})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                    <ChevronRight className="w-4 h-4 transform rotate-90" />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
