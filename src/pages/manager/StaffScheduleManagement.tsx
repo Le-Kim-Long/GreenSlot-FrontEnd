@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { staffScheduleApi, StaffSchedule } from '../../api/staffScheduleApi';
 import { managerApi, LocationItem, GardenStaff } from '../../api/managerApi';
-import { Calendar, Plus, Edit2, Trash2, X, Search, Clock, MapPin, User, Loader2 } from 'lucide-react';
+import { Calendar, Plus, Edit2, Trash2, X, Search, MapPin, User, Loader2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { Toast, ToastData } from '../../components/common/Toast';
@@ -15,6 +15,7 @@ const emptyForm: Partial<StaffSchedule> = {
   locationId: undefined,
   locationName: '',
   scheduleDate: new Date().toISOString().split('T')[0],
+  endDate: new Date().toISOString().split('T')[0],
   startTime: '08:00',
   endTime: '17:00',
   notes: '',
@@ -141,44 +142,44 @@ export default function StaffScheduleManagement() {
       return;
     }
 
+    if (!formData.locationId) {
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn cơ sở làm việc!');
+      return;
+    }
+
     if (!formData.scheduleDate) {
-      showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn ngày trực!');
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn ngày bắt đầu trực (Từ ngày)!');
       return;
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const chosenDate = new Date(formData.scheduleDate);
-    if (isNaN(chosenDate.getTime()) || chosenDate < today) {
-      showToast('warning', 'Ngày trực không hợp lệ', 'Không được chọn ngày trong quá khứ.');
+    const startDate = new Date(formData.scheduleDate);
+    if (isNaN(startDate.getTime()) || startDate < today) {
+      showToast('warning', 'Ngày trực không hợp lệ', 'Không được chọn ngày bắt đầu trực trong quá khứ.');
       return;
     }
 
-    if (!formData.startTime || !formData.endTime) {
-      showToast('warning', 'Thiếu thông tin', 'Vui lòng nhập đầy đủ giờ bắt đầu và kết thúc.');
+    const effectiveEndDate = formData.endDate || formData.scheduleDate;
+    const endDate = new Date(effectiveEndDate);
+    if (isNaN(endDate.getTime()) || endDate < startDate) {
+      showToast('warning', 'Ngày kết thúc không hợp lệ', 'Ngày kết thúc phải cùng ngày hoặc sau ngày bắt đầu trực.');
       return;
     }
 
-    const [startH, startM] = formData.startTime.split(':').map(Number);
-    const [endH, endM] = formData.endTime.split(':').map(Number);
-    const diffMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-
-    if (diffMinutes <= 0) {
-      showToast('warning', 'Thời gian trực không hợp lệ', 'Giờ kết thúc phải sau giờ bắt đầu.');
-      return;
-    }
-
-    if (diffMinutes > 8 * 60) {
-      showToast('warning', 'Vượt quá thời gian quy định', 'Thời gian làm việc một ca không được vượt quá 8 tiếng (tối đa 8 giờ/ngày).');
-      return;
-    }
+    const payload: Partial<StaffSchedule> = {
+      ...formData,
+      endDate: effectiveEndDate,
+      startTime: formData.startTime || '08:00',
+      endTime: formData.endTime || '17:00',
+    };
 
     setIsSubmitting(true);
     try {
       if (editingItem) {
-        await staffScheduleApi.updateSchedule(editingItem.id, formData);
+        await staffScheduleApi.updateSchedule(editingItem.id, payload);
       } else {
-        await staffScheduleApi.createSchedule(formData);
+        await staffScheduleApi.createSchedule(payload);
       }
       showToast('success', editingItem ? 'Cập nhật lịch làm việc thành công!' : 'Phân ca thành công!');
       setIsModalOpen(false);
@@ -211,7 +212,9 @@ export default function StaffScheduleManagement() {
       const matchSearch = s.staffName?.toLowerCase().includes(search.toLowerCase()) ||
         s.locationName?.toLowerCase().includes(search.toLowerCase()) ||
         s.notes?.toLowerCase().includes(search.toLowerCase());
-      const matchDate = !dateFilter || s.scheduleDate === dateFilter;
+      const matchDate = !dateFilter || (
+        s.scheduleDate <= dateFilter && (!s.endDate || s.endDate >= dateFilter)
+      );
       return matchSearch && matchDate;
     })
     .sort((a, b) => {
@@ -290,7 +293,7 @@ export default function StaffScheduleManagement() {
               <tr>
                 <th className="p-4 font-semibold text-gray-600">Nhân viên</th>
                 <th className="p-4 font-semibold text-gray-600">Khu vực & Ô vườn</th>
-                <th className="p-4 font-semibold text-gray-600">Ngày & Giờ trực</th>
+                <th className="p-4 font-semibold text-gray-600">Thời gian trực</th>
                 <th className="p-4 font-semibold text-gray-600">Ghi chú</th>
                 <th className="p-4 font-semibold text-gray-600">Trạng thái</th>
                 <th className="p-4 font-semibold text-gray-600 text-right">Hành động</th>
@@ -331,10 +334,26 @@ export default function StaffScheduleManagement() {
                       </div>
                     </td>
                     <td className="p-4">
-                      <div className="font-medium text-gray-800">{schedule.scheduleDate}</div>
-                      <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                        <Clock className="w-3.5 h-3.5 text-blue-500" />
-                        {schedule.startTime} - {schedule.endTime}
+                      {schedule.endDate && schedule.endDate !== schedule.scheduleDate ? (
+                        <div>
+                          <div className="font-semibold text-gray-900 flex items-center gap-1.5">
+                            <Calendar className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                            <span>Từ {schedule.scheduleDate}</span>
+                          </div>
+                          <div className="text-xs text-gray-600 pl-5.5 mt-0.5 font-medium">
+                            đến {schedule.endDate}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 font-semibold text-gray-900">
+                          <Calendar className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                          <span>{schedule.scheduleDate}</span>
+                        </div>
+                      )}
+                      <div className="mt-1">
+                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[11px] font-semibold px-2 py-0.5 rounded border border-emerald-200">
+                          Trực theo ngày
+                        </span>
                       </div>
                     </td>
                     <td className="p-4 text-gray-600 italic text-xs max-w-xs truncate">
@@ -456,34 +475,36 @@ export default function StaffScheduleManagement() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block font-medium text-gray-700 mb-1">Ngày trực</label>
-                  <input 
-                    type="date" required
-                    min={new Date().toLocaleDateString('en-CA')}
-                    className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"
-                    value={formData.scheduleDate || ''}
-                    onChange={e => setFormData({...formData, scheduleDate: e.target.value})}
-                  />
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-medium text-gray-700 mb-1">Giờ bắt đầu</label>
+                    <label className="block font-medium text-gray-700 mb-1">
+                      Từ ngày <span className="text-red-500">*</span>
+                    </label>
                     <input 
-                      type="time" required
-                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"
-                      value={formData.startTime || ''}
-                      onChange={e => setFormData({...formData, startTime: e.target.value})}
+                      type="date" required
+                      min={new Date().toLocaleDateString('en-CA')}
+                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20 bg-white"
+                      value={formData.scheduleDate || ''}
+                      onChange={e => {
+                        const newStart = e.target.value;
+                        setFormData(prev => ({
+                          ...prev,
+                          scheduleDate: newStart,
+                          endDate: prev.endDate && prev.endDate < newStart ? newStart : prev.endDate || newStart,
+                        }));
+                      }}
                     />
                   </div>
                   <div>
-                    <label className="block font-medium text-gray-700 mb-1">Giờ kết thúc (Tối đa 8 tiếng/ca)</label>
+                    <label className="block font-medium text-gray-700 mb-1">
+                      Đến ngày <span className="text-red-500">*</span>
+                    </label>
                     <input 
-                      type="time" required
-                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"
-                      value={formData.endTime || ''}
-                      onChange={e => setFormData({...formData, endTime: e.target.value})}
+                      type="date" required
+                      min={formData.scheduleDate || new Date().toLocaleDateString('en-CA')}
+                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20 bg-white"
+                      value={formData.endDate || formData.scheduleDate || ''}
+                      onChange={e => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
                     />
                   </div>
                 </div>
