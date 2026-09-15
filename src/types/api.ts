@@ -62,7 +62,7 @@ export interface AvailableSlotDTO {
 export interface BookingRequest {
   slotId: number;
   durationInMonths: number;
-  startTime: string;
+  startTime?: string;
   treeId?: number;
   treeIds?: number[];
   pillarIds?: number[];
