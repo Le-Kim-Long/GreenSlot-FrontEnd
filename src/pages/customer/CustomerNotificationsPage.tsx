@@ -30,6 +30,8 @@ import { useAuth } from '../../context/AuthContext';
 import {
   formatRelativeTime,
   formatExactDateTime,
+  formatNotificationTitle,
+  formatNotificationMessage,
   getNotificationMeta,
   getNotificationTargetUrl,
   matchesCategory,
@@ -372,12 +374,12 @@ export default function CustomerNotificationsPage() {
                             !item.isRead ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'
                           }`}
                         >
-                          {item.title}
+                          {formatNotificationTitle(item.title, item.type)}
                         </h2>
 
                         {/* Message body */}
                         <p className="text-xs sm:text-sm text-gray-600 leading-relaxed break-words whitespace-pre-line">
-                          {item.message}
+                          {formatNotificationMessage(item.message, item.type)}
                         </p>
 
                         {/* Bottom Action Row */}

@@ -7,10 +7,10 @@ export default function ServicesPage() {
   const services = [
     {
       icon: <Droplets className="w-10 h-10 text-blue-400" />,
-      title: 'Tưới cây tự động (Smart Irrigation)',
-      desc: 'Hệ thống tưới nhỏ giọt thông minh được điều khiển qua IoT. Tự động điều chỉnh lượng nước dựa trên độ ẩm đất và loại cây trồng.',
+      title: 'Hệ thống máy bơm tưới cây (Smart Irrigation)',
+      desc: 'Hệ thống máy bơm và tưới thông minh được điều khiển qua IoT, hỗ trợ kích hoạt tưới nước kịp thời khi cảm biến độ ẩm đất cảnh báo.',
       color: 'bg-blue-900/30',
-      features: ['Tưới nhỏ giọt chính xác', 'Cảm biến độ ẩm đất', 'Lên lịch tưới tự động']
+      features: ['Tưới nhỏ giọt chính xác', 'Cảm biến độ ẩm đất', 'Kích hoạt tưới theo cảnh báo']
     },
     {
       icon: <Thermometer className="w-10 h-10 text-red-400" />,

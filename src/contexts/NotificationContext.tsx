@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { notificationApi, NotificationItem } from '../api/notificationApi';
 import { useAuth } from '../context/AuthContext';
+import { formatNotificationTitle, formatNotificationMessage } from '../utils/notificationHelpers';
 
 interface NotificationContextType {
   notifications: NotificationItem[];
@@ -30,7 +31,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       ]);
 
       if (listData.status === 'fulfilled' && Array.isArray(listData.value)) {
-        setNotifications(listData.value);
+        const sanitizedList = listData.value.map(item => ({
+          ...item,
+          title: formatNotificationTitle(item.title, item.type),
+          message: formatNotificationMessage(item.message, item.type),
+        }));
+        setNotifications(sanitizedList);
         // If unread endpoint succeeded use it, otherwise compute from list
         if (unreadData.status === 'fulfilled' && typeof unreadData.value?.unreadCount === 'number') {
           setUnreadCount(unreadData.value.unreadCount);

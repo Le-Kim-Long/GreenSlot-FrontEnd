@@ -435,7 +435,7 @@ export default function ServiceManagement() {
               <div className="space-y-4">
                 <div>
                   <label className="label">Tên *</label>
-                  <input className="input" value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} placeholder="VD: Tưới cây tự động" />
+                  <input className="input" value={typeForm.name} onChange={e => setTypeForm(f => ({ ...f, name: e.target.value }))} placeholder="VD: Tưới nước chăm sóc cây" />
                 </div>
                 <div>
                   <label className="label">Danh mục *</label>
