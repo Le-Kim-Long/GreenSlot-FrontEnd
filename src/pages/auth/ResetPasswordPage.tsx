@@ -10,6 +10,7 @@ export default function ResetPasswordPage() {
 
   const [form, setForm] = useState({ password: '', confirmPassword: '' });
   const [showPwd, setShowPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -96,14 +97,19 @@ export default function ResetPasswordPage() {
                 </div>
                 <div>
                   <label className="label">Xác nhận mật khẩu</label>
-                  <input
-                    type="password"
-                    className="input"
-                    placeholder="Nhập lại mật khẩu mới"
-                    value={form.confirmPassword}
-                    onChange={e => setForm(p => ({ ...p, confirmPassword: e.target.value }))}
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPwd ? 'text' : 'password'}
+                      className="input pr-10"
+                      placeholder="Nhập lại mật khẩu mới"
+                      value={form.confirmPassword}
+                      onChange={e => setForm(p => ({ ...p, confirmPassword: e.target.value }))}
+                      required
+                    />
+                    <button type="button" onClick={() => setShowConfirmPwd(!showConfirmPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      {showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <button type="submit" className="btn-primary w-full py-3 text-base" disabled={loading}>
                   {loading ? 'Đang xử lý...' : 'Đặt lại mật khẩu'}
