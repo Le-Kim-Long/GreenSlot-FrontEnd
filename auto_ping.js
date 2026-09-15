@@ -1,45 +1,121 @@
+import express from 'express';
+import cors from 'cors';
 import axios from 'axios';
+import http from 'http';
 
-// Địa chỉ Spring Boot của bạn trên Render
-const BACKEND_API_URL = 'https://greenslot-backend.onrender.com/api/cameras/ping'; 
+const app = express();
+app.use(cors());
 
-async function autoUpdateCameraUrl() {
-    try {
-        const ngrokResponse = await axios.get('http://127.0.0.1:4040/api/tunnels');
-        
-        const tunnels = ngrokResponse.data.tunnels;
-        if (tunnels.length === 0) {
-            console.log("❌ Không tìm thấy tunnel. Hãy mở Terminal khác và chạy lệnh 'ngrok http 192.168.1.12:81' trước!");
-            return;
-        }
+// ================= TRANG CHỦ =================
+app.get('/', (req, res) => {
+    res.send(`
+        <div style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+            <h1 style="color: #16a34a;">✅ Proxy Server Đang Hoạt Động!</h1>
+            <p>Hệ thống truyền phát Video từ ESP32 đã sẵn sàng.</p>
+        </div>
+    `);
+});
 
-        const publicUrl = tunnels[0].public_url;
-        const captureUrl = publicUrl + "/capture";
-        const streamUrl = publicUrl + "/stream";
+// ================= CẤU HÌNH =================
+const PROXY_PORT = 3000; 
+const ESP32_IP = '10.10.10.237'; 
+const ESP32_STREAM_URL = `http://${ESP32_IP}:81/stream`;
+const BACKEND_API_URL = 'https://greenslot-backend.onrender.com/api/cameras/ping';
 
-        await axios.post(BACKEND_API_URL, {
-            cam_id: "CAM_SVIET_01",
-            name: "Vườn Rau Tầng 1 (Ngrok)",
-            ip: "Mạng 4G Đồ Án", 
-            stream_url: streamUrl,
-            capture_url: captureUrl
+const CLOUDFLARE_URL = 'https://browse-phones-walk-len.trycloudflare.com';
+
+// ================= 1. HỆ THỐNG PROXY ĐỘNG (THÔNG MINH) =================
+let clients = []; 
+let esp32Controller = null; // Cầu dao để ngắt ESP32 khi không ai xem
+
+function startESP32Stream() {
+    console.log("🔄 Bắt đầu yêu cầu luồng video từ ESP32...");
+    esp32Controller = new AbortController();
+
+    axios({
+        method: 'get',
+        url: ESP32_STREAM_URL,
+        responseType: 'stream',
+        signal: esp32Controller.signal
+    }).then(response => {
+        console.log("✅ Đã kết nối thành công tới ESP32-CAM!");
+        response.data.on('data', (chunk) => {
+            clients.forEach(client => {
+                try { client.write(chunk); } catch(e) {}
+            });
         });
+    }).catch(err => {
+        if (axios.isCancel(err)) {
+            console.log("🛑 Đã cho ESP32 đi ngủ vì không còn ai xem.");
+        } else {
+            console.log("❌ Không tìm thấy ESP32, thử lại sau 2 giây...");
+            setTimeout(() => {
+                if (clients.length > 0) startESP32Stream();
+            }, 2000);
+        }
+    });
+}
 
-        const time = new Date().toLocaleTimeString();
-        console.log(`[${time}] 🎉 Đã ping thành công URL (${publicUrl}) lên Spring Boot!`);
-
-    } catch (error) {
-        console.error("❌ Lỗi kết nối:", error.message);
+function stopESP32Stream() {
+    if (esp32Controller) {
+        esp32Controller.abort();
+        esp32Controller = null;
     }
 }
 
-// 1. Chạy ngay lập tức lần đầu tiên
-console.log("🚀 Đang khởi động Tool Auto-Ping Ngrok...");
+app.get('/stream', (req, res) => {
+    // Ép Cloudflare không được ngậm dữ liệu (Chống màn hình trắng)
+    res.writeHead(200, {
+        'Content-Type': 'multipart/x-mixed-replace; boundary=123456789000000000000987654321',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0',
+        'Connection': 'keep-alive',
+        'Pragma': 'no-cache',
+        'X-Accel-Buffering': 'no' // Chìa khóa vàng chống đệm
+    });
+
+    // Gửi ngay dải phân cách chuẩn để trình duyệt không bị ngợp
+    res.write('\r\n--123456789000000000000987654321\r\n');
+
+    clients.push(res);
+    console.log(`🎥 Có người mới vào xem. Tổng số người đang xem: ${clients.length}`);
+
+    // Đánh thức ESP32 nếu đây là người đầu tiên vào xem
+    if (clients.length === 1) {
+        startESP32Stream();
+    }
+
+    req.on('close', () => {
+        clients = clients.filter(client => client !== res);
+        console.log(`👋 Một người vừa thoát. Còn lại: ${clients.length}`);
+        
+        // Tránh cháy mạch: Cho ESP32 nghỉ ngơi khi tất cả đã thoát
+        if (clients.length === 0) {
+            stopESP32Stream();
+        }
+    });
+});
+
+const server = http.createServer(app);
+server.listen(PROXY_PORT, () => {
+    console.log(`\n🚀 [PROXY SERVER] Đang chạy tại http://localhost:${PROXY_PORT}`);
+});
+
+// ================= 2. HỆ THỐNG AUTO-PING LÊN SERVER =================
+async function autoUpdateCameraUrl() {
+    try {
+        const streamUrl = CLOUDFLARE_URL + "/stream"; 
+        await axios.post(BACKEND_API_URL, {
+            cam_id: "CAM_SVIET_01",
+            name: "Vườn Rau Tầng 1 (Cloudflare Proxy)",
+            ip: "Mạng 4G Đồ Án", 
+            stream_url: streamUrl,
+            capture_url: ""
+        });
+        console.log(`[${new Date().toLocaleTimeString()}] 🎉 Ping URL Cloudflare thành công!`);
+    } catch (error) {
+        console.log("❌ Lỗi ping lên Spring Boot...");
+    }
+}
+
 autoUpdateCameraUrl();
-
-// 2. Thiết lập vòng lặp cứ mỗi 30 giây chạy lại 1 lần
-setInterval(() => {
-    autoUpdateCameraUrl();
-}, 30000);
-
-console.log("⏳ Đã bật chế độ giữ Server Render thức tỉnh mỗi 30 giây. Nhấn Ctrl + C để thoát.");
+setInterval(autoUpdateCameraUrl, 30000);
