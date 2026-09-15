@@ -321,14 +321,15 @@ export default function GardenDetailPage() {
       const now = new Date();
       const todayStr = now.toLocaleDateString('en-CA');
       const isToday = startDate === todayStr;
-      const startTimeIso = isToday ? now.toISOString() : new Date(`${startDate}T00:00:00`).toISOString();
+      // Tránh dùng toISOString() vì sẽ quy đổi về UTC làm lùi 7 tiếng thành ngày hôm trước tại Việt Nam (GMT+7)
+      const startTimePayload = isToday ? undefined : `${startDate}T00:00:00`;
 
       const treeIdsPayload = chosenPillars.map(p => pillarTreeSelections[p.id] || selectedTreeId || (trees[0]?.id || 1));
 
       const result = await bookingApi.bookSlot({
         slotId: slot.id,
         durationInMonths: bookingMonths,
-        startTime: startTimeIso,
+        startTime: startTimePayload,
         treeId: treeIdsPayload[0],
         treeIds: treeIdsPayload,
         smallPillarsCount: smallCount,
