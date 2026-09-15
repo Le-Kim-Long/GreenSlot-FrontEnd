@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Columns3, Grid3X3, Wrench, DollarSign, TrendingUp, Calendar, ArrowRight, ClipboardList, Layers, User, ShieldAlert, CheckCircle2, AlertTriangle, PieChart as PieIcon } from 'lucide-react';
+import { MapPin, Columns3, Grid3X3, Wrench, DollarSign, TrendingUp, Calendar, ArrowRight, ClipboardList, Layers, User, ShieldAlert, CheckCircle2, AlertTriangle, PieChart as PieIcon, Cpu } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
@@ -128,10 +128,12 @@ export default function StaffDashboard() {
   ];
 
   const quickActions = [
+    { label: 'Quản lý thiết bị', desc: 'Gắn cảm biến & thiết bị vào trụ vườn', path: '/dashboard/staff/equipment', icon: <Cpu className="w-5 h-5" /> },
+    { label: 'Quản lý trụ vườn', desc: 'Danh sách và thông tin các trụ', path: '/dashboard/staff/pillars', icon: <Columns3 className="w-5 h-5" /> },
     { label: 'Quản lý cơ sở', desc: 'Thêm, sửa thông tin cơ sở', path: '/dashboard/staff/locations', icon: <MapPin className="w-5 h-5" /> },
     { label: 'Quản lý ô vườn', desc: 'Thêm, sửa ô vườn và giá', path: '/dashboard/staff/slots', icon: <Grid3X3 className="w-5 h-5" /> },
     { label: 'Quản lý dịch vụ', desc: 'Danh mục & loại dịch vụ', path: '/dashboard/staff/services', icon: <Wrench className="w-5 h-5" /> },
-    { label: 'Xem doanh thu', desc: 'Phân tích doanh thu theo ngày', path: '/dashboard/staff/revenue', icon: <TrendingUp className="w-5 h-5" /> },
+    ...(user?.role === 'manager' ? [{ label: 'Xem doanh thu', desc: 'Phân tích doanh thu theo ngày', path: '/dashboard/staff/revenue', icon: <TrendingUp className="w-5 h-5" /> }] : []),
   ];
 
   return (
