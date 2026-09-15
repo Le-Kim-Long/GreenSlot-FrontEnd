@@ -264,8 +264,12 @@ export default function EquipmentManagement() {
       showToast('warning', 'Thiếu thông tin', 'Vui lòng nhập Tên thiết bị.');
       return;
     }
-    if (!formData.pillarId) {
-      showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn Trụ vườn cho thiết bị.');
+    if (!formData.serialNumber?.trim()) {
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng nhập Mã thiết bị (Serial Number) để liên kết cảm biến.');
+      return;
+    }
+    if (formData.status === 'IN_USE' && !formData.pillarId) {
+      showToast('warning', 'Thiếu thông tin', 'Thiết bị đang sử dụng cần được gắn vào một Trụ vườn.');
       return;
     }
 
@@ -633,11 +637,14 @@ export default function EquipmentManagement() {
       <CustomDropdown
         icon={<Layers className="w-4 h-4 text-green-600 shrink-0" />}
         value={formData.pillarId ?? ''}
-        onChange={(val: any) => setFormData({...formData, pillarId: Number(val)})}
-        options={formPillarOptions.map((p: any) => ({
-          value: String(p.id),
-          label: p.pillarName ? `${p.pillarName}${p.pillarCode ? ` (${p.pillarCode})` : ''}` : (p.pillarCode || `Trụ #${p.id}`),
-        }))}
+        onChange={(val: any) => setFormData({...formData, pillarId: val ? Number(val) : undefined})}
+        options={[
+          { value: '', label: '📦 Cất kho (Chưa gắn vào trụ nào)' },
+          ...formPillarOptions.map((p: any) => ({
+            value: String(p.id),
+            label: p.pillarName ? `${p.pillarName}${p.pillarCode ? ` (${p.pillarCode})` : ''}` : (p.pillarCode || `Trụ #${p.id}`),
+          }))
+        ]}
         placeholder={canFilterByLocation && !formLocationId ? 'Chọn cơ sở trước' : 'Chọn trụ vườn (Để trống nếu cất kho)'}
         className="w-full"
       />

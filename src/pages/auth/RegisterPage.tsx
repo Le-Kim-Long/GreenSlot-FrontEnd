@@ -31,6 +31,7 @@ export default function RegisterPage() {
   const [resendLoading, setResendLoading] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [showPwd, setShowPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [error, setError] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -398,12 +399,17 @@ export default function RegisterPage() {
                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Xác nhận mật khẩu</label>
                     <div className={`relative rounded-xl border-2 transition-all duration-300 ${focused === 'confirm' ? 'border-green-500 shadow-lg shadow-green-500/10' : form.confirmPwd && form.confirmPwd === form.password ? 'border-green-400' : 'border-gray-200 hover:border-gray-300'}`}>
                       <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input type="password" className="w-full bg-transparent pl-10 pr-10 py-3 text-sm focus:outline-none rounded-xl" placeholder="Nhập lại mật khẩu"
+                      <input type={showConfirmPwd ? 'text' : 'password'} className="w-full bg-transparent pl-10 pr-20 py-3 text-sm focus:outline-none rounded-xl" placeholder="Nhập lại mật khẩu"
                         value={form.confirmPwd} onChange={e => setForm(p => ({ ...p, confirmPwd: e.target.value }))}
                         onFocus={() => setFocused('confirm')} onBlur={() => setFocused('')} required />
-                      {form.confirmPwd && form.confirmPwd === form.password && (
-                        <CheckCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
-                      )}
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                        {form.confirmPwd && form.confirmPwd === form.password && (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        )}
+                        <button type="button" onClick={() => setShowConfirmPwd(!showConfirmPwd)} className="text-gray-400 hover:text-green-600 transition-colors">
+                          {showConfirmPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
