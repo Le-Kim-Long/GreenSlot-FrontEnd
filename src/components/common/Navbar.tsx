@@ -16,7 +16,13 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { getDashboardPath as resolveDashboardPath, roleLabel } from '../../utils/roleMap';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
-import { formatRelativeTime, getNotificationMeta, getNotificationTargetUrl } from '../../utils/notificationHelpers';
+import {
+  formatRelativeTime,
+  formatNotificationTitle,
+  formatNotificationMessage,
+  getNotificationMeta,
+  getNotificationTargetUrl,
+} from '../../utils/notificationHelpers';
 import { imageApi, UploadedImage } from '../../api/userApi';
 import { NotificationItem } from '../../api/notificationApi';
 
@@ -220,11 +226,11 @@ export default function Navbar() {
                                           !item.isRead ? 'font-bold text-gray-900' : 'font-medium text-gray-700'
                                         }`}
                                       >
-                                        {item.title}
+                                        {formatNotificationTitle(item.title, item.type)}
                                       </p>
                                     </div>
                                     <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">
-                                      {item.message}
+                                      {formatNotificationMessage(item.message, item.type)}
                                     </p>
                                     <span className="text-[10px] text-gray-400 mt-1 block">
                                       {formatRelativeTime(item.createdAt)}

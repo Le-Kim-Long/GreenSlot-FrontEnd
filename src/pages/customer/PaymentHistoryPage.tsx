@@ -510,10 +510,10 @@ export default function PaymentHistoryPage() {
                               <td className="py-2.5">
                                 <div className="font-semibold text-gray-700 flex items-center gap-1">
                                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Hệ thống IoT & Tưới tự động 24/7</span>
+                                  <span>Hệ thống IoT & Bơm tưới chăm sóc</span>
                                 </div>
                                 <div className="text-[10px] text-gray-400">
-                                  Cảm biến đo ẩm/pH/ánh sáng và điều khiển máy bơm tự động
+                                  Cảm biến đo ẩm/pH/ánh sáng và cảnh báo tưới nước kịp thời
                                 </div>
                               </td>
                               <td className="py-2.5 text-right text-gray-400 font-mono">Đã bao gồm</td>

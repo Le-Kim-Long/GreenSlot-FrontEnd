@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { 
   ClipboardList, Wifi, ShieldAlert, Calendar,
   Droplets, Power, RefreshCw, AlertCircle, AlertTriangle,
-  Zap, Info, History, Camera, Layers, Sprout, Clock, ShieldCheck, Filter
+  Info, History, Camera, Layers, Sprout, Clock, ShieldCheck, Filter
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { pumpApi, AssignedSlotPumps } from '../../api/pumpApi';
@@ -112,32 +112,6 @@ export default function PumpControl() {
     }
   };
 
-  // Bật/Tắt chế độ tự động cho 1 trụ
-  const handleTogglePillarAutoMode = async (pillarId: number, currentAutoMode: boolean | undefined, pillarCode: string) => {
-    const key = `auto_${pillarId}`;
-    const nextMode = !currentAutoMode;
-    try {
-      setBusy(key, true);
-      await pumpApi.setPillarAutoMode(pillarId, nextMode);
-
-      setAssignedSlots(prev => prev.map(slot => ({
-        ...slot,
-        pillars: slot.pillars.map(p => p.pillarId === pillarId ? { ...p, autoMode: nextMode } : p)
-      })));
-
-      if (nextMode) {
-        toast.success(`Đã bật chế độ tự động tưới cho trụ ${pillarCode}`);
-      } else {
-        toast.warning(`Đã chuyển trụ ${pillarCode} sang chế độ điều khiển thủ công`);
-      }
-    } catch (err) {
-      console.error(`Lỗi đổi chế độ tự động trụ ${pillarId}:`, err);
-      toast.error(`Không thể cập nhật chế độ tự động cho trụ ${pillarCode}`);
-    } finally {
-      setBusy(key, false);
-    }
-  };
-
   // Kích hoạt tưới toàn bộ trụ trong 1 ô vườn (5s)
   const handleTriggerAllInSlot = async (slotId: number, slotNumber: string, count: number) => {
     const key = `slot_${slotId}`;
@@ -182,10 +156,6 @@ export default function PumpControl() {
   const totalPillars = displayedSlots.reduce((acc, slot) => acc + (slot.pillars?.length || 0), 0);
   const runningPillars = displayedSlots.reduce(
     (acc, slot) => acc + (slot.pillars?.filter(p => p.pumpStatus === 'ON').length || 0),
-    0
-  );
-  const autoModePillars = displayedSlots.reduce(
-    (acc, slot) => acc + (slot.pillars?.filter(p => p.autoMode !== false).length || 0),
     0
   );
 
@@ -251,7 +221,7 @@ export default function PumpControl() {
         )}
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
             <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
               <Layers className="w-5 h-5" />
@@ -283,16 +253,6 @@ export default function PumpControl() {
               </p>
             </div>
           </div>
-
-          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex items-center gap-3">
-            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-              <Zap className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium">Chế độ tự động</p>
-              <p className="text-xl font-bold text-gray-900">{autoModePillars} trụ</p>
-            </div>
-          </div>
         </div>
 
         {/* Deep link alert from notification */}
@@ -301,7 +261,7 @@ export default function PumpControl() {
             <div className="flex items-center gap-2.5">
               <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
               <span>
-                Yêu cầu tưới nước khẩn cấp cho <strong>Trụ {targetPillarCode}</strong>. Hệ thống đã tự động mở ô vườn và làm nổi bật trụ cần tưới bên dưới.
+                Yêu cầu tưới nước khẩn cấp cho <strong>Trụ {targetPillarCode}</strong>. Hệ thống đã mở ô vườn và làm nổi bật trụ cần tưới bên dưới.
               </span>
             </div>
           </div>
@@ -321,7 +281,7 @@ export default function PumpControl() {
             <div>
               <span className="font-semibold text-emerald-950">Quy chuẩn an toàn tưới nước thông minh:</span>
               <p className="mt-0.5 text-emerald-800">
-                Khi bấm kích hoạt thủ công, máy bơm sẽ tự động chạy trong <span className="font-bold text-emerald-950">5 giây</span> rồi tự ngắt để bảo vệ bộ rễ rau thủy canh và cuộn hút rơ-le.
+                Khi bấm kích hoạt, máy bơm sẽ hoạt động trong <span className="font-bold text-emerald-950">5 giây</span> rồi ngắt để bảo vệ bộ rễ rau thủy canh và cuộn hút rơ-le.
               </p>
             </div>
           </div>
@@ -420,8 +380,6 @@ export default function PumpControl() {
                         {slotPillars.map((pillar) => {
                           const isPumpOn = pillar.pumpStatus === 'ON';
                           const isPillarBusy = actionLoading[`pillar_${pillar.pillarId}`];
-                          const isAutoBusy = actionLoading[`auto_${pillar.pillarId}`];
-                          const isAuto = pillar.autoMode !== false;
                           const isTargetPillar = Boolean(
                             targetPillarCode && pillar.pillarCode.toUpperCase() === targetPillarCode.toUpperCase()
                           );
@@ -487,35 +445,18 @@ export default function PumpControl() {
                                       Máy bơm Trụ {pillar.pillarCode}
                                     </p>
                                     <p className="text-[10px] text-gray-500 truncate" title={pillar.lastTriggerReason || ''}>
-                                      {pillar.lastTriggerReason || 'Sẵn sàng hoạt động'}
+                                      {pillar.lastTriggerReason
+                                        ? pillar.lastTriggerReason
+                                            .replace(/Tự động tưới:/gi, 'Yêu cầu tưới:')
+                                            .replace(/Tự động tưới/gi, 'Cần tưới')
+                                        : 'Sẵn sàng hoạt động'}
                                     </p>
                                   </div>
                                 </div>
                               </div>
 
                               {/* Bottom Controls */}
-                              <div className="pt-2 border-t border-gray-100 space-y-2.5">
-                                {/* Toggle auto-mode for this pillar */}
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-gray-600 font-medium flex items-center gap-1">
-                                    <Zap className="w-3 h-3 text-amber-500" />
-                                    Tự động tưới:
-                                  </span>
-                                  <button
-                                    onClick={() => handleTogglePillarAutoMode(pillar.pillarId, isAuto, pillar.pillarCode)}
-                                    disabled={isAutoBusy}
-                                    className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out disabled:opacity-50 ${
-                                      isAuto ? 'bg-emerald-600' : 'bg-gray-300'
-                                    }`}
-                                  >
-                                    <span
-                                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ease-in-out ${
-                                        isAuto ? 'translate-x-4' : 'translate-x-0'
-                                      }`}
-                                    />
-                                  </button>
-                                </div>
-
+                              <div className="pt-2 border-t border-gray-100">
                                 {/* Trigger pump button */}
                                 <button
                                   onClick={() => handleTogglePillarPump(pillar.pillarId, pillar.pumpStatus, pillar.pillarCode)}
@@ -531,7 +472,7 @@ export default function PumpControl() {
                                     ? 'Đang gửi...' 
                                     : isPumpOn 
                                       ? 'Tắt Máy Bơm' 
-                                      : 'Bật tưới (5s tự ngắt)'}
+                                      : 'Bật tưới nước (5s)'}
                                 </button>
                               </div>
                             </div>

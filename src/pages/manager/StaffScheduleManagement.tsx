@@ -516,7 +516,7 @@ export default function StaffScheduleManagement() {
                     className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20"
                     value={formData.notes || ''}
                     onChange={e => setFormData({...formData, notes: e.target.value})}
-                    placeholder="VD: Trực chăm sóc hệ thống tưới tự động..."
+                    placeholder="VD: Trực chăm sóc hệ thống tưới nước..."
                   />
                 </div>
 

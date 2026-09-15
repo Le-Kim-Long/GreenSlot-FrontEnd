@@ -132,7 +132,7 @@ export default function LoginPage() {
             {[
               { icon: <Sprout className="w-5 h-5" />, title: 'Vườn thông minh', desc: 'Hàng trăm ô vườn sẵn sàng' },
               { icon: <Sun className="w-5 h-5" />, title: 'Giám sát 24/7', desc: 'IoT theo dõi nhiệt độ, độ ẩm' },
-              { icon: <Droplets className="w-5 h-5" />, title: 'Tưới tự động', desc: 'Hệ thống tưới thông minh' },
+              { icon: <Droplets className="w-5 h-5" />, title: 'Hệ thống tưới', desc: 'Điều khiển máy bơm thông minh' },
             ].map((f, i) => (
               <div
                 key={i}

@@ -20,7 +20,7 @@ export default function PricingPage() {
         { name: 'Lưu trữ dữ liệu lịch sử 7 ngày', included: true },
         { name: 'Yêu cầu dịch vụ chăm sóc (tính phí rời)', included: true },
         { name: 'Phân tích dữ liệu AI', included: false },
-        { name: 'Tự động tưới tiêu theo kịch bản', included: false },
+        { name: 'Điều khiển máy bơm tưới theo ô vườn', included: false },
         { name: 'Chuyên gia hỗ trợ 24/7', included: false },
       ]
     },
@@ -39,7 +39,7 @@ export default function PricingPage() {
         { name: 'Lưu trữ dữ liệu lịch sử 12 tháng', included: true },
         { name: 'Yêu cầu dịch vụ chăm sóc (giảm 15%)', included: true },
         { name: 'Phân tích dữ liệu AI cơ bản', included: true },
-        { name: 'Tự động tưới tiêu theo kịch bản', included: true },
+        { name: 'Điều khiển máy bơm tưới theo ô vườn', included: true },
         { name: 'Chuyên gia hỗ trợ 24/7', included: false },
       ]
     },
@@ -58,7 +58,7 @@ export default function PricingPage() {
         { name: 'Lưu trữ dữ liệu không giới hạn', included: true },
         { name: 'Miễn phí 4 lần chăm sóc tận nơi / tháng', included: true },
         { name: 'Phân tích dữ liệu AI chuyên sâu', included: true },
-        { name: 'Tự động tưới tiêu & bón phân', included: true },
+        { name: 'Hệ thống bơm tưới & chăm sóc chuyên sâu', included: true },
         { name: 'Chuyên gia hỗ trợ 24/7 (Kênh riêng)', included: true },
       ]
     }

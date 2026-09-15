@@ -12,6 +12,7 @@ import {
   AlertOctagon,
   Bell,
   FileText,
+  Droplets,
   LucideIcon,
 } from 'lucide-react';
 
@@ -248,7 +249,26 @@ export function getNotificationMeta(type?: string | null, title?: string | null)
     };
   }
 
-  // 5. IoT & Alert
+  // 5. Watering & Low Soil Moisture Alerts (Loại bỏ chữ 'tự động', chỉ thông báo 'Cần tưới cây')
+  if (
+    normalizedType === 'WATERING_REQUIRED' ||
+    normalizedType === 'IOT_AUTO_WATERING' ||
+    normalizedType.includes('WATERING') ||
+    normalizedTitle.includes('tưới') ||
+    normalizedTitle.includes('độ ẩm')
+  ) {
+    return {
+      icon: Droplets,
+      colorClasses: 'text-blue-600',
+      bgClasses: 'bg-blue-50',
+      borderClasses: 'border-blue-200',
+      badgeLabel: 'Cần tưới cây',
+      category: 'iot',
+      defaultActionLabel: 'Xem ô vườn & Bơm',
+    };
+  }
+
+  // 6. IoT & Alert
   if (normalizedType.startsWith('IOT_') || normalizedType.startsWith('ALERT_') || normalizedType.includes('SENSOR')) {
     if (normalizedType === 'ALERT_ESCALATED') {
       return {
@@ -538,6 +558,78 @@ export function getNotificationTargetUrl(
   }
 
   return '/dashboard/customer/rentals';
+}
+
+/**
+ * Sanitize and format notification title for UI:
+ * Removes any "tự động" wording and explicitly states "Cần tưới cây".
+ */
+export function formatNotificationTitle(title?: string | null, type?: string | null): string {
+  if (!title) return '';
+  const trimmed = title.trim();
+  const lower = trimmed.toLowerCase();
+  const normalizedType = (type || '').trim().toUpperCase();
+
+  // If it's a watering notification or contains auto-watering
+  if (
+    normalizedType === 'IOT_AUTO_WATERING' ||
+    normalizedType === 'WATERING_REQUIRED' ||
+    lower.includes('tự động tưới') ||
+    lower.includes('vừa tự động tưới') ||
+    (lower.includes('tự động') && lower.includes('tưới'))
+  ) {
+    const pillarMatch = trimmed.match(/Trụ\s+([A-Za-z0-9-_]+)/i);
+    const slotMatch = trimmed.match(/Ô\s+([A-Za-z0-9-_]+)/i);
+    if (pillarMatch && slotMatch) {
+      return `💧 Yêu cầu tưới cây: Trụ ${pillarMatch[1]} (Ô ${slotMatch[1]})`;
+    } else if (pillarMatch) {
+      return `💧 Cần tưới cây: Trụ ${pillarMatch[1]}`;
+    } else if (slotMatch) {
+      return `💧 Cần tưới cây: Ô ${slotMatch[1]}`;
+    }
+    return '💧 Cảm biến cảnh báo: Cần tưới cây';
+  }
+
+  // General clean up of "tự động tưới" if found anywhere in title
+  if (lower.includes('tự động tưới')) {
+    return trimmed.replace(/tự động tưới/gi, 'tưới cây').replace(/Tự động tưới/gi, 'Tưới cây');
+  }
+
+  return trimmed;
+}
+
+/**
+ * Sanitize and format notification message for UI:
+ * Strips out mentions of "tự động kích hoạt máy bơm" and focuses on "cần tưới cây" / "cần kích hoạt tưới".
+ */
+export function formatNotificationMessage(message?: string | null, type?: string | null): string {
+  if (!message) return '';
+  let text = message.trim();
+  const lower = text.toLowerCase();
+  const normalizedType = (type || '').trim().toUpperCase();
+
+  if (
+    normalizedType === 'IOT_AUTO_WATERING' ||
+    normalizedType === 'WATERING_REQUIRED' ||
+    lower.includes('tự động') ||
+    lower.includes('máy bơm')
+  ) {
+    text = text
+      .replace(/Hệ thống IoT vừa tự động kích hoạt máy bơm xịt nước cho/gi, 'Cảm biến ghi nhận độ ẩm đất thấp, cần thực hiện tưới nước cho')
+      .replace(/vừa được hệ thống tự động kích hoạt tưới 5 giây do/gi, 'đang có độ ẩm đất thấp, cần kích hoạt máy bơm tưới nước do')
+      .replace(/hệ thống vừa tự động tưới nước/gi, 'cần kiểm tra và tưới nước cho cây')
+      .replace(/hệ thống vừa tự động kích hoạt máy bơm/gi, 'cần kích hoạt máy bơm tưới nước')
+      .replace(/tự động kích hoạt máy bơm xịt nước/gi, 'cần tưới nước')
+      .replace(/tự động kích hoạt máy bơm/gi, 'cần bật máy bơm tưới')
+      .replace(/tự động kích hoạt tưới 5 giây/gi, 'cần tưới nước (5s)')
+      .replace(/tự động kích hoạt/gi, 'cần kích hoạt tưới')
+      .replace(/tự động tưới:/gi, 'Yêu cầu tưới:')
+      .replace(/tự động tưới/gi, 'cần tưới cây')
+      .replace(/Tự động tưới/gi, 'Cần tưới cây')
+      .replace(/được hệ thống tự động/gi, 'được yêu cầu');
+  }
+
+  return text;
 }
 
 
