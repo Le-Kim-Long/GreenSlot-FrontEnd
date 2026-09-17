@@ -26,7 +26,7 @@ function loadStoredUser(): User | null {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<{ success: boolean; message?: string }>;
   loginWithGoogle: (idToken: string, mode?: 'login' | 'register') => Promise<{ success: boolean; message?: string }>;
   verifyOtp: (email: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
@@ -40,7 +40,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(loadStoredUser);
 
-  const login = async (username: string, password: string): Promise<boolean> => {
+  const login = async (username: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
       const data = await authApi.login({ username, password });
       if (data?.token) {
@@ -59,12 +59,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         localStorage.setItem('user', JSON.stringify(loggedUser));
         setUser(loggedUser);
-        return true;
+        return { success: true };
       }
-      return false;
-    } catch (error) {
+      return { success: false, message: 'Phản hồi máy chủ không hợp lệ.' };
+    } catch (error: any) {
       console.error('Login failed', error);
-      return false;
+      let message = 'Tên đăng nhập hoặc mật khẩu không đúng.';
+      if (!error.response) {
+        message = 'Không thể kết nối đến máy chủ Backend (Port 8080). Vui lòng đợi Backend khởi động xong hoặc kiểm tra kết nối mạng.';
+      } else if (error.response.status === 429) {
+        message = error.response.data?.message || 'Quá nhiều lần thử đăng nhập. Vui lòng thử lại sau ít phút.';
+      } else if (error.response.data?.message) {
+        message = error.response.data.message;
+      }
+      return { success: false, message };
     }
   };
 

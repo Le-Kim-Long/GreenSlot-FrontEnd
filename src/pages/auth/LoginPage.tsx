@@ -46,14 +46,14 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const ok = await login(form.username.trim(), form.password);
+    const res = await login(form.username.trim(), form.password);
     setLoading(false);
-    if (ok) {
+    if (res.success) {
       const stored = localStorage.getItem('user');
       const role = stored ? JSON.parse(stored).role : user?.role;
       navigate(role ? getDashboardPath(role) : '/');
     } else {
-      setError('Tên đăng nhập hoặc mật khẩu không đúng');
+      setError(res.message || 'Tên đăng nhập hoặc mật khẩu không đúng');
     }
   };
 
