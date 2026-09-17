@@ -95,19 +95,15 @@ export function getTaskCategory(task: GardeningTask): Exclude<TaskCategoryKey, '
 
 export default function GardenStaffDashboard() {
   const [tasks, setTasks] = useState<GardeningTask[]>([]);
-  const [availableTasks, setAvailableTasks] = useState<GardeningTask[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<TaskCategoryKey>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [claimingId, setClaimingId] = useState<number | null>(null);
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [availPage, setAvailPage] = useState(1);
-  const [availPageSize, setAvailPageSize] = useState(5);
 
   // Modals
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -124,10 +120,9 @@ export default function GardenStaffDashboard() {
 
   const fetchTasks = () => {
     setLoading(true);
-    Promise.all([taskApi.getMyTasks(), taskApi.getAvailableTasks(), taskApi.getEligibleEarlyHarvestRentals()])
-      .then(([mine, available, eligible]) => {
+    Promise.all([taskApi.getMyTasks(), taskApi.getEligibleEarlyHarvestRentals()])
+      .then(([mine, eligible]) => {
         setTasks((mine || []).sort((a, b) => b.id - a.id));
-        setAvailableTasks((available || []).sort((a, b) => b.id - a.id));
         setEligibleRentals(eligible || []);
       })
       .catch(() => setError('Không thể tải danh sách công việc'))
@@ -157,18 +152,6 @@ export default function GardenStaffDashboard() {
       setEarlyError(err?.response?.data?.message || 'Báo thu hoạch sớm thất bại.');
     } finally {
       setEarlyNotifying(false);
-    }
-  };
-
-  const handleClaim = async (taskId: number) => {
-    setClaimingId(taskId);
-    try {
-      await taskApi.claimTask(taskId);
-      fetchTasks();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || 'Nhận việc thất bại, có thể bạn chưa được phân công phụ trách ô vườn này hoặc ca trực khác đã nhận.');
-    } finally {
-      setClaimingId(null);
     }
   };
 
@@ -227,50 +210,22 @@ export default function GardenStaffDashboard() {
     return filteredMyTasks.slice(start, start + pageSize);
   }, [filteredMyTasks, currentPage, pageSize]);
 
-  // Lọc danh sách công việc có thể nhận
-  const filteredAvailableTasks = useMemo(() => {
-    return availableTasks.filter(task => {
-      if (selectedCategory !== 'ALL') {
-        const cat = getTaskCategory(task);
-        if (cat !== selectedCategory) return false;
-      }
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const matchName = task.taskName?.toLowerCase().includes(q);
-        const matchSlot = task.targetSlotNumber?.toLowerCase().includes(q);
-        const matchPillar = task.pillarCodes?.toLowerCase().includes(q);
-        const matchTree = task.treeName?.toLowerCase().includes(q);
-        const matchDesc = task.description?.toLowerCase().includes(q);
-        const matchId = String(task.id).includes(q);
-        if (!matchName && !matchSlot && !matchPillar && !matchTree && !matchDesc && !matchId) return false;
-      }
-      return true;
-    });
-  }, [availableTasks, selectedCategory, search]);
-
-  // Phân trang công việc có thể nhận
-  const availTotalPages = Math.max(1, Math.ceil(filteredAvailableTasks.length / availPageSize));
-  const paginatedAvailTasks = useMemo(() => {
-    const start = (availPage - 1) * availPageSize;
-    return filteredAvailableTasks.slice(start, start + availPageSize);
-  }, [filteredAvailableTasks, availPage, availPageSize]);
-
   // Thống kê số lượng theo từng category
   const categoryCounts = useMemo(() => {
     const counts: Record<TaskCategoryKey, number> = {
-      ALL: tasks.length + availableTasks.length,
+      ALL: tasks.length,
       PLANTING_CARE: 0,
       HARVEST: 0,
       ISSUE: 0,
       SERVICE_REQUEST: 0,
       MAINTENANCE: 0,
     };
-    [...tasks, ...availableTasks].forEach(t => {
+    tasks.forEach(t => {
       const cat = getTaskCategory(t);
       counts[cat] = (counts[cat] || 0) + 1;
     });
     return counts;
-  }, [tasks, availableTasks]);
+  }, [tasks]);
 
   return (
     <DashboardLayout navItems={navItems} title="Bảng điều khiển Nhân viên vườn">
@@ -281,7 +236,7 @@ export default function GardenStaffDashboard() {
           <div className="card bg-white border border-gray-100 shadow-sm p-5 rounded-2xl flex items-center justify-between">
             <div>
               <div className="text-3xl font-black text-gray-900">{tasks.length}</div>
-              <div className="text-sm font-medium text-gray-500 mt-1">Việc của tôi đã nhận</div>
+              <div className="text-sm font-medium text-gray-500 mt-1">Việc được phân công</div>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg">
               <ClipboardList className="w-6 h-6" />
@@ -323,7 +278,6 @@ export default function GardenStaffDashboard() {
                 onChange={(e) => {
                   setSelectedCategory(e.target.value as TaskCategoryKey);
                   setCurrentPage(1);
-                  setAvailPage(1);
                 }}
               >
                 <option value="ALL">🌟 Tất cả loại công việc ({categoryCounts.ALL})</option>
@@ -363,7 +317,6 @@ export default function GardenStaffDashboard() {
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setCurrentPage(1);
-                  setAvailPage(1);
                 }}
                 className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition bg-gray-50/50 hover:bg-white"
               />
@@ -402,7 +355,6 @@ export default function GardenStaffDashboard() {
                   setStatusFilter('ALL');
                   setSearch('');
                   setCurrentPage(1);
-                  setAvailPage(1);
                 }}
                 className="text-emerald-600 hover:text-emerald-700 font-bold ml-auto hover:underline"
               >
@@ -486,130 +438,7 @@ export default function GardenStaffDashboard() {
           )}
         </div>
 
-        {/* 4. Bảng công việc chưa ai nhận (Available Tasks Table) */}
-        {availableTasks.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden space-y-0">
-            <div className="p-4 sm:p-5 border-b border-gray-100 bg-amber-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-amber-100 text-amber-700 rounded-xl">
-                  <Bell className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-base">Công việc có thể nhận ({filteredAvailableTasks.length})</h3>
-                  <p className="text-xs text-gray-500">Các công việc đang chờ nhân viên ca trực nhận việc</p>
-                </div>
-              </div>
-            </div>
-
-            {filteredAvailableTasks.length === 0 ? (
-              <div className="p-8 text-center text-gray-400 text-sm">
-                Không có công việc nào phù hợp với bộ lọc tìm kiếm hiện tại.
-              </div>
-            ) : (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-gray-600 font-bold text-xs uppercase tracking-wider border-b border-gray-100">
-                      <tr>
-                        <th className="py-3.5 px-4">Mã & Tên công việc</th>
-                        <th className="py-3.5 px-4">Vị trí</th>
-                        <th className="py-3.5 px-4">Cây trồng</th>
-                        <th className="py-3.5 px-4">Phân loại</th>
-                        <th className="py-3.5 px-4 text-right">Thao tác</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
-                      {paginatedAvailTasks.map(task => {
-                        const catKey = getTaskCategory(task);
-                        const cat = categoryConfig[catKey];
-                        return (
-                          <tr key={task.id} className="hover:bg-amber-50/30 transition-colors">
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-start gap-2">
-                                <span className="text-xs font-mono font-bold text-gray-400 mt-0.5">#{task.id}</span>
-                                <div>
-                                  <div className="font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
-                                    <span>{task.taskName}</span>
-                                    {(task.isEarlyHarvest || task.taskName?.includes('sớm')) && (
-                                      <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
-                                        ⚡ Thu hoạch sớm
-                                      </span>
-                                    )}
-                                  </div>
-                                  {task.description && (
-                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-md">{task.description}</p>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 whitespace-nowrap">
-                              <div className="space-y-1">
-                                <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-xs">
-                                  <MapPin className="w-3 h-3" /> Ô: {task.targetSlotNumber || 'N/A'}
-                                </span>
-                                <div>
-                                  {task.pillarCodes ? (
-                                    <span className="inline-flex items-center gap-1 text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded text-[11px]">
-                                      <Layers className="w-3 h-3" /> Trụ: {task.pillarCodes}
-                                    </span>
-                                  ) : (
-                                    <span className="text-[11px] text-gray-400">Toàn bộ trụ</span>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 whitespace-nowrap">
-                              {task.treeName ? (
-                                <span className="inline-flex items-center gap-1 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-semibold">
-                                  <Sprout className="w-3 h-3" /> {task.treeName}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 text-xs">--</span>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-4 whitespace-nowrap">
-                              <span className={clsx('inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border', cat.badgeCls)}>
-                                {cat.icon} {cat.label}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                              <button
-                                disabled={claimingId === task.id}
-                                onClick={() => handleClaim(task.id)}
-                                className="btn-primary text-xs py-1.5 px-4 inline-flex items-center gap-1.5 shadow-xs"
-                              >
-                                {claimingId === task.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
-                                Nhận việc
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="p-3 border-t border-gray-100 bg-gray-50/50">
-                  <Pagination
-                    currentPage={availPage}
-                    totalPages={availTotalPages}
-                    totalItems={filteredAvailableTasks.length}
-                    pageSize={availPageSize}
-                    onPageChange={setAvailPage}
-                    onPageSizeChange={(sz) => {
-                      setAvailPageSize(sz);
-                      setAvailPage(1);
-                    }}
-                    pageSizeOptions={[5, 10, 20]}
-                    itemName="công việc"
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* 5. Bảng Công việc của tôi (My Tasks Table) */}
+        {/* 4. Bảng Công việc của tôi (My Tasks Table) */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
@@ -618,7 +447,7 @@ export default function GardenStaffDashboard() {
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 text-base">Danh sách Công việc của tôi ({filteredMyTasks.length})</h3>
-                <p className="text-xs text-gray-500">Các công việc bạn được phân công hoặc đã chủ động nhận</p>
+                <p className="text-xs text-gray-500">Các công việc bạn được Quản lý phân công thực hiện</p>
               </div>
             </div>
           </div>
