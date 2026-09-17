@@ -289,6 +289,24 @@ export default function TaskManagement() {
     }
   };
 
+  // Submit hủy phân công (bỏ gán) nhân viên
+  const handleUnassign = async () => {
+    if (!selectedTask) return;
+    setIsSubmitting(true);
+    try {
+      await taskApi.assignTask(selectedTask.id, 0);
+      toast.success('Đã hủy phân công nhân viên thành công! Task trở về trạng thái chờ phân công.');
+      handleCloseModal();
+      fetchData();
+    } catch (error: any) {
+      console.error('Lỗi hủy phân công:', error);
+      const errorMsg = error.response?.data?.message || error.message;
+      toast.error(`Hủy phân công thất bại: ${errorMsg}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Submit duyệt / từ chối task
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -483,13 +501,13 @@ export default function TaskManagement() {
                             <Eye className="w-3.5 h-3.5" /> Chi tiết
                           </button>
 
-                          {/* Gán nhân viên khi task PENDING và chưa có người làm */}
-                          {task.status === 'PENDING' && !task.assigneeName && (
+                          {/* Gán / Đổi nhân viên khi task PENDING */}
+                          {task.status === 'PENDING' && (
                             <button
                               onClick={() => handleOpenAssignModal(task)}
                               className="inline-flex items-center gap-1 bg-green-50 border border-green-200 hover:bg-green-100 text-green-700 px-2.5 py-1.5 rounded-lg transition text-xs font-medium"
                             >
-                              <UserPlus className="w-3.5 h-3.5" /> Gán
+                              <UserPlus className="w-3.5 h-3.5" /> {task.assigneeName ? 'Đổi NV' : 'Gán'}
                             </button>
                           )}
                           
@@ -663,11 +681,23 @@ export default function TaskManagement() {
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
-                  <button type="button" onClick={handleCloseModal} disabled={isSubmitting} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium">Hủy</button>
-                  <button type="submit" disabled={isSubmitting || !assignForm.staffId} className="px-5 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium disabled:opacity-50 flex items-center gap-1.5 shadow-sm shadow-green-600/20">
-                    <UserCheck className="w-4 h-4" /> {isSubmitting ? 'Đang xử lý...' : 'Xác nhận giao'}
-                  </button>
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-6">
+                  {selectedTask?.assigneeName ? (
+                    <button
+                      type="button"
+                      onClick={handleUnassign}
+                      disabled={isSubmitting}
+                      className="px-3.5 py-2.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl hover:bg-rose-100 font-medium text-xs flex items-center gap-1 transition"
+                    >
+                      Bỏ phân công (Hủy gán)
+                    </button>
+                  ) : <div />}
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={handleCloseModal} disabled={isSubmitting} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium text-xs">Hủy</button>
+                    <button type="submit" disabled={isSubmitting || !assignForm.staffId} className="px-5 py-2.5 bg-green-600 text-white rounded-xl hover:bg-green-700 font-medium text-xs disabled:opacity-50 flex items-center gap-1.5 shadow-sm shadow-green-600/20">
+                      <UserCheck className="w-4 h-4" /> {isSubmitting ? 'Đang xử lý...' : selectedTask?.assigneeName ? 'Đổi nhân viên' : 'Xác nhận giao'}
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
