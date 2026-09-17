@@ -320,9 +320,11 @@ export default function GardenListPage() {
                 const availCount = allPillars.length > 0 ? availablePillars.length : pCount;
                 const holes = slot.totalHoles || (pCount * 36);
                 const slotArea = slot.area || 3.0;
-                const startingPrice = availablePillars.length > 0 
+                const slotLandPrice = Number(slot.landPrice != null ? slot.landPrice : 0);
+                const pillarsStartingPrice = availablePillars.length > 0 
                   ? availablePillars.reduce((sum, p) => sum + (p.price || 0), 0)
-                  : (slot.calculatedPillarsPrice || slot.price || 0);
+                  : (slot.calculatedPillarsPrice || 0);
+                const startingPrice = slotLandPrice + pillarsStartingPrice;
 
                 return (
                   <Link
@@ -350,13 +352,16 @@ export default function GardenListPage() {
                         Ô {slot.slotNumber}
                       </h3>
 
-                      {/* Badge năng suất & diện tích */}
-                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      {/* Badge năng suất, diện tích & giá đất */}
+                      <div className="flex items-center gap-1.5 mb-3 flex-wrap">
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          🌱 {holes} hốc rau
+                          🌱 {holes} hốc
                         </span>
                         <span className="text-[11px] font-medium px-2 py-0.5 rounded-lg bg-gray-50 text-gray-600 border border-gray-100">
                           {slotArea} m² ({pCount} trụ)
+                        </span>
+                        <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-200">
+                          {slotLandPrice > 0 ? `Đất: ${slotLandPrice.toLocaleString('vi-VN')}đ/th` : 'Miễn phí đất'}
                         </span>
                       </div>
 

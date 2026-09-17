@@ -9,6 +9,8 @@ export interface Equipment {
   status: string;
   pillarId: number;
   pillarCode?: string;
+  locationId?: number;
+  locationName?: string;
   purchaseDate?: string;
   lastMaintenanceDate?: string;
   imageUrl?: string;

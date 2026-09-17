@@ -198,14 +198,12 @@ export default function EquipmentManagement() {
 
   useEffect(() => { fetchData(); }, [selectedPillarId]);
 
-  // Tải danh sách cơ sở cho manager/admin để lọc thiết bị theo cơ sở
+  // Tải danh sách cơ sở để hiển thị tên cơ sở và lọc thiết bị
   useEffect(() => {
-    if (user?.role === 'manager' || user?.role === 'admin') {
-      managerApi.getLocations().then((res: any) => setLocations(res || [])).catch((err: any) => {
-        console.error('Không thể tải danh sách cơ sở:', err);
-      });
-    }
-  }, [user]);
+    managerApi.getLocations().then((res: any) => setLocations(res || [])).catch((err: any) => {
+      console.error('Không thể tải danh sách cơ sở:', err);
+    });
+  }, []);
 
   // Đổi cơ sở thì reset lại trụ đang chọn nếu trụ đó không thuộc cơ sở mới
   const handleLocationChange = (locId: string) => {
@@ -222,7 +220,11 @@ export default function EquipmentManagement() {
     setEditingItem(null);
     setError('');
     setFormData(emptyForm);
-    setFormLocationId('');
+    if (user?.role === 'location_manager' && user?.locationId) {
+      setFormLocationId(String(user.locationId));
+    } else {
+      setFormLocationId(locations[0]?.id ? String(locations[0].id) : '');
+    }
     setIsModalOpen(true);
   };
 
@@ -230,14 +232,16 @@ export default function EquipmentManagement() {
     setError('');
     setEditingItem(item);
     setFormData(emptyForm);
-    setFormLocationId(String(pillarLocationMap.get(item.pillarId) ?? ''));
+    const itemLoc = item.locationId ?? pillarLocationMap.get(item.pillarId);
+    setFormLocationId(itemLoc != null ? String(itemLoc) : (user?.locationId ? String(user.locationId) : ''));
     setIsModalOpen(true);
     setLoadingDetail(true);
 
     try {
       const freshData = await equipmentApi.getEquipment(item.id);
       setEditingItem(freshData);
-      setFormLocationId(String(pillarLocationMap.get(freshData.pillarId) ?? ''));
+      const freshLoc = freshData.locationId ?? pillarLocationMap.get(freshData.pillarId);
+      setFormLocationId(freshLoc != null ? String(freshLoc) : (user?.locationId ? String(user.locationId) : ''));
       // Backend trả về LocalDateTime đầy đủ (VD "2026-01-27T13:36:08.34"), nhưng input type="date"
       // chỉ hiểu đúng "YYYY-MM-DD" — cắt bớt phần giờ để hiển thị đúng trên form
       setFormData({
@@ -273,11 +277,21 @@ export default function EquipmentManagement() {
       return;
     }
 
+    const targetLocationId = formLocationId
+      ? Number(formLocationId)
+      : (user?.locationId ? Number(user.locationId) : undefined);
+
+    if (!formData.pillarId && !targetLocationId) {
+      showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn Cơ sở quản lý thiết bị này.');
+      return;
+    }
+
     // Input type="date" trả về "YYYY-MM-DD", nhưng backend nhận LocalDateTime — cần thêm giờ (T00:00:00)
     // hoặc bỏ hẳn field nếu rỗng, nếu không Jackson sẽ parse lỗi và trả về 400
     const toLocalDateTime = (date?: string) => (date ? `${date}T00:00:00` : undefined);
     const payload = {
       ...formData,
+      locationId: targetLocationId,
       purchaseDate: toLocalDateTime(formData.purchaseDate),
       lastMaintenanceDate: toLocalDateTime(formData.lastMaintenanceDate),
     };
@@ -292,9 +306,10 @@ export default function EquipmentManagement() {
       showToast('success', editingItem ? 'Cập nhật thiết bị thành công!' : 'Thêm thiết bị mới thành công!');
       handleCloseModal();
       fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Lỗi lưu thiết bị:', err);
-      showToast('error', 'Thao tác thất bại', 'Vui lòng kiểm tra lại thông tin.');
+      const msg = err?.response?.data?.message || 'Vui lòng kiểm tra lại thông tin.';
+      showToast('error', 'Thao tác thất bại', msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -308,8 +323,9 @@ export default function EquipmentManagement() {
       setConfirmDelete(null);
       showToast('success', 'Đã xóa thiết bị');
       fetchData();
-    } catch (err) {
-      showToast('error', 'Xóa thất bại', 'Thiết bị này có thể đang ràng buộc với dữ liệu khác.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Thiết bị này có thể đang ràng buộc với dữ liệu khác.';
+      showToast('error', 'Xóa thất bại', msg);
     } finally {
       setIsDeleting(false);
     }
@@ -320,9 +336,10 @@ export default function EquipmentManagement() {
       const matchSearch = item.equipmentName?.toLowerCase().includes(search.toLowerCase()) ||
                           item.serialNumber?.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
+      const itemLoc = item.locationId ?? pillarLocationMap.get(item.pillarId);
       const matchLocation = selectedLocationId === ''
         ? true
-        : String(pillarLocationMap.get(item.pillarId)) === selectedLocationId;
+        : String(itemLoc) === selectedLocationId;
       const matchPillar = selectedPillarId === ''
         ? true
         : String(item.pillarId) === selectedPillarId;
@@ -461,14 +478,12 @@ export default function EquipmentManagement() {
                     <td className="p-4">
                       <div className="font-medium text-gray-700 flex items-center gap-1.5">
                         <Layers className="w-4 h-4 text-gray-400" />
-                        {item.pillarCode ? `Pillar: ${item.pillarCode}` : `Pillar ID: ${item.pillarId}`}
+                        {item.pillarId ? (item.pillarCode ? `Trụ: ${item.pillarCode}` : `Trụ #${item.pillarId}`) : <span className="text-gray-500 italic">📦 Cất kho (Chưa gắn trụ)</span>}
                       </div>
-                      {locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1) && (
-                        <div className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                          <MapPin className="w-3 h-3" />
-                          {locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1)}
-                        </div>
-                      )}
+                      <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3 text-emerald-600" />
+                        {item.locationName || locationNameMap.get(item.locationId ?? -1) || locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1) || 'Chưa xác định cơ sở'}
+                      </div>
                     </td>
                     <td className="p-4">
                       <div className="flex flex-col gap-1 text-xs text-gray-600">
@@ -497,22 +512,33 @@ export default function EquipmentManagement() {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => handleOpenEdit(item)}
-                          className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-gray-100 rounded-lg transition"
-                          title="Chỉnh sửa thiết bị"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(item)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                          title="Xóa thiết bị"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {(() => {
+                        const itemLoc = item.locationId ?? pillarLocationMap.get(item.pillarId);
+                        const canManage = user?.role !== 'location_manager' || !user.locationId || itemLoc === user.locationId;
+                        if (!canManage) {
+                          return (
+                            <span className="text-[11px] text-gray-400 italic">Chỉ xem</span>
+                          );
+                        }
+                        return (
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleOpenEdit(item)}
+                              className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-gray-100 rounded-lg transition"
+                              title="Chỉnh sửa thiết bị"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete(item)}
+                              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                              title="Xóa thiết bị"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))
@@ -617,7 +643,17 @@ export default function EquipmentManagement() {
     </div>
 
     {/* Ô 3: Cơ sở */}
-    {canFilterByLocation && (
+    {user?.role === 'location_manager' ? (
+      <div>
+        <label className="block font-medium text-gray-700 mb-1">
+          Cơ sở <span className="text-xs text-emerald-600 font-normal">(Cố định theo cơ sở phân công)</span>
+        </label>
+        <div className="w-full border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-sm font-semibold text-gray-700 flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{locations.find((l: any) => l.id === user?.locationId)?.name || `Cơ sở #${user?.locationId}`}</span>
+        </div>
+      </div>
+    ) : canFilterByLocation ? (
       <div>
         <label className="block font-medium text-gray-700 mb-1">Cơ sở <span className="text-red-500">*</span></label>
         <CustomDropdown
@@ -629,7 +665,7 @@ export default function EquipmentManagement() {
           className="w-full"
         />
       </div>
-    )}
+    ) : null}
 
     {/* Ô 4: Trụ Vườn */}
     <div>

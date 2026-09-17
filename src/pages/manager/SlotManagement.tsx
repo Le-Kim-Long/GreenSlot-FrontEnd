@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Grid3X3, Plus, Edit2, X, Search, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle, Filter } from 'lucide-react';
+import { Grid3X3, Plus, Edit2, X, Search, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle, Filter, DollarSign } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { managerApi, type SlotItem, type PillarItem, type LocationItem, type SlotFormData } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
+import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 
 const emptyForm: SlotFormData = {
@@ -18,12 +19,16 @@ const emptyForm: SlotFormData = {
 };
 
 export default function SlotManagement() {
+  const { user } = useAuth();
+  const isLocationManager = user?.role === 'location_manager';
   const [slots, setSlots] = useState<SlotItem[]>([]);
   const [pillars, setPillars] = useState<PillarItem[]>([]);
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [locationFilter, setLocationFilter] = useState<number | 'all'>('all');
+  const [locationFilter, setLocationFilter] = useState<number | 'all'>(() => {
+    return isLocationManager && user?.locationId ? Number(user.locationId) : 'all';
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
   
@@ -58,6 +63,13 @@ export default function SlotManagement() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Đảm bảo locationFilter tự động khóa theo Location Manager khi user load xong
+  useEffect(() => {
+    if (isLocationManager && user?.locationId) {
+      setLocationFilter(Number(user.locationId));
+    }
+  }, [isLocationManager, user]);
 
   // Tính toán diện tích yêu cầu và tổng số hốc từ các trụ đã chọn
   const selectedPillarsDetails = useMemo(() => {
@@ -106,10 +118,11 @@ export default function SlotManagement() {
     setEditing(null);
     setError('');
     setFormError('');
-    const defaultLocId = locations[0]?.id;
+    const defaultLocId = isLocationManager && user?.locationId ? Number(user.locationId) : locations[0]?.id;
     setForm({
       ...emptyForm,
       locationId: defaultLocId,
+      price: 0,
       pillarIds: [],
     });
     setShowForm(true);
@@ -133,7 +146,7 @@ export default function SlotManagement() {
       setForm({
         slotNumber: freshSlot.slotNumber,
         status: freshSlot.status || 'AVAILABLE',
-        price: 0,
+        price: freshSlot.price != null ? Number(freshSlot.price) : 0,
         area: freshSlot.area || 3.0,
         locationId: freshSlot.locationId || locations[0]?.id,
         pillarIds: pIds,
@@ -187,6 +200,10 @@ export default function SlotManagement() {
     }
     if (form.pillarIds.length === 0) {
       setFormError('Vui lòng chọn ít nhất 1 trụ canh tác cho ô vườn này.');
+      return;
+    }
+    if (form.price != null && form.price < 0) {
+      setFormError('Giá tiền thuê đất không được là số âm.');
       return;
     }
     if (totalRequiredArea > form.area) {
@@ -266,22 +283,29 @@ export default function SlotManagement() {
               }}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
-            <select
-              className="input py-2 text-sm"
-              value={locationFilter}
-              onChange={e => {
-                setLocationFilter(e.target.value === 'all' ? 'all' : Number(e.target.value));
-                setCurrentPage(1);
-              }}
-            >
-              <option value="all">Tất cả cơ sở ({locations.length})</option>
-              {locations.map(l => (
-                <option key={l.id} value={l.id}>{l.name}</option>
-              ))}
-            </select>
-          </div>
+          {isLocationManager ? (
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-800 shrink-0">
+              <MapPin className="w-4 h-4 text-emerald-600" />
+              <span>Cơ sở: {locations.find(l => l.id === user?.locationId)?.name || `Cơ sở #${user?.locationId}`}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <select
+                className="input py-2 text-sm"
+                value={locationFilter}
+                onChange={e => {
+                  setLocationFilter(e.target.value === 'all' ? 'all' : Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+              >
+                <option value="all">Tất cả cơ sở ({locations.length})</option>
+                {locations.map(l => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <button onClick={openCreate} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Thêm ô vườn
@@ -374,6 +398,16 @@ export default function SlotManagement() {
                       ) : (
                         <span className="text-xs text-gray-400 italic">Chưa gán trụ nào</span>
                       )}
+                    </div>
+
+                    {/* Giá thuê đất */}
+                    <div className="mt-3 p-2 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between text-xs">
+                      <span className="text-gray-500 flex items-center gap-1 font-medium">
+                        <DollarSign className="w-3.5 h-3.5 text-emerald-600" /> Giá thuê đất:
+                      </span>
+                      <span className="font-bold text-emerald-800">
+                        {s.price && Number(s.price) > 0 ? `${Number(s.price).toLocaleString('vi-VN')} đ/tháng` : '0 đ (Miễn phí tiền đất)'}
+                      </span>
                     </div>
                   </div>
 
@@ -485,22 +519,79 @@ export default function SlotManagement() {
                     />
                   </div>
                   <div>
-                    <label className="label font-medium text-gray-700">Cơ sở *</label>
+                    <label className="label font-medium text-gray-700">
+                      Cơ sở * {isLocationManager && <span className="text-xs text-emerald-600 font-normal">(Cố định theo cơ sở)</span>}
+                    </label>
                     <select
                       className="input rounded-xl"
-                      value={form.locationId || locations[0]?.id}
+                      value={form.locationId || (isLocationManager && user?.locationId ? Number(user.locationId) : locations[0]?.id)}
                       onChange={e => {
                         const newLocId = Number(e.target.value);
                         setForm(f => ({ ...f, locationId: newLocId, pillarIds: [] }));
                         setFormError('');
                       }}
-                      disabled={!!editing}
+                      disabled={!!editing || isLocationManager}
                     >
                       {locations.map(l => (
                         <option key={l.id} value={l.id}>{l.name}</option>
                       ))}
                     </select>
                   </div>
+                </div>
+
+                {/* Giá tiền thuê đất (Land Rental Price) */}
+                <div className="bg-emerald-50/50 border border-emerald-200 rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                      <DollarSign className="w-4 h-4 text-emerald-700" /> Giá tiền thuê đất (VNĐ/tháng)
+                    </label>
+                    <span className="text-xs font-bold text-emerald-800 bg-white px-2 py-0.5 rounded-lg border border-emerald-200 shadow-xs">
+                      {form.price && Number(form.price) > 0 
+                        ? `${Number(form.price).toLocaleString('vi-VN')} VNĐ/tháng` 
+                        : '0đ (Miễn phí tiền đất)'}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min={0}
+                      step={50000}
+                      className="input bg-white rounded-xl font-bold text-gray-900 pr-16"
+                      value={form.price != null ? form.price : 0}
+                      onChange={e => {
+                        const val = Math.max(0, Math.floor(Number(e.target.value) || 0));
+                        setForm(f => ({ ...f, price: val }));
+                      }}
+                      placeholder="VD: 400000"
+                    />
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400 pointer-events-none">
+                      VNĐ
+                    </div>
+                  </div>
+
+                  {/* Nút chọn nhanh các mức giá đất phổ biến */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <span className="text-[11px] text-gray-500 font-medium">Chọn nhanh:</span>
+                    {[0, 100000, 200000, 300000, 400000, 500000].map(amt => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, price: amt }))}
+                        className={clsx(
+                          "px-2 py-0.5 rounded-lg text-xs font-semibold transition-all border",
+                          (form.price || 0) === amt
+                            ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                            : "bg-white text-gray-700 border-gray-200 hover:border-emerald-300"
+                        )}
+                      >
+                        {amt === 0 ? '0đ' : `${(amt / 1000).toLocaleString('vi-VN')}k`}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-[11px] text-emerald-800 mt-2">
+                    💡 Đơn vị tính: <strong>VNĐ/tháng</strong> (ví dụ nhập <code>400000</code> là <strong>400.000đ/tháng</strong>). Khách thuê ô sẽ thanh toán: [Tiền thuê đất] + [Tiền thuê trụ] + [Tiền phôi giống].
+                  </p>
                 </div>
 
                 {/* Diện tích & Quy tắc sức chứa */}

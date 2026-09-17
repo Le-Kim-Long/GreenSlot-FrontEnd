@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit2, X, Tag, Layers, Loader2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, X, Tag, Layers, Loader2, Trash2, MapPin, Globe } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { managerApi } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
+import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 
 interface ServiceCategory {
@@ -21,11 +22,16 @@ interface ServiceType {
   price?: number;
   serviceCategoryId?: number;
   categoryId?: number;
+  locationId?: number;
+  locationName?: string;
 }
 
 export default function ServiceManagement() {
+  const { user } = useAuth();
+  const isLocationManager = user?.role === 'location_manager';
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [types, setTypes] = useState<ServiceType[]>([]);
+  const [locations, setLocations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'categories' | 'types'>('categories');
   const [catPage, setCatPage] = useState(1);
@@ -42,16 +48,27 @@ export default function ServiceManagement() {
   const [editingCat, setEditingCat] = useState<ServiceCategory | null>(null);
   const [editingType, setEditingType] = useState<ServiceType | null>(null);
   const [catForm, setCatForm] = useState({ name: '', description: '' });
-  const [typeForm, setTypeForm] = useState({ name: '', description: '', price: 0, serviceCategoryId: 0 });
+  const [typeForm, setTypeForm] = useState<{
+    name: string;
+    description: string;
+    price: number;
+    serviceCategoryId: number;
+    locationId?: number;
+  }>({ name: '', description: '', price: 0, serviceCategoryId: 0, locationId: undefined });
   const [confirmDeleteCat, setConfirmDeleteCat] = useState<ServiceCategory | null>(null);
   const [confirmDeleteType, setConfirmDeleteType] = useState<ServiceType | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const fetchData = async () => {
     try {
-      const [c, t] = await Promise.all([managerApi.getServiceCategories(), managerApi.getServiceTypes()]);
+      const [c, t, l] = await Promise.all([
+        managerApi.getServiceCategories(),
+        managerApi.getServiceTypes(),
+        managerApi.getLocations().catch(() => []),
+      ]);
       setCategories((c || []).sort((a: ServiceCategory, b: ServiceCategory) => b.id - a.id));
       setTypes((t || []).sort((a: ServiceType, b: ServiceType) => b.id - a.id));
+      setLocations(l || []);
     } catch {
       setError('Không thể tải dữ liệu');
     } finally {
@@ -93,15 +110,31 @@ export default function ServiceManagement() {
   const openCreateType = () => {
     setEditingType(null);
     setFormError('');
-    setTypeForm({ name: '', description: '', price: 0, serviceCategoryId: categories[0]?.id || 0 });
+    setTypeForm({
+      name: '',
+      description: '',
+      price: 0,
+      serviceCategoryId: categories[0]?.id || 0,
+      locationId: isLocationManager && user?.locationId ? Number(user.locationId) : undefined,
+    });
     setShowForm(true);
   };
 
   // 👉 Lấy chi tiết Loại dịch vụ (Type) từ Server
   const openEditType = async (t: ServiceType) => {
+    if (isLocationManager && t.locationId !== user?.locationId) {
+      setFormError('Bạn chỉ có quyền chỉnh sửa dịch vụ thuộc cơ sở của mình.');
+      return;
+    }
     setFormError('');
     setEditingType(t);
-    setTypeForm({ name: '', description: '', price: 0, serviceCategoryId: 0 });
+    setTypeForm({
+      name: '',
+      description: '',
+      price: 0,
+      serviceCategoryId: 0,
+      locationId: undefined,
+    });
     setShowForm(true);
     setLoadingDetail(true);
 
@@ -113,6 +146,7 @@ export default function ServiceManagement() {
         description: freshType.description || '',
         price: freshType.price || 0,
         serviceCategoryId: freshType.serviceCategoryId || freshType.categoryId || categories[0]?.id || 0,
+        locationId: freshType.locationId,
       });
     } catch (err) {
       setFormError('Không thể tải thông tin chi tiết dịch vụ từ máy chủ.');
@@ -157,18 +191,26 @@ export default function ServiceManagement() {
       setFormError('Giá dịch vụ không hợp lệ: Tối thiểu 1.000 VNĐ và phải là bội số của 1.000 (không chấp nhận số lẻ hoặc số âm).');
       return;
     }
+
+    const targetLocId = isLocationManager && user?.locationId
+      ? Number(user.locationId)
+      : typeForm.locationId;
+
     setSaving(true);
     setFormError('');
     try {
+      const payload = {
+        name: typeForm.name,
+        description: typeForm.description,
+        price: typeForm.price,
+        serviceCategoryId: typeForm.serviceCategoryId,
+        locationId: targetLocId,
+      };
+
       if (editingType) {
-        await managerApi.updateServiceType(editingType.id, {
-          name: typeForm.name,
-          description: typeForm.description,
-          price: typeForm.price,
-          serviceCategoryId: typeForm.serviceCategoryId,
-        });
+        await managerApi.updateServiceType(editingType.id, payload);
       } else {
-        await managerApi.createServiceType(typeForm);
+        await managerApi.createServiceType(payload);
       }
       closeForm();
       fetchData();
@@ -196,13 +238,19 @@ export default function ServiceManagement() {
 
   const handleDeleteType = async () => {
     if (!confirmDeleteType) return;
+    if (isLocationManager && confirmDeleteType.locationId !== user?.locationId) {
+      setError('Bạn chỉ có quyền xóa dịch vụ thuộc cơ sở của mình.');
+      setConfirmDeleteType(null);
+      return;
+    }
     setDeleting(true);
     try {
       await managerApi.deleteServiceType(confirmDeleteType.id);
       setConfirmDeleteType(null);
       fetchData();
-    } catch {
-      setError('Xóa thất bại. Loại dịch vụ có thể đang được sử dụng.');
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Xóa thất bại. Loại dịch vụ có thể đang được sử dụng.';
+      setError(msg);
     } finally {
       setDeleting(false);
     }
@@ -293,6 +341,7 @@ export default function ServiceManagement() {
                 <tr className="text-left text-gray-500 border-b border-gray-100 text-xs uppercase tracking-wider">
                   <th className="pb-3 font-medium">Tên</th>
                   <th className="pb-3 font-medium">Danh mục</th>
+                  <th className="pb-3 font-medium">Cơ sở áp dụng</th>
                   <th className="pb-3 font-medium">Giá</th>
                   <th className="pb-3"></th>
                 </tr>
@@ -305,16 +354,41 @@ export default function ServiceManagement() {
                       {t.description && <div className="text-xs text-gray-400 mt-0.5">{t.description}</div>}
                     </td>
                     <td className="py-3 text-gray-600">{getCatName(t.serviceCategoryId)}</td>
-                    <td className="py-3 font-semibold text-green-600">{t.price?.toLocaleString('vi-VN')}đ</td>
                     <td className="py-3">
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => openEditType(t)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setConfirmDeleteType(t)} className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      {t.locationId ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          <MapPin className="w-3 h-3 text-emerald-600" />
+                          {t.locationName || locations.find(l => l.id === t.locationId)?.name || `Cơ sở #${t.locationId}`}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-gray-100 text-gray-700">
+                          <Globe className="w-3 h-3 text-gray-500" />
+                          Toàn hệ thống
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 font-semibold text-green-600">{t.price?.toLocaleString('vi-VN')}đ</td>
+                    <td className="py-3 text-right">
+                      {(() => {
+                        const canManage = !isLocationManager || (user?.locationId && t.locationId === user.locationId);
+                        if (!canManage) {
+                          return (
+                            <span className="text-xs text-gray-400 italic" title="Dịch vụ toàn hệ thống hoặc cơ sở khác - chỉ Manager mới có quyền sửa/xóa">
+                              Chỉ xem
+                            </span>
+                          );
+                        }
+                        return (
+                          <div className="flex items-center justify-end gap-1">
+                            <button onClick={() => openEditType(t)} className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-green-600" title="Chỉnh sửa">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setConfirmDeleteType(t)} className="p-1.5 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-600" title="Xóa">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))}
@@ -449,6 +523,28 @@ export default function ServiceManagement() {
                       <option value={0} disabled>Chưa có danh mục</option>
                     )}
                   </select>
+                </div>
+
+                {/* Cơ sở áp dụng */}
+                <div>
+                  <label className="label">Cơ sở áp dụng *</label>
+                  {isLocationManager ? (
+                    <div className="border border-gray-200 bg-gray-50 rounded-xl p-2.5 text-sm font-semibold text-gray-700 flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>{locations.find(l => l.id === user?.locationId)?.name || `Cơ sở #${user?.locationId}`} (Chỉ áp dụng tại cơ sở của bạn)</span>
+                    </div>
+                  ) : (
+                    <select
+                      className="input"
+                      value={typeForm.locationId ?? ''}
+                      onChange={e => setTypeForm(f => ({ ...f, locationId: e.target.value === '' ? undefined : Number(e.target.value) }))}
+                    >
+                      <option value="">🌐 Chung toàn hệ thống (Áp dụng cho mọi cơ sở)</option>
+                      {locations.map(l => (
+                        <option key={l.id} value={l.id}>📍 Cơ sở: {l.name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div>
                   <label className="label flex justify-between items-center">

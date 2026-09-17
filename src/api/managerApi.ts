@@ -181,6 +181,8 @@ function mapServiceType(item: any): ServiceType {
     price: Number(item.price ?? 0),
     serviceCategoryId: item.serviceCategoryId ?? item.categoryId,
     categoryId: item.categoryId ?? item.serviceCategoryId,
+    locationId: item.locationId,
+    locationName: item.locationName,
   };
 }
 
@@ -218,19 +220,21 @@ export const managerApi = {
   // Service Types
   getServiceTypes: () => apiClient.get('/manager/service-types').then(r => (r.data || []).map(mapServiceType)),
   getServiceType: (id: number) => apiClient.get(`/manager/service-types/${id}`).then(r => mapServiceType(r.data)),
-  createServiceType: (data: { name?: string; serviceName?: string; description?: string; price: number; serviceCategoryId?: number; categoryId?: number }) =>
+  createServiceType: (data: { name?: string; serviceName?: string; description?: string; price: number; serviceCategoryId?: number; categoryId?: number; locationId?: number }) =>
     apiClient.post('/manager/service-types', {
       serviceName: data.name ?? data.serviceName,
       description: data.description,
       price: data.price,
       categoryId: data.serviceCategoryId ?? data.categoryId,
+      locationId: data.locationId,
     }).then(r => mapServiceType(r.data)),
-  updateServiceType: (id: number, data: { name?: string; serviceName?: string; description?: string; price: number; serviceCategoryId?: number; categoryId?: number }) =>
+  updateServiceType: (id: number, data: { name?: string; serviceName?: string; description?: string; price: number; serviceCategoryId?: number; categoryId?: number; locationId?: number }) =>
     apiClient.put(`/manager/service-types/${id}`, {
       serviceName: data.name ?? data.serviceName,
       description: data.description,
       price: data.price,
       categoryId: data.serviceCategoryId ?? data.categoryId,
+      locationId: data.locationId,
     }).then(r => mapServiceType(r.data)),
   deleteServiceType: (id: number) => apiClient.delete(`/manager/service-types/${id}`).then(r => r.data),
 

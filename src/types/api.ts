@@ -43,6 +43,7 @@ export interface AvailableSlotDTO {
   id: number;
   slotNumber: string;
   price: number;
+  landPrice?: number;
   area?: number;
   maxPillars?: number;
   status: string;
@@ -238,6 +239,8 @@ export interface ServiceType {
   price: number;
   serviceCategoryId?: number;
   categoryId?: number;
+  locationId?: number;
+  locationName?: string;
 }
 
 export interface SensorReading {

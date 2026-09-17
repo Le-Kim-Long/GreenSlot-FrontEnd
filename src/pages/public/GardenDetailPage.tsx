@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Grid3X3, ChevronLeft, Calendar, Loader2, Sprout, Layers, Maximize2, MapPin, CheckCircle2, Sparkles, ChevronDown } from 'lucide-react';
+import { Grid3X3, ChevronLeft, Calendar, Loader2, Sprout, Layers, Maximize2, MapPin, CheckCircle2, Sparkles, ChevronDown, DollarSign } from 'lucide-react';
 
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
@@ -138,8 +138,12 @@ export default function GardenDetailPage() {
   const totalPillarsCount = smallCount + mediumCount + largeCount;
   const totalHoles = (smallCount * 24) + (mediumCount * 36) + (largeCount * 48);
 
+  const landPrice = Number(slot?.landPrice != null ? slot.landPrice : (slot?.price || 0));
   const pillarsMonthlyPrice = (smallCount * 150000) + (mediumCount * 200000) + (largeCount * 300000);
-  const slotRentTotal = pillarsMonthlyPrice * bookingMonths;
+  const monthlyRent = landPrice + pillarsMonthlyPrice;
+  const landTotal = landPrice * bookingMonths;
+  const pillarsRentTotal = pillarsMonthlyPrice * bookingMonths;
+  const slotRentTotal = monthlyRent * bookingMonths;
 
   // Danh sách từng trụ cụ thể được chọn trong ô (sắp xếp đồng bộ theo chuẩn BE: SMALL -> MEDIUM -> LARGE)
   const chosenPillars = useMemo<ChosenPillarItem[]>(() => {
@@ -423,13 +427,20 @@ export default function GardenDetailPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-400 font-medium">Giá thuê trụ đã chọn</div>
-                  <div className="text-2xl font-black text-emerald-700">{pillarsMonthlyPrice.toLocaleString('vi-VN')}đ<span className="text-xs text-gray-400 font-normal">/tháng</span></div>
+                  <div className="text-xs text-gray-400 font-medium">Thuê mặt bằng & trụ</div>
+                  <div className="text-2xl font-black text-emerald-700">
+                    {monthlyRent.toLocaleString('vi-VN')}đ<span className="text-xs text-gray-400 font-normal">/tháng</span>
+                  </div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">
+                    {landPrice > 0 
+                      ? `(Đất: ${landPrice.toLocaleString('vi-VN')}đ + Trụ: ${pillarsMonthlyPrice.toLocaleString('vi-VN')}đ)` 
+                      : `(Miễn phí tiền đất • ${totalPillarsCount} trụ)`}
+                  </div>
                 </div>
               </div>
 
               {/* Thông số ô vườn */}
-              <div className="grid grid-cols-3 gap-3 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                 <div className="p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
                   <div className="text-[11px] text-emerald-700 flex items-center gap-1 font-medium">
                     <Maximize2 className="w-3.5 h-3.5 text-emerald-600" /> Diện tích ô vườn
@@ -441,6 +452,14 @@ export default function GardenDetailPage() {
                     <Layers className="w-3.5 h-3.5 text-emerald-600" /> Năng suất đã chọn
                   </div>
                   <div className="text-sm font-black text-emerald-800 mt-1">{totalHoles} hốc ({totalPillarsCount} trụ)</div>
+                </div>
+                <div className="p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100">
+                  <div className="text-[11px] text-emerald-700 flex items-center gap-1 font-medium">
+                    <DollarSign className="w-3.5 h-3.5 text-emerald-600" /> Giá thuê đất
+                  </div>
+                  <div className="text-sm font-black text-emerald-900 mt-1">
+                    {landPrice > 0 ? `${landPrice.toLocaleString('vi-VN')}đ/th` : 'Miễn phí (0đ)'}
+                  </div>
                 </div>
                 <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
                   <div className="text-[11px] text-gray-400 flex items-center gap-1">
@@ -904,23 +923,40 @@ export default function GardenDetailPage() {
 
                 {/* Bảng chi tiết tính giá minh bạch */}
                 <div className="bg-emerald-50/80 border border-emerald-100 rounded-2xl p-4 space-y-2.5 text-xs">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Thuê {totalPillarsCount} trụ ({totalAreaUsed.toFixed(1)} m²):</span>
-                    <span className="font-semibold text-gray-900">{pillarsMonthlyPrice.toLocaleString('vi-VN')}đ × {bookingMonths} th = {slotRentTotal.toLocaleString('vi-VN')}đ</span>
+                  {/* Tiền thuê đất */}
+                  <div className="flex justify-between text-gray-700">
+                    <span className="font-semibold flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600" /> Tiền thuê đất ({slotArea.toFixed(1)} m²):
+                    </span>
+                    <span className="font-bold text-gray-900">
+                      {landPrice > 0 ? `${landPrice.toLocaleString('vi-VN')}đ × ${bookingMonths} th = ${landTotal.toLocaleString('vi-VN')}đ` : 'Miễn phí (0đ)'}
+                    </span>
                   </div>
-                  <div className="text-[11px] text-gray-500 pl-2 space-y-0.5">
+
+                  {/* Tiền thuê trụ */}
+                  <div className="border-t border-emerald-200/50 pt-2 flex justify-between text-gray-700">
+                    <span className="font-semibold flex items-center gap-1">
+                      <Layers className="w-3.5 h-3.5 text-emerald-600" /> Thuê {totalPillarsCount} trụ ({totalAreaUsed.toFixed(1)} m²):
+                    </span>
+                    <span className="font-bold text-gray-900">
+                      {pillarsMonthlyPrice.toLocaleString('vi-VN')}đ × {bookingMonths} th = {pillarsRentTotal.toLocaleString('vi-VN')}đ
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-gray-500 pl-4 space-y-0.5">
                     {largeCount > 0 && <div>• {largeCount}x Trụ Lớn (48 hốc): {(largeCount * 300000).toLocaleString('vi-VN')}đ/th</div>}
                     {mediumCount > 0 && <div>• {mediumCount}x Trụ Vừa (36 hốc): {(mediumCount * 200000).toLocaleString('vi-VN')}đ/th</div>}
                     {smallCount > 0 && <div>• {smallCount}x Trụ Nhỏ (24 hốc): {(smallCount * 150000).toLocaleString('vi-VN')}đ/th</div>}
                   </div>
 
                   {/* Chi tiết giống cây từng trụ */}
-                  <div className="border-t border-emerald-200/60 pt-2 space-y-1">
-                    <div className="flex justify-between text-gray-700 font-bold">
-                      <span>Phôi giống cây trồng ({totalHoles} hốc):</span>
+                  <div className="border-t border-emerald-200/50 pt-2 space-y-1">
+                    <div className="flex justify-between text-gray-700 font-semibold">
+                      <span className="flex items-center gap-1">
+                        <Sprout className="w-3.5 h-3.5 text-emerald-600" /> Phôi giống cây trồng ({totalHoles} hốc):
+                      </span>
                       <span className="font-black text-emerald-800">{Math.round(treeTotal).toLocaleString('vi-VN')}đ</span>
                     </div>
-                    <div className="text-[11px] text-gray-600 pl-2 space-y-0.5">
+                    <div className="text-[11px] text-gray-600 pl-4 space-y-0.5">
                       {pillarTreeDetails.map((item, idx) => (
                         <div key={idx} className="flex justify-between">
                           <span>• {item.pillar.label}: {item.tree?.treeName || 'Mặc định'}</span>
@@ -989,6 +1025,23 @@ export default function GardenDetailPage() {
 
               <div className="flex justify-between"><span className="text-gray-500">Ngày bắt đầu:</span><span className="font-semibold text-gray-900">{startDate}</span></div>
               <div className="flex justify-between"><span className="text-gray-500">Thời gian thuê:</span><span className="font-semibold text-gray-900">{bookingMonths} tháng</span></div>
+
+              {/* Bóc tách giá chi tiết trong modal */}
+              <div className="border-t border-gray-200/80 pt-2 space-y-1">
+                <div className="flex justify-between text-gray-600">
+                  <span>Tiền thuê đất ({bookingMonths} tháng):</span>
+                  <span className="font-semibold text-gray-900">{landPrice > 0 ? `${landTotal.toLocaleString('vi-VN')} VNĐ` : 'Miễn phí (0đ)'}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Tiền thuê {totalPillarsCount} trụ ({bookingMonths} tháng):</span>
+                  <span className="font-semibold text-gray-900">{pillarsRentTotal.toLocaleString('vi-VN')} VNĐ</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Tiền phôi giống cây ({totalHoles} hốc):</span>
+                  <span className="font-semibold text-gray-900">{Math.round(treeTotal).toLocaleString('vi-VN')} VNĐ</span>
+                </div>
+              </div>
+
               <div className="border-t border-gray-200 pt-2 flex justify-between text-sm font-black text-emerald-900">
                 <span>Tổng chi phí:</span>
                 <span className="text-emerald-700 text-base">{Math.round(finalPrice).toLocaleString('vi-VN')} VNĐ</span>
