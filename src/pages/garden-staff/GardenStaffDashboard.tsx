@@ -3,7 +3,8 @@ import {
   ClipboardList, Wifi, CheckCircle, AlertTriangle,
   Loader2, ShieldAlert, Upload, Calendar, Bell, Eye,
   X, ExternalLink, Sprout, Zap, History, Wrench, Camera,
-  MapPin, Layers, Filter, Play, Search, AlertCircle, Sparkles
+  MapPin, Layers, Filter, Play, Search, AlertCircle, Sparkles,
+  Cpu
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -109,6 +110,7 @@ export default function GardenStaffDashboard() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [completeModalTask, setCompleteModalTask] = useState<GardeningTask | null>(null);
   const [issueModalTask, setIssueModalTask] = useState<GardeningTask | null>(null);
+  const [iotModalTask, setIotModalTask] = useState<GardeningTask | null>(null);
 
   // Báo thu hoạch sớm (trước khi đủ số ngày sinh trưởng)
   const [eligibleRentals, setEligibleRentals] = useState<EligibleHarvestRental[]>([]);
@@ -514,6 +516,42 @@ export default function GardenStaffDashboard() {
                                 </div>
                               )}
 
+                              {/* Hiển thị badge / nút Kiểm tra thiết bị IoT nếu task liên quan đến trụ */}
+                              {(task.pillarCodes || task.targetSlotNumber) && (
+                                <div className="pt-1 flex items-center gap-2 flex-wrap">
+                                  {task.iotStatus === 'NEEDS_SETUP' || (!task.equipments || task.equipments.length === 0) ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setIotModalTask(task)}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors shadow-2xs cursor-pointer"
+                                      title="Bấm để xem hướng dẫn lắp đặt thiết bị IoT cho trụ này"
+                                    >
+                                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                      <span>Cần lắp thiết bị IoT</span>
+                                      <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">Xem hướng dẫn</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setIotModalTask(task)}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
+                                      title="Bấm để xem chi tiết thiết bị IoT gắn trên trụ này"
+                                    >
+                                      <Cpu className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                      <span>Thiết bị IoT: {task.equipments?.length || 0} thiết bị</span>
+                                      {task.cameraStatus && (
+                                        <span className={clsx(
+                                          "text-[10px] px-1.5 py-0.5 rounded font-bold",
+                                          task.cameraStatus === 'ONLINE' ? "bg-emerald-200 text-emerald-900" : "bg-gray-200 text-gray-700"
+                                        )}>
+                                          Cam: {task.cameraStatus}
+                                        </span>
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+
                               {/* Thumbnail Ảnh Bằng Chứng Đã Nộp */}
                               {task.evidenceImageUrl && (
                                 <div className="flex items-center gap-2 pt-1">
@@ -725,6 +763,14 @@ export default function GardenStaffDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal Chi tiết & Hướng dẫn Thiết bị IoT của Trụ */}
+      {iotModalTask && (
+        <IoTDeviceDetailModal
+          task={iotModalTask}
+          onClose={() => setIotModalTask(null)}
+        />
+      )}
     </DashboardLayout>
   );
 }
@@ -822,6 +868,17 @@ function CompleteTaskModal({
               </div>
             </div>
           )}
+
+          {/* Lưu ý kiểm tra thiết bị IoT khi chuẩn bị gieo giống */}
+          <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 space-y-1">
+            <div className="font-bold flex items-center gap-1.5 text-emerald-950">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              <span>Lưu ý nghiệm thu thiết bị & trụ:</span>
+            </div>
+            <p className="text-[11px] text-emerald-800 leading-relaxed">
+              Vui lòng chụp ảnh thể hiện rõ toàn cảnh trụ đã được gieo trồng và <strong>đầy đủ thiết bị IoT (Mạch ESP32, Cảm biến, Camera)</strong> đang vận hành để Quản lý cơ sở đối chiếu và duyệt nhanh chóng.
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-2 pt-2 border-t border-gray-100">
@@ -925,6 +982,173 @@ function ReportIssueModal({
             {loading ? 'Đang gửi báo cáo...' : 'Gửi báo cáo sự cố'}
           </button>
           <button onClick={onClose} disabled={loading} className="btn-secondary text-xs py-2.5 px-4">Hủy</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal component: Chi tiết & Hướng dẫn Thiết bị IoT cho Trụ
+function IoTDeviceDetailModal({
+  task,
+  onClose
+}: {
+  task: GardeningTask;
+  onClose: () => void;
+}) {
+  const hasEquipments = task.equipments && task.equipments.length > 0;
+  const isNeedsSetup = task.iotStatus === 'NEEDS_SETUP' || !hasEquipments;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in backdrop-blur-xs" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-gray-100 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className={clsx(
+              "p-2 rounded-xl",
+              isNeedsSetup ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+            )}>
+              <Cpu className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-base">Thông tin Thiết bị IoT của Trụ</h3>
+              <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                <span className="font-semibold text-gray-700">Ô: {task.targetSlotNumber || 'N/A'}</span>
+                {task.pillarCodes && <span>• <span className="font-semibold text-emerald-700">Trụ: {task.pillarCodes}</span></span>}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Trạng thái tổng quan */}
+        <div className={clsx(
+          "p-4 rounded-xl border flex items-start gap-3",
+          isNeedsSetup 
+            ? "bg-amber-50/80 border-amber-200 text-amber-900" 
+            : "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+        )}>
+          {isNeedsSetup ? (
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          ) : (
+            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          )}
+          <div className="text-xs space-y-1">
+            <h4 className="font-bold text-sm">
+              {isNeedsSetup ? 'Cần trang bị & Lắp đặt thiết bị IoT' : 'Trụ đã được trang bị thiết bị IoT'}
+            </h4>
+            <p className="leading-relaxed">
+              {task.iotRecommendation || (isNeedsSetup 
+                ? 'Trụ này hiện chưa có thiết bị nào gắn trong hệ thống. Vui lòng nhận bộ thiết bị từ kho cơ sở để lắp đặt.' 
+                : 'Trụ đã có đầy đủ thiết bị, vui lòng kiểm tra nguồn điện và tín hiệu hoạt động.')}
+            </p>
+          </div>
+        </div>
+
+        {/* Trạng thái kết nối phần cứng (Camera & Vi điều khiển) */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2.5">
+            <div className="p-2 bg-white rounded-lg border border-gray-200 text-gray-600 shadow-2xs">
+              <Camera className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[11px] text-gray-400 font-medium">Camera giám sát</div>
+              <div className="text-xs font-bold flex items-center gap-1.5 mt-0.5">
+                <span className={clsx(
+                  "w-2 h-2 rounded-full",
+                  task.cameraStatus === 'ONLINE' ? "bg-emerald-500" : "bg-gray-400"
+                )} />
+                <span className={task.cameraStatus === 'ONLINE' ? "text-emerald-700" : "text-gray-600"}>
+                  {task.cameraStatus || 'Chưa kết nối'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2.5">
+            <div className="p-2 bg-white rounded-lg border border-gray-200 text-gray-600 shadow-2xs">
+              <Wifi className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[11px] text-gray-400 font-medium">Vi điều khiển (ESP32)</div>
+              <div className="text-xs font-bold flex items-center gap-1.5 mt-0.5">
+                <span className={clsx(
+                  "w-2 h-2 rounded-full",
+                  task.deviceStatus === 'ONLINE' ? "bg-emerald-500" : "bg-gray-400"
+                )} />
+                <span className={task.deviceStatus === 'ONLINE' ? "text-emerald-700" : "text-gray-600"}>
+                  {task.deviceStatus || 'Chưa kết nối'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Danh sách thiết bị hiện có (Nếu đã có) */}
+        {hasEquipments && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+              <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+              Thiết bị đang gán trên trụ ({task.equipments!.length}):
+            </h4>
+            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100 text-xs">
+              {task.equipments!.map((eq, idx) => (
+                <div key={eq.id || idx} className="p-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-gray-800">{eq.equipmentName}</div>
+                    <div className="text-[11px] text-gray-500 font-mono">
+                      Serial: {eq.serialNumber || 'N/A'}
+                    </div>
+                  </div>
+                  <span className={clsx(
+                    "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                    eq.status === 'IN_USE' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                    eq.status === 'AVAILABLE' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                    "bg-gray-50 text-gray-600 border-gray-200"
+                  )}>
+                    {eq.status || 'Đang dùng'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bộ thiết bị tiêu chuẩn khuyến nghị & Hướng dẫn lắp đặt cho Staff */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+          <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            Bộ thiết bị tiêu chuẩn & Quy trình lắp đặt:
+          </h4>
+          <ul className="text-xs text-slate-700 space-y-2">
+            <li className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+              <span><strong>Mạch điều khiển ESP32:</strong> Cung cấp vi xử lý thu thập dữ liệu cảm biến và điều khiển van tưới, kết nối WiFi cơ sở.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+              <span><strong>Cảm biến độ ẩm đất & pH:</strong> Cắm các đầu dò đo lường vào các tầng khay trồng của trụ.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
+              <span><strong>Camera giám sát (ESP32-CAM):</strong> Lắp trên giá đỡ quan sát hướng về trụ để truyền livestream cho khách hàng.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">4</span>
+              <span><strong>Nghiệm thu:</strong> Cắm adapter nguồn 5V/12V, kiểm tra đèn báo LED sáng và chụp ảnh toàn bộ trụ làm bằng chứng nộp task.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="pt-2 flex justify-end">
+          <button
+            onClick={onClose}
+            className="btn-primary text-xs py-2 px-5"
+          >
+            Đã hiểu & Đóng
+          </button>
         </div>
       </div>
     </div>

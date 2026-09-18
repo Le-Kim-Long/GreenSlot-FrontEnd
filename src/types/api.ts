@@ -169,6 +169,25 @@ export interface GardeningTask {
   isEarlyHarvest?: boolean;
   customerName?: string;
   createdAt: string;
+  equipments?: Array<{
+    id?: number;
+    equipmentName: string;
+    serialNumber?: string;
+    description?: string;
+    status?: string;
+    pillarId?: number;
+    pillarCode?: string;
+    locationId?: number;
+    locationName?: string;
+    purchaseDate?: string;
+    lastMaintenanceDate?: string;
+    imageUrl?: string;
+  }>;
+  cameraStatus?: string;
+  cameraStreamUrl?: string;
+  deviceStatus?: string;
+  iotStatus?: string;
+  iotRecommendation?: string;
 }
 
 export interface TaskAssignment {
