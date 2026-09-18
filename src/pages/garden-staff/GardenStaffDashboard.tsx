@@ -517,8 +517,14 @@ export default function GardenStaffDashboard() {
                                 </div>
                               )}
 
-                              {/* Hiển thị badge / nút Kiểm tra thiết bị IoT nếu task liên quan đến trụ */}
-                              {(task.pillarCodes || task.targetSlotNumber) && (
+                              {/* Hiển thị badge / nút Kiểm tra thiết bị IoT: CHỈ HIỂN THỊ TRÊN TASK LẮP ĐẶT BỔ SUNG TRỤ */}
+                              {Boolean(
+                                task.pillarCodes && (
+                                  (task.taskName || '').toLowerCase().includes('lắp đặt bổ sung') ||
+                                  (task.taskName || '').toLowerCase().includes('lắp đặt trụ') ||
+                                  (task.taskName || '').toLowerCase().includes('bổ sung trụ')
+                                )
+                              ) && (
                                 <div className="pt-1 flex items-center gap-2 flex-wrap">
                                   {task.iotStatus === 'NEEDS_SETUP' || (!task.equipments || task.equipments.length === 0) ? (
                                     <button
@@ -786,12 +792,7 @@ function CompleteTaskModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  // Tách danh sách trụ và xác định task lắp đặt/gieo trồng trụ
+  // Tách danh sách trụ và xác định task lắp đặt/bổ sung trụ
   const pillarCodes = useMemo(() => {
     if (!task.pillarCodes) return [];
     return task.pillarCodes.split(',').map(s => s.trim()).filter(Boolean);
@@ -799,64 +800,79 @@ function CompleteTaskModal({
 
   const isPillarSetupTask = useMemo(() => {
     if (pillarCodes.length === 0) return false;
-    const type = (task.taskType || '').toUpperCase();
     const name = (task.taskName || '').toLowerCase();
-    return ['SETUP', 'PLANT', 'INSTALL', 'MAINTENANCE'].includes(type) ||
-           ['trụ', 'lắp', 'gieo', 'chuẩn bị', 'setup', 'bổ sung'].some(k => name.includes(k));
-  }, [pillarCodes, task.taskType, task.taskName]);
+    return name.includes('lắp đặt bổ sung') ||
+           name.includes('lắp đặt trụ') ||
+           name.includes('bổ sung trụ');
+  }, [pillarCodes, task.taskName]);
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // State cho task thông thường (1 ảnh + ghi chú)
+  const [singleFile, setSingleFile] = useState<File | null>(null);
+  const [singlePreview, setSinglePreview] = useState<string | null>(null);
+  const [singleNotes, setSingleNotes] = useState('');
+
+  // State cho task lắp đặt bổ sung (theo từng trụ)
   const [availableEquipments, setAvailableEquipments] = useState<Equipment[]>([]);
   const [loadingEquipments, setLoadingEquipments] = useState(false);
 
-  // State bindings: map pCode -> { mode, equipmentId, newEquipmentName, newSerialNumber }
-  interface BindingState {
+  interface PillarBindingForm {
     mode: 'existing' | 'new';
     equipmentId?: number;
     newEquipmentName?: string;
     newSerialNumber?: string;
+    file: File | null;
+    preview: string | null;
+    notes: string;
   }
-  const [bindings, setBindings] = useState<Record<string, BindingState>>({});
+  const [pillarForms, setPillarForms] = useState<Record<string, PillarBindingForm>>({});
 
   useEffect(() => {
     if (isPillarSetupTask && pillarCodes.length > 0) {
       setLoadingEquipments(true);
       equipmentApi.getEquipments()
         .then(eqs => {
-          // Lọc thiết bị AVAILABLE trong kho
           const available = (eqs || []).filter(e => (e.status || '').toUpperCase() === 'AVAILABLE');
           setAvailableEquipments(available);
 
-          // Khởi tạo binding cho từng trụ
-          const initialBindings: Record<string, BindingState> = {};
+          const initialForms: Record<string, PillarBindingForm> = {};
           pillarCodes.forEach(code => {
-            initialBindings[code] = {
+            initialForms[code] = {
               mode: available.length > 0 ? 'existing' : 'new',
               equipmentId: undefined,
               newEquipmentName: `Bộ IoT Trụ ${code}`,
               newSerialNumber: '',
+              file: null,
+              preview: null,
+              notes: '',
             };
           });
-          setBindings(initialBindings);
+          setPillarForms(initialForms);
         })
         .catch(err => {
           console.error('Lỗi tải danh sách thiết bị:', err);
-          const initialBindings: Record<string, BindingState> = {};
+          const initialForms: Record<string, PillarBindingForm> = {};
           pillarCodes.forEach(code => {
-            initialBindings[code] = {
+            initialForms[code] = {
               mode: 'new',
               equipmentId: undefined,
               newEquipmentName: `Bộ IoT Trụ ${code}`,
               newSerialNumber: '',
+              file: null,
+              preview: null,
+              notes: '',
             };
           });
-          setBindings(initialBindings);
+          setPillarForms(initialForms);
         })
         .finally(() => setLoadingEquipments(false));
     }
   }, [isPillarSetupTask, pillarCodes]);
 
-  const handleBindingChange = (pCode: string, field: keyof BindingState, value: any) => {
-    setBindings(prev => ({
+  const handlePillarFormChange = (pCode: string, field: keyof PillarBindingForm, value: any) => {
+    setPillarForms(prev => ({
       ...prev,
       [pCode]: {
         ...prev[pCode],
@@ -865,67 +881,117 @@ function CompleteTaskModal({
     }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePillarFileChange = (pCode: string, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const f = e.target.files[0];
-      setFile(f);
-      if (preview) URL.revokeObjectURL(preview);
-      setPreview(URL.createObjectURL(f));
+      const oldPreview = pillarForms[pCode]?.preview;
+      if (oldPreview) URL.revokeObjectURL(oldPreview);
+      const newPreview = URL.createObjectURL(f);
+      setPillarForms(prev => ({
+        ...prev,
+        [pCode]: {
+          ...prev[pCode],
+          file: f,
+          preview: newPreview
+        }
+      }));
+    }
+  };
+
+  const handleSingleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const f = e.target.files[0];
+      if (singlePreview) URL.revokeObjectURL(singlePreview);
+      setSingleFile(f);
+      setSinglePreview(URL.createObjectURL(f));
     }
   };
 
   const handleSubmit = async () => {
-    if (!file) {
-      setError('Vui lòng chọn hình ảnh bằng chứng công việc.');
+    setError('');
+
+    // TRƯỜNG HỢP 1: Task Lắp đặt bổ sung trụ
+    if (isPillarSetupTask && pillarCodes.length > 0) {
+      // Validate từng trụ
+      for (const code of pillarCodes) {
+        const pf = pillarForms[code];
+        if (!pf) {
+          setError(`Vui lòng nhập thông tin cho trụ ${code}.`);
+          return;
+        }
+        if (pf.mode === 'existing' && !pf.equipmentId) {
+          setError(`Vui lòng chọn thiết bị từ kho cho trụ ${code} (hoặc chọn 'Lắp mới (Serial)').`);
+          return;
+        }
+        if (pf.mode === 'new' && (!pf.newSerialNumber || !pf.newSerialNumber.trim())) {
+          setError(`Vui lòng nhập Số Serial Number cho thiết bị tại trụ ${code}.`);
+          return;
+        }
+        if (!pf.file) {
+          setError(`Vui lòng tải lên ảnh bằng chứng thực tế cho trụ ${code}.`);
+          return;
+        }
+        if (!pf.notes || !pf.notes.trim()) {
+          setError(`Vui lòng nhập ghi chú thực tế cho trụ ${code} để Quản lý nắm rõ.`);
+          return;
+        }
+      }
+
+      setLoading(true);
+      try {
+        // Upload ảnh từng trụ
+        const uploadedBindings: PillarEquipmentBinding[] = [];
+        const imageUrlList: string[] = [];
+        const notesList: string[] = [];
+
+        for (const code of pillarCodes) {
+          const pf = pillarForms[code];
+          const imgUrl = await taskApi.uploadEvidenceImage(pf.file!);
+          imageUrlList.push(imgUrl);
+          notesList.push(`[${code}]: ${pf.notes.trim()}`);
+
+          uploadedBindings.push({
+            pillarCode: code,
+            equipmentId: pf.mode === 'existing' ? Number(pf.equipmentId) : undefined,
+            newEquipmentName: pf.mode === 'new' ? (pf.newEquipmentName?.trim() || `Bộ IoT Trụ ${code}`) : undefined,
+            newSerialNumber: pf.mode === 'new' ? pf.newSerialNumber?.trim() : undefined,
+            evidenceImageUrl: imgUrl,
+            notes: pf.notes.trim(),
+          });
+        }
+
+        await taskApi.updateTaskStatus(task.id, {
+          status: 'PENDING_APPROVAL',
+          evidenceImageUrl: imageUrlList.join(','),
+          staffNotes: notesList.join('\n'),
+          equipmentBindings: uploadedBindings,
+        });
+
+        onSuccess();
+      } catch (err: any) {
+        setError(err?.response?.data?.message || err?.message || 'Nộp bằng chứng thất bại.');
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
-    // Kiểm tra ràng buộc thiết bị nếu là task lắp đặt/gieo trồng trụ
-    let equipmentBindingsPayload: PillarEquipmentBinding[] | undefined = undefined;
-    if (isPillarSetupTask && pillarCodes.length > 0) {
-      const payloadList: PillarEquipmentBinding[] = [];
-      for (const code of pillarCodes) {
-        const b = bindings[code];
-        if (!b) {
-          setError(`Vui lòng thiết lập thiết bị cho trụ ${code}.`);
-          return;
-        }
-        if (b.mode === 'existing') {
-          if (!b.equipmentId) {
-            setError(`Vui lòng chọn thiết bị từ kho cho trụ ${code} (hoặc chuyển sang chế độ "Lắp mới").`);
-            return;
-          }
-          payloadList.push({
-            pillarCode: code,
-            equipmentId: Number(b.equipmentId)
-          });
-        } else {
-          if (!b.newSerialNumber || !b.newSerialNumber.trim()) {
-            setError(`Vui lòng nhập Serial Number cho thiết bị mới gắn tại trụ ${code}.`);
-            return;
-          }
-          payloadList.push({
-            pillarCode: code,
-            newEquipmentName: b.newEquipmentName?.trim() || `Bộ IoT Trụ ${code}`,
-            newSerialNumber: b.newSerialNumber.trim()
-          });
-        }
-      }
-      equipmentBindingsPayload = payloadList;
+    // TRƯỜNG HỢP 2: Task thông thường (Gieo giống, chăm sóc...)
+    if (!singleFile) {
+      setError('Vui lòng chọn hình ảnh bằng chứng công việc.');
+      return;
     }
-
     setLoading(true);
-    setError('');
     try {
-      const imgUrl = await taskApi.uploadEvidenceImage(file);
+      const imgUrl = await taskApi.uploadEvidenceImage(singleFile);
       await taskApi.updateTaskStatus(task.id, {
         status: 'PENDING_APPROVAL',
         evidenceImageUrl: imgUrl,
-        equipmentBindings: equipmentBindingsPayload,
+        staffNotes: singleNotes.trim() || undefined,
       });
       onSuccess();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Tải ảnh lên hoặc nộp bằng chứng thất bại.');
+      setError(err?.response?.data?.message || err?.message || 'Nộp bằng chứng thất bại.');
     } finally {
       setLoading(false);
     }
@@ -933,7 +999,7 @@ function CompleteTaskModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in backdrop-blur-xs" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-gray-100 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between pb-3 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
@@ -951,68 +1017,77 @@ function CompleteTaskModal({
 
         {error && <div className="bg-rose-50 text-rose-700 p-3 rounded-xl text-xs font-medium border border-rose-200">{error}</div>}
 
-        {/* BẮT BUỘC GẮN THIẾT BỊ IOT CHO CÁC TRỤ NẾU LÀ TASK LẮP ĐẶT TRỤ */}
-        {isPillarSetupTask && pillarCodes.length > 0 && (
-          <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 space-y-3">
-            <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
-              <Cpu className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Gắn thiết bị IoT cho trụ (Bắt buộc {pillarCodes.length} trụ)</span>
+        {/* 1. NẾU LÀ TASK LẮP ĐẶT BỔ SUNG: NỘP THEO TỪNG TRỤ (ẢNH + THIẾT BỊ + GHI CHÚ) */}
+        {isPillarSetupTask && pillarCodes.length > 0 ? (
+          <div className="space-y-4">
+            <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 space-y-1">
+              <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                <Cpu className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Nghiệm thu Lắp đặt Bổ sung Trụ ({pillarCodes.length} trụ)</span>
+              </div>
+              <p className="text-[11px] text-amber-800 leading-snug">
+                Vui lòng gán thiết bị IoT, tải lên đúng <strong>1 ảnh chụp rõ thực tế</strong> và <strong>ghi chú cụ thể</strong> cho từng trụ để Quản lý cơ sở kiểm tra và kích hoạt cảm biến.
+              </p>
             </div>
-            <p className="text-[11px] text-amber-800 leading-snug">
-              Nhiệm vụ này yêu cầu gắn thiết bị IoT (ESP32 / cảm biến) cho từng trụ để quản lý cơ sở kích hoạt theo dõi cảm biến khi duyệt hoàn thành.
-            </p>
 
             {loadingEquipments ? (
-              <div className="flex items-center justify-center py-4 text-xs text-gray-500 gap-2">
+              <div className="flex items-center justify-center py-6 text-xs text-gray-500 gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-amber-600" /> Đang tải danh sách thiết bị kho...
               </div>
             ) : (
-              <div className="space-y-3">
-                {pillarCodes.map(code => {
-                  const b = bindings[code] || { mode: 'existing' };
+              <div className="space-y-4">
+                {pillarCodes.map((code, index) => {
+                  const pf = pillarForms[code] || { mode: 'existing', file: null, preview: null, notes: '' };
                   return (
-                    <div key={code} className="bg-white p-3 rounded-lg border border-amber-200 shadow-xs space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-amber-950 bg-amber-100 px-2.5 py-0.5 rounded-md border border-amber-200">
-                          Mã trụ: {code}
-                        </span>
+                    <div key={code} className="bg-gray-50/80 p-4 rounded-xl border border-gray-200 shadow-2xs space-y-3">
+                      {/* Header Trụ */}
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
+                            {index + 1}
+                          </span>
+                          <span className="text-xs font-bold text-gray-900 bg-white border border-gray-300 px-2.5 py-0.5 rounded-md shadow-2xs">
+                            Trụ: {code}
+                          </span>
+                        </div>
                         <div className="flex items-center gap-1 text-[11px]">
                           <button
                             type="button"
-                            onClick={() => handleBindingChange(code, 'mode', 'existing')}
-                            className={`px-2 py-0.5 rounded transition ${b.mode === 'existing' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            onClick={() => handlePillarFormChange(code, 'mode', 'existing')}
+                            className={`px-2.5 py-1 rounded-lg transition ${pf.mode === 'existing' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'}`}
                           >
                             Kho có sẵn ({availableEquipments.length})
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleBindingChange(code, 'mode', 'new')}
-                            className={`px-2 py-0.5 rounded transition ${b.mode === 'new' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            onClick={() => handlePillarFormChange(code, 'mode', 'new')}
+                            className={`px-2.5 py-1 rounded-lg transition ${pf.mode === 'new' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'}`}
                           >
                             Lắp mới (Serial)
                           </button>
                         </div>
                       </div>
 
-                      {b.mode === 'existing' ? (
+                      {/* Thiết bị IoT */}
+                      {pf.mode === 'existing' ? (
                         <div>
-                          <label className="block text-[11px] font-medium text-gray-600 mb-1">
-                            Chọn thiết bị sẵn sàng trong kho: <span className="text-rose-500">*</span>
+                          <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                            Thiết bị IoT gắn vào trụ: <span className="text-rose-500">*</span>
                           </label>
                           {availableEquipments.length === 0 ? (
-                            <div className="text-[11px] text-amber-800 bg-amber-50/90 p-2 rounded border border-amber-200">
-                              Kho hiện không có thiết bị trống. Vui lòng bấm tab <strong>"Lắp mới (Serial)"</strong> bên cạnh để nhập mã Serial bóc hộp.
+                            <div className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                              Kho hiện không có thiết bị trống. Vui lòng bấm <strong>"Lắp mới (Serial)"</strong> để nhập mã Serial thiết bị bóc hộp.
                             </div>
                           ) : (
                             <select
-                              value={b.equipmentId || ''}
-                              onChange={e => handleBindingChange(code, 'equipmentId', e.target.value ? Number(e.target.value) : undefined)}
+                              value={pf.equipmentId || ''}
+                              onChange={e => handlePillarFormChange(code, 'equipmentId', e.target.value ? Number(e.target.value) : undefined)}
                               className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white outline-none"
                             >
-                              <option value="">-- Chọn thiết bị IoT gắn vào trụ {code} --</option>
+                              <option value="">-- Chọn thiết bị IoT từ kho --</option>
                               {availableEquipments.map(eq => (
                                 <option key={eq.id} value={eq.id}>
-                                  {eq.equipmentName} (SN: {eq.serialNumber || 'Chưa có'}) {eq.locationName ? `- ${eq.locationName}` : ''}
+                                  {eq.equipmentName} (SN: {eq.serialNumber || 'N/A'}) {eq.locationName ? `- ${eq.locationName}` : ''}
                                 </option>
                               ))}
                             </select>
@@ -1021,88 +1096,135 @@ function CompleteTaskModal({
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-[11px] font-medium text-gray-600 mb-0.5">
-                              Tên thiết bị:
-                            </label>
+                            <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">Tên thiết bị:</label>
                             <input
                               type="text"
-                              value={b.newEquipmentName || ''}
-                              onChange={e => handleBindingChange(code, 'newEquipmentName', e.target.value)}
+                              value={pf.newEquipmentName || ''}
+                              onChange={e => handlePillarFormChange(code, 'newEquipmentName', e.target.value)}
                               placeholder={`Bộ IoT Trụ ${code}`}
-                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
                             />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-medium text-gray-600 mb-0.5">
-                              Số Serial / MAC: <span className="text-rose-500">*</span>
+                            <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">
+                              Mã Serial Number: <span className="text-rose-500">*</span>
                             </label>
                             <input
                               type="text"
-                              value={b.newSerialNumber || ''}
-                              onChange={e => handleBindingChange(code, 'newSerialNumber', e.target.value)}
+                              value={pf.newSerialNumber || ''}
+                              onChange={e => handlePillarFormChange(code, 'newSerialNumber', e.target.value)}
                               placeholder="VD: ESP32-PL01"
-                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-mono"
+                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white font-mono"
                             />
                           </div>
                         </div>
                       )}
+
+                      {/* Ảnh bằng chứng riêng của trụ này */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                          Ảnh chụp thực tế trụ {code}: <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-semibold cursor-pointer shadow-2xs transition">
+                            <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{pf.file ? 'Đổi ảnh trụ ' + code : 'Chọn ảnh trụ ' + code}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => handlePillarFileChange(code, e)}
+                              className="hidden"
+                            />
+                          </label>
+                          {!pf.preview && <span className="text-[11px] text-gray-400">Chưa có ảnh</span>}
+                        </div>
+
+                        {pf.preview && (
+                          <div className="mt-2 flex items-center gap-2.5 bg-white p-2 rounded-lg border border-gray-200">
+                            <img src={pf.preview} alt={`Trụ ${code}`} className="w-14 h-14 object-cover rounded-md border border-gray-300" />
+                            <div className="text-[11px] space-y-0.5">
+                              <span className="font-bold text-gray-800 block truncate max-w-xs">{pf.file?.name}</span>
+                              <span className="text-gray-500">{((pf.file?.size || 0) / (1024 * 1024)).toFixed(2)} MB</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Ghi chú thực tế riêng của trụ này */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                          Ghi chú thực tế cho trụ {code}: <span className="text-rose-500">*</span>
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={pf.notes || ''}
+                          onChange={e => handlePillarFormChange(code, 'notes', e.target.value)}
+                          placeholder={`Nhập ghi chú cho trụ ${code} (VD: Đã lắp trụ, cố định chân, mạch ESP32 đã cấp nguồn, cảm biến hoạt động tốt...)`}
+                          className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
+                        />
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
           </div>
+        ) : (
+          /* 2. TASK THÔNG THƯỜNG (Gieo giống, chăm sóc...): 1 ảnh + ghi chú đơn giản */
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Hình ảnh bằng chứng kết quả công việc <span className="text-rose-500">*</span>
+              </label>
+              
+              <div className="flex items-center gap-3">
+                <label className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm transition">
+                  <Upload className="w-4 h-4" />
+                  <span>{singleFile ? 'Gửi ảnh khác' : 'Chọn ảnh bằng chứng'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSingleFileChange}
+                    className="hidden"
+                  />
+                </label>
+                {!singlePreview && <span className="text-xs text-gray-400">Chưa có ảnh</span>}
+              </div>
+
+              {singlePreview && (
+                <div className="mt-2.5 flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                  <img src={singlePreview} alt="Xem trước" className="w-16 h-16 object-cover rounded-lg border border-gray-300 shadow-xs" />
+                  <div className="text-xs space-y-1">
+                    <span className="font-bold text-gray-800 block truncate max-w-xs">{singleFile?.name}</span>
+                    <span className="text-gray-500">{((singleFile?.size || 0) / (1024 * 1024)).toFixed(2)} MB</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Ghi chú của nhân viên:
+              </label>
+              <textarea
+                rows={3}
+                value={singleNotes}
+                onChange={e => setSingleNotes(e.target.value)}
+                placeholder="Nhập ghi chú hoặc mô tả kết quả công việc (không bắt buộc)..."
+                className="w-full text-xs border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+              />
+            </div>
+          </div>
         )}
 
-        <div className="space-y-3">
-          <label className="block text-xs font-bold text-gray-700">
-            Hình ảnh bằng chứng kết quả công việc <span className="text-rose-500">*</span>
-          </label>
-          
-          <div className="flex items-center gap-3">
-            <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm transition-all">
-              <Upload className="w-4 h-4" />
-              <span>{file ? 'Gửi ảnh khác' : 'Gửi ảnh'}</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </label>
-            {!preview && <span className="text-xs text-gray-400">Chưa có ảnh nào được đính kèm</span>}
-          </div>
-
-          {preview && (
-            <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
-              <img src={preview} alt="Xem trước" className="w-16 h-16 object-cover rounded-lg border border-gray-300 shadow-xs" />
-              <div className="text-xs space-y-1">
-                <span className="font-bold text-gray-800 block truncate max-w-xs">{file?.name}</span>
-                <span className="text-gray-500">{((file?.size || 0) / (1024 * 1024)).toFixed(2)} MB</span>
-              </div>
-            </div>
-          )}
-
-          {/* Lưu ý kiểm tra thiết bị IoT khi chuẩn bị gieo giống */}
-          <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 space-y-1">
-            <div className="font-bold flex items-center gap-1.5 text-emerald-950">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Lưu ý nghiệm thu thiết bị & trụ:</span>
-            </div>
-            <p className="text-[11px] text-emerald-800 leading-relaxed">
-              Vui lòng chụp ảnh thể hiện rõ toàn cảnh trụ đã được gieo trồng và <strong>đầy đủ thiết bị IoT (Mạch ESP32, Cảm biến, Camera)</strong> đang vận hành để Quản lý cơ sở đối chiếu và duyệt nhanh chóng.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex gap-2 pt-2 border-t border-gray-100">
+        <div className="flex gap-2 pt-2 border-t border-gray-100 sticky bottom-0 bg-white z-10">
           <button
             onClick={handleSubmit}
-            disabled={loading || !file}
+            disabled={loading}
             className="btn-primary text-xs py-2.5 px-4 flex-1 flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {loading ? 'Đang gửi duyệt...' : 'Gửi hoàn thành & chờ duyệt'}
+            {loading ? 'Đang tải ảnh & gửi duyệt...' : 'Gửi hoàn thành & chờ duyệt'}
           </button>
           <button onClick={onClose} disabled={loading} className="btn-secondary text-xs py-2.5 px-4">Hủy</button>
         </div>

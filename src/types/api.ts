@@ -188,6 +188,8 @@ export interface GardeningTask {
   deviceStatus?: string;
   iotStatus?: string;
   iotRecommendation?: string;
+  staffNotes?: string;
+  equipmentBindings?: PillarEquipmentBinding[];
 }
 
 export interface TaskAssignment {
@@ -204,11 +206,14 @@ export interface PillarEquipmentBinding {
   equipmentId?: number;
   newEquipmentName?: string;
   newSerialNumber?: string;
+  evidenceImageUrl?: string;
+  notes?: string;
 }
 
 export interface TaskStatusUpdate {
   status: string;
   evidenceImageUrl?: string;
+  staffNotes?: string;
   equipmentBindings?: PillarEquipmentBinding[];
 }
 
