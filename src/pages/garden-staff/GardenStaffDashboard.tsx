@@ -3,12 +3,14 @@ import {
   ClipboardList, Wifi, CheckCircle, AlertTriangle,
   Loader2, ShieldAlert, Upload, Calendar, Bell, Eye,
   X, ExternalLink, Sprout, Zap, History, Wrench, Camera,
-  MapPin, Layers, Filter, Play, Search, AlertCircle, Sparkles
+  MapPin, Layers, Filter, Play, Search, AlertCircle, Sparkles,
+  Cpu
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { taskApi, EligibleHarvestRental } from '../../api/taskApi';
-import type { GardeningTask } from '../../types/api';
+import { equipmentApi, Equipment } from '../../api/equipmentApi';
+import type { GardeningTask, PillarEquipmentBinding } from '../../types/api';
 import clsx from 'clsx';
 
 const navItems = [
@@ -109,6 +111,7 @@ export default function GardenStaffDashboard() {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [completeModalTask, setCompleteModalTask] = useState<GardeningTask | null>(null);
   const [issueModalTask, setIssueModalTask] = useState<GardeningTask | null>(null);
+  const [iotModalTask, setIotModalTask] = useState<GardeningTask | null>(null);
 
   // Báo thu hoạch sớm (trước khi đủ số ngày sinh trưởng)
   const [eligibleRentals, setEligibleRentals] = useState<EligibleHarvestRental[]>([]);
@@ -502,15 +505,66 @@ export default function GardenStaffDashboard() {
                                 </div>
                               </div>
 
-                              {task.description && (
-                                <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 line-clamp-2 max-w-lg">
-                                  {task.description}
-                                </p>
-                              )}
+                              {task.description && (() => {
+                                const isSetup = (task.taskName || '').toLowerCase().includes('lắp đặt bổ sung') ||
+                                                (task.taskName || '').toLowerCase().includes('lắp đặt trụ') ||
+                                                (task.taskName || '').toLowerCase().includes('bổ sung trụ');
+                                const displayDesc = (!isSetup && task.description.includes('[HƯỚNG DẪN THIẾT BỊ IOT]'))
+                                  ? task.description.split('[HƯỚNG DẪN THIẾT BỊ IOT]')[0].trim()
+                                  : task.description;
+
+                                return (
+                                  <p className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100 whitespace-pre-line leading-relaxed">
+                                    {displayDesc}
+                                  </p>
+                                );
+                              })()}
 
                               {task.status === 'REJECTED' && task.rejectionReason && (
                                 <div className="text-xs text-rose-700 bg-rose-50 p-2 border border-rose-200 rounded-lg font-medium">
                                   ⚠️ <strong>Lý do từ chối:</strong> {task.rejectionReason}
+                                </div>
+                              )}
+
+                              {/* Hiển thị badge / nút Kiểm tra thiết bị IoT: CHỈ HIỂN THỊ TRÊN TASK LẮP ĐẶT BỔ SUNG TRỤ */}
+                              {Boolean(
+                                task.pillarCodes && (
+                                  (task.taskName || '').toLowerCase().includes('lắp đặt bổ sung') ||
+                                  (task.taskName || '').toLowerCase().includes('lắp đặt trụ') ||
+                                  (task.taskName || '').toLowerCase().includes('bổ sung trụ')
+                                )
+                              ) && (
+                                <div className="pt-1 flex items-center gap-2 flex-wrap">
+                                  {task.iotStatus === 'NEEDS_SETUP' || (!task.equipments || task.equipments.length === 0) ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setIotModalTask(task)}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors shadow-2xs cursor-pointer"
+                                      title="Bấm để xem hướng dẫn lắp đặt thiết bị IoT cho trụ này"
+                                    >
+                                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                      <span>Cần lắp thiết bị IoT</span>
+                                      <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">Xem hướng dẫn</span>
+                                    </button>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setIotModalTask(task)}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
+                                      title="Bấm để xem chi tiết thiết bị IoT gắn trên trụ này"
+                                    >
+                                      <Cpu className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                      <span>Thiết bị IoT: {task.equipments?.length || 0} thiết bị</span>
+                                      {task.cameraStatus && (
+                                        <span className={clsx(
+                                          "text-[10px] px-1.5 py-0.5 rounded font-bold",
+                                          task.cameraStatus === 'ONLINE' ? "bg-emerald-200 text-emerald-900" : "bg-gray-200 text-gray-700"
+                                        )}>
+                                          Cam: {task.cameraStatus}
+                                        </span>
+                                      )}
+                                    </button>
+                                  )}
                                 </div>
                               )}
 
@@ -725,6 +779,14 @@ export default function GardenStaffDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal Chi tiết & Hướng dẫn Thiết bị IoT của Trụ */}
+      {iotModalTask && (
+        <IoTDeviceDetailModal
+          task={iotModalTask}
+          onClose={() => setIotModalTask(null)}
+        />
+      )}
     </DashboardLayout>
   );
 }
@@ -739,36 +801,206 @@ function CompleteTaskModal({
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  // Tách danh sách trụ và xác định task lắp đặt/bổ sung trụ
+  const pillarCodes = useMemo(() => {
+    if (!task.pillarCodes) return [];
+    return task.pillarCodes.split(',').map(s => s.trim()).filter(Boolean);
+  }, [task.pillarCodes]);
+
+  const isPillarSetupTask = useMemo(() => {
+    if (pillarCodes.length === 0) return false;
+    const name = (task.taskName || '').toLowerCase();
+    return name.includes('lắp đặt bổ sung') ||
+           name.includes('lắp đặt trụ') ||
+           name.includes('bổ sung trụ');
+  }, [pillarCodes, task.taskName]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // State cho task thông thường (1 ảnh + ghi chú)
+  const [singleFile, setSingleFile] = useState<File | null>(null);
+  const [singlePreview, setSinglePreview] = useState<string | null>(null);
+  const [singleNotes, setSingleNotes] = useState('');
+
+  // State cho task lắp đặt bổ sung (theo từng trụ)
+  const [availableEquipments, setAvailableEquipments] = useState<Equipment[]>([]);
+  const [loadingEquipments, setLoadingEquipments] = useState(false);
+
+  interface PillarBindingForm {
+    mode: 'existing' | 'new';
+    equipmentId?: number;
+    newEquipmentName?: string;
+    newSerialNumber?: string;
+    file: File | null;
+    preview: string | null;
+    notes: string;
+  }
+  const [pillarForms, setPillarForms] = useState<Record<string, PillarBindingForm>>({});
+
+  useEffect(() => {
+    if (isPillarSetupTask && pillarCodes.length > 0) {
+      setLoadingEquipments(true);
+      equipmentApi.getEquipments()
+        .then(eqs => {
+          const available = (eqs || []).filter(e => (e.status || '').toUpperCase() === 'AVAILABLE');
+          setAvailableEquipments(available);
+
+          const initialForms: Record<string, PillarBindingForm> = {};
+          pillarCodes.forEach(code => {
+            initialForms[code] = {
+              mode: available.length > 0 ? 'existing' : 'new',
+              equipmentId: undefined,
+              newEquipmentName: `Bộ IoT Trụ ${code}`,
+              newSerialNumber: '',
+              file: null,
+              preview: null,
+              notes: '',
+            };
+          });
+          setPillarForms(initialForms);
+        })
+        .catch(err => {
+          console.error('Lỗi tải danh sách thiết bị:', err);
+          const initialForms: Record<string, PillarBindingForm> = {};
+          pillarCodes.forEach(code => {
+            initialForms[code] = {
+              mode: 'new',
+              equipmentId: undefined,
+              newEquipmentName: `Bộ IoT Trụ ${code}`,
+              newSerialNumber: '',
+              file: null,
+              preview: null,
+              notes: '',
+            };
+          });
+          setPillarForms(initialForms);
+        })
+        .finally(() => setLoadingEquipments(false));
+    }
+  }, [isPillarSetupTask, pillarCodes]);
+
+  const handlePillarFormChange = (pCode: string, field: keyof PillarBindingForm, value: any) => {
+    setPillarForms(prev => ({
+      ...prev,
+      [pCode]: {
+        ...prev[pCode],
+        [field]: value
+      }
+    }));
+  };
+
+  const handlePillarFileChange = (pCode: string, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const f = e.target.files[0];
-      setFile(f);
-      if (preview) URL.revokeObjectURL(preview);
-      setPreview(URL.createObjectURL(f));
+      const oldPreview = pillarForms[pCode]?.preview;
+      if (oldPreview) URL.revokeObjectURL(oldPreview);
+      const newPreview = URL.createObjectURL(f);
+      setPillarForms(prev => ({
+        ...prev,
+        [pCode]: {
+          ...prev[pCode],
+          file: f,
+          preview: newPreview
+        }
+      }));
+    }
+  };
+
+  const handleSingleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const f = e.target.files[0];
+      if (singlePreview) URL.revokeObjectURL(singlePreview);
+      setSingleFile(f);
+      setSinglePreview(URL.createObjectURL(f));
     }
   };
 
   const handleSubmit = async () => {
-    if (!file) {
+    setError('');
+
+    // TRƯỜNG HỢP 1: Task Lắp đặt bổ sung trụ
+    if (isPillarSetupTask && pillarCodes.length > 0) {
+      // Validate từng trụ
+      for (const code of pillarCodes) {
+        const pf = pillarForms[code];
+        if (!pf) {
+          setError(`Vui lòng nhập thông tin cho trụ ${code}.`);
+          return;
+        }
+        if (pf.mode === 'existing' && !pf.equipmentId) {
+          setError(`Vui lòng chọn thiết bị từ kho cho trụ ${code} (hoặc chọn 'Lắp mới (Serial)').`);
+          return;
+        }
+        if (pf.mode === 'new' && (!pf.newSerialNumber || !pf.newSerialNumber.trim())) {
+          setError(`Vui lòng nhập Số Serial Number cho thiết bị tại trụ ${code}.`);
+          return;
+        }
+        if (!pf.file) {
+          setError(`Vui lòng tải lên ảnh bằng chứng thực tế cho trụ ${code}.`);
+          return;
+        }
+        if (!pf.notes || !pf.notes.trim()) {
+          setError(`Vui lòng nhập ghi chú thực tế cho trụ ${code} để Quản lý nắm rõ.`);
+          return;
+        }
+      }
+
+      setLoading(true);
+      try {
+        // Upload ảnh từng trụ
+        const uploadedBindings: PillarEquipmentBinding[] = [];
+        const imageUrlList: string[] = [];
+        const notesList: string[] = [];
+
+        for (const code of pillarCodes) {
+          const pf = pillarForms[code];
+          const imgUrl = await taskApi.uploadEvidenceImage(pf.file!);
+          imageUrlList.push(imgUrl);
+          notesList.push(`[${code}]: ${pf.notes.trim()}`);
+
+          uploadedBindings.push({
+            pillarCode: code,
+            equipmentId: pf.mode === 'existing' ? Number(pf.equipmentId) : undefined,
+            newEquipmentName: pf.mode === 'new' ? (pf.newEquipmentName?.trim() || `Bộ IoT Trụ ${code}`) : undefined,
+            newSerialNumber: pf.mode === 'new' ? pf.newSerialNumber?.trim() : undefined,
+            evidenceImageUrl: imgUrl,
+            notes: pf.notes.trim(),
+          });
+        }
+
+        await taskApi.updateTaskStatus(task.id, {
+          status: 'PENDING_APPROVAL',
+          evidenceImageUrl: imageUrlList.join(','),
+          staffNotes: notesList.join('\n'),
+          equipmentBindings: uploadedBindings,
+        });
+
+        onSuccess();
+      } catch (err: any) {
+        setError(err?.response?.data?.message || err?.message || 'Nộp bằng chứng thất bại.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // TRƯỜNG HỢP 2: Task thông thường (Gieo giống, chăm sóc...)
+    if (!singleFile) {
       setError('Vui lòng chọn hình ảnh bằng chứng công việc.');
       return;
     }
     setLoading(true);
-    setError('');
     try {
-      const imgUrl = await taskApi.uploadEvidenceImage(file);
+      const imgUrl = await taskApi.uploadEvidenceImage(singleFile);
       await taskApi.updateTaskStatus(task.id, {
         status: 'PENDING_APPROVAL',
         evidenceImageUrl: imgUrl,
+        staffNotes: singleNotes.trim() || undefined,
       });
       onSuccess();
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Tải ảnh lên hoặc nộp bằng chứng thất bại.');
+      setError(err?.response?.data?.message || err?.message || 'Nộp bằng chứng thất bại.');
     } finally {
       setLoading(false);
     }
@@ -776,8 +1008,8 @@ function CompleteTaskModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in backdrop-blur-xs" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 space-y-4" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 border border-gray-100 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
               <CheckCircle className="w-5 h-5" />
@@ -794,44 +1026,214 @@ function CompleteTaskModal({
 
         {error && <div className="bg-rose-50 text-rose-700 p-3 rounded-xl text-xs font-medium border border-rose-200">{error}</div>}
 
-        <div className="space-y-3">
-          <label className="block text-xs font-bold text-gray-700">
-            Hình ảnh bằng chứng kết quả công việc <span className="text-rose-500">*</span>
-          </label>
-          
-          <div className="flex items-center gap-3">
-            <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm transition-all">
-              <Upload className="w-4 h-4" />
-              <span>{file ? 'Gửi ảnh khác' : 'Gửi ảnh'}</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </label>
-            {!preview && <span className="text-xs text-gray-400">Chưa có ảnh nào được đính kèm</span>}
-          </div>
-
-          {preview && (
-            <div className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
-              <img src={preview} alt="Xem trước" className="w-16 h-16 object-cover rounded-lg border border-gray-300 shadow-xs" />
-              <div className="text-xs space-y-1">
-                <span className="font-bold text-gray-800 block truncate max-w-xs">{file?.name}</span>
-                <span className="text-gray-500">{((file?.size || 0) / (1024 * 1024)).toFixed(2)} MB</span>
+        {/* 1. NẾU LÀ TASK LẮP ĐẶT BỔ SUNG: NỘP THEO TỪNG TRỤ (ẢNH + THIẾT BỊ + GHI CHÚ) */}
+        {isPillarSetupTask && pillarCodes.length > 0 ? (
+          <div className="space-y-4">
+            <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 space-y-1">
+              <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+                <Cpu className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Nghiệm thu Lắp đặt Bổ sung Trụ ({pillarCodes.length} trụ)</span>
               </div>
+              <p className="text-[11px] text-amber-800 leading-snug">
+                Vui lòng gán thiết bị IoT, tải lên đúng <strong>1 ảnh chụp rõ thực tế</strong> và <strong>ghi chú cụ thể</strong> cho từng trụ để Quản lý cơ sở kiểm tra và kích hoạt cảm biến.
+              </p>
             </div>
-          )}
-        </div>
 
-        <div className="flex gap-2 pt-2 border-t border-gray-100">
+            {loadingEquipments ? (
+              <div className="flex items-center justify-center py-6 text-xs text-gray-500 gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-600" /> Đang tải danh sách thiết bị kho...
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {pillarCodes.map((code, index) => {
+                  const pf = pillarForms[code] || { mode: 'existing', file: null, preview: null, notes: '' };
+                  return (
+                    <div key={code} className="bg-gray-50/80 p-4 rounded-xl border border-gray-200 shadow-2xs space-y-3">
+                      {/* Header Trụ */}
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
+                            {index + 1}
+                          </span>
+                          <span className="text-xs font-bold text-gray-900 bg-white border border-gray-300 px-2.5 py-0.5 rounded-md shadow-2xs">
+                            Trụ: {code}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => handlePillarFormChange(code, 'mode', 'existing')}
+                            className={`px-2.5 py-1 rounded-lg transition ${pf.mode === 'existing' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'}`}
+                          >
+                            Kho có sẵn ({availableEquipments.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePillarFormChange(code, 'mode', 'new')}
+                            className={`px-2.5 py-1 rounded-lg transition ${pf.mode === 'new' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'}`}
+                          >
+                            Lắp mới (Serial)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Thiết bị IoT */}
+                      {pf.mode === 'existing' ? (
+                        <div>
+                          <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                            Thiết bị IoT gắn vào trụ: <span className="text-rose-500">*</span>
+                          </label>
+                          {availableEquipments.length === 0 ? (
+                            <div className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                              Kho hiện không có thiết bị trống. Vui lòng bấm <strong>"Lắp mới (Serial)"</strong> để nhập mã Serial thiết bị bóc hộp.
+                            </div>
+                          ) : (
+                            <select
+                              value={pf.equipmentId || ''}
+                              onChange={e => handlePillarFormChange(code, 'equipmentId', e.target.value ? Number(e.target.value) : undefined)}
+                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white outline-none"
+                            >
+                              <option value="">-- Chọn thiết bị IoT từ kho --</option>
+                              {availableEquipments.map(eq => (
+                                <option key={eq.id} value={eq.id}>
+                                  {eq.equipmentName} (SN: {eq.serialNumber || 'N/A'}) {eq.locationName ? `- ${eq.locationName}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">Tên thiết bị:</label>
+                            <input
+                              type="text"
+                              value={pf.newEquipmentName || ''}
+                              onChange={e => handlePillarFormChange(code, 'newEquipmentName', e.target.value)}
+                              placeholder={`Bộ IoT Trụ ${code}`}
+                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">
+                              Mã Serial Number: <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={pf.newSerialNumber || ''}
+                              onChange={e => handlePillarFormChange(code, 'newSerialNumber', e.target.value)}
+                              placeholder="VD: ESP32-PL01"
+                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white font-mono"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Ảnh bằng chứng riêng của trụ này */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                          Ảnh chụp thực tế trụ {code}: <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 rounded-lg text-xs font-semibold cursor-pointer shadow-2xs transition">
+                            <Upload className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>{pf.file ? 'Đổi ảnh trụ ' + code : 'Chọn ảnh trụ ' + code}</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => handlePillarFileChange(code, e)}
+                              className="hidden"
+                            />
+                          </label>
+                          {!pf.preview && <span className="text-[11px] text-gray-400">Chưa có ảnh</span>}
+                        </div>
+
+                        {pf.preview && (
+                          <div className="mt-2 flex items-center gap-2.5 bg-white p-2 rounded-lg border border-gray-200">
+                            <img src={pf.preview} alt={`Trụ ${code}`} className="w-14 h-14 object-cover rounded-md border border-gray-300" />
+                            <div className="text-[11px] space-y-0.5">
+                              <span className="font-bold text-gray-800 block truncate max-w-xs">{pf.file?.name}</span>
+                              <span className="text-gray-500">{((pf.file?.size || 0) / (1024 * 1024)).toFixed(2)} MB</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Ghi chú thực tế riêng của trụ này */}
+                      <div>
+                        <label className="block text-[11px] font-semibold text-gray-700 mb-1">
+                          Ghi chú thực tế cho trụ {code}: <span className="text-rose-500">*</span>
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={pf.notes || ''}
+                          onChange={e => handlePillarFormChange(code, 'notes', e.target.value)}
+                          placeholder={`Nhập ghi chú cho trụ ${code} (VD: Đã lắp trụ, cố định chân, mạch ESP32 đã cấp nguồn, cảm biến hoạt động tốt...)`}
+                          className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* 2. TASK THÔNG THƯỜNG (Gieo giống, chăm sóc...): 1 ảnh + ghi chú đơn giản */
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Hình ảnh bằng chứng kết quả công việc <span className="text-rose-500">*</span>
+              </label>
+              
+              <div className="flex items-center gap-3">
+                <label className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold cursor-pointer shadow-sm transition">
+                  <Upload className="w-4 h-4" />
+                  <span>{singleFile ? 'Gửi ảnh khác' : 'Chọn ảnh bằng chứng'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleSingleFileChange}
+                    className="hidden"
+                  />
+                </label>
+                {!singlePreview && <span className="text-xs text-gray-400">Chưa có ảnh</span>}
+              </div>
+
+              {singlePreview && (
+                <div className="mt-2.5 flex items-center gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200">
+                  <img src={singlePreview} alt="Xem trước" className="w-16 h-16 object-cover rounded-lg border border-gray-300 shadow-xs" />
+                  <div className="text-xs space-y-1">
+                    <span className="font-bold text-gray-800 block truncate max-w-xs">{singleFile?.name}</span>
+                    <span className="text-gray-500">{((singleFile?.size || 0) / (1024 * 1024)).toFixed(2)} MB</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">
+                Ghi chú của nhân viên:
+              </label>
+              <textarea
+                rows={3}
+                value={singleNotes}
+                onChange={e => setSingleNotes(e.target.value)}
+                placeholder="Nhập ghi chú hoặc mô tả kết quả công việc (không bắt buộc)..."
+                className="w-full text-xs border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2 pt-2 border-t border-gray-100 sticky bottom-0 bg-white z-10">
           <button
             onClick={handleSubmit}
-            disabled={loading || !file}
+            disabled={loading}
             className="btn-primary text-xs py-2.5 px-4 flex-1 flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-            {loading ? 'Đang gửi duyệt...' : 'Gửi hoàn thành & chờ duyệt'}
+            {loading ? 'Đang tải ảnh & gửi duyệt...' : 'Gửi hoàn thành & chờ duyệt'}
           </button>
           <button onClick={onClose} disabled={loading} className="btn-secondary text-xs py-2.5 px-4">Hủy</button>
         </div>
@@ -925,6 +1327,173 @@ function ReportIssueModal({
             {loading ? 'Đang gửi báo cáo...' : 'Gửi báo cáo sự cố'}
           </button>
           <button onClick={onClose} disabled={loading} className="btn-secondary text-xs py-2.5 px-4">Hủy</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal component: Chi tiết & Hướng dẫn Thiết bị IoT cho Trụ
+function IoTDeviceDetailModal({
+  task,
+  onClose
+}: {
+  task: GardeningTask;
+  onClose: () => void;
+}) {
+  const hasEquipments = task.equipments && task.equipments.length > 0;
+  const isNeedsSetup = task.iotStatus === 'NEEDS_SETUP' || !hasEquipments;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in backdrop-blur-xs" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full p-6 border border-gray-100 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className={clsx(
+              "p-2 rounded-xl",
+              isNeedsSetup ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+            )}>
+              <Cpu className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-base">Thông tin Thiết bị IoT của Trụ</h3>
+              <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
+                <span className="font-semibold text-gray-700">Ô: {task.targetSlotNumber || 'N/A'}</span>
+                {task.pillarCodes && <span>• <span className="font-semibold text-emerald-700">Trụ: {task.pillarCodes}</span></span>}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Trạng thái tổng quan */}
+        <div className={clsx(
+          "p-4 rounded-xl border flex items-start gap-3",
+          isNeedsSetup 
+            ? "bg-amber-50/80 border-amber-200 text-amber-900" 
+            : "bg-emerald-50/80 border-emerald-200 text-emerald-900"
+        )}>
+          {isNeedsSetup ? (
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          ) : (
+            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          )}
+          <div className="text-xs space-y-1">
+            <h4 className="font-bold text-sm">
+              {isNeedsSetup ? 'Cần trang bị & Lắp đặt thiết bị IoT' : 'Trụ đã được trang bị thiết bị IoT'}
+            </h4>
+            <p className="leading-relaxed">
+              {task.iotRecommendation || (isNeedsSetup 
+                ? 'Trụ này hiện chưa có thiết bị nào gắn trong hệ thống. Vui lòng nhận bộ thiết bị từ kho cơ sở để lắp đặt.' 
+                : 'Trụ đã có đầy đủ thiết bị, vui lòng kiểm tra nguồn điện và tín hiệu hoạt động.')}
+            </p>
+          </div>
+        </div>
+
+        {/* Trạng thái kết nối phần cứng (Camera & Vi điều khiển) */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2.5">
+            <div className="p-2 bg-white rounded-lg border border-gray-200 text-gray-600 shadow-2xs">
+              <Camera className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[11px] text-gray-400 font-medium">Camera giám sát</div>
+              <div className="text-xs font-bold flex items-center gap-1.5 mt-0.5">
+                <span className={clsx(
+                  "w-2 h-2 rounded-full",
+                  task.cameraStatus === 'ONLINE' ? "bg-emerald-500" : "bg-gray-400"
+                )} />
+                <span className={task.cameraStatus === 'ONLINE' ? "text-emerald-700" : "text-gray-600"}>
+                  {task.cameraStatus || 'Chưa kết nối'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center gap-2.5">
+            <div className="p-2 bg-white rounded-lg border border-gray-200 text-gray-600 shadow-2xs">
+              <Wifi className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[11px] text-gray-400 font-medium">Vi điều khiển (ESP32)</div>
+              <div className="text-xs font-bold flex items-center gap-1.5 mt-0.5">
+                <span className={clsx(
+                  "w-2 h-2 rounded-full",
+                  task.deviceStatus === 'ONLINE' ? "bg-emerald-500" : "bg-gray-400"
+                )} />
+                <span className={task.deviceStatus === 'ONLINE' ? "text-emerald-700" : "text-gray-600"}>
+                  {task.deviceStatus || 'Chưa kết nối'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Danh sách thiết bị hiện có (Nếu đã có) */}
+        {hasEquipments && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+              <Wrench className="w-3.5 h-3.5 text-emerald-600" />
+              Thiết bị đang gán trên trụ ({task.equipments!.length}):
+            </h4>
+            <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100 text-xs">
+              {task.equipments!.map((eq, idx) => (
+                <div key={eq.id || idx} className="p-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-gray-800">{eq.equipmentName}</div>
+                    <div className="text-[11px] text-gray-500 font-mono">
+                      Serial: {eq.serialNumber || 'N/A'}
+                    </div>
+                  </div>
+                  <span className={clsx(
+                    "text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                    eq.status === 'IN_USE' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                    eq.status === 'AVAILABLE' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                    "bg-gray-50 text-gray-600 border-gray-200"
+                  )}>
+                    {eq.status || 'Đang dùng'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bộ thiết bị tiêu chuẩn khuyến nghị & Hướng dẫn lắp đặt cho Staff */}
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+          <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            Bộ thiết bị tiêu chuẩn & Quy trình lắp đặt:
+          </h4>
+          <ul className="text-xs text-slate-700 space-y-2">
+            <li className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">1</span>
+              <span><strong>Mạch điều khiển ESP32:</strong> Cung cấp vi xử lý thu thập dữ liệu cảm biến và điều khiển van tưới, kết nối WiFi cơ sở.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">2</span>
+              <span><strong>Cảm biến độ ẩm đất & pH:</strong> Cắm các đầu dò đo lường vào các tầng khay trồng của trụ.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">3</span>
+              <span><strong>Camera giám sát (ESP32-CAM):</strong> Lắp trên giá đỡ quan sát hướng về trụ để truyền livestream cho khách hàng.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">4</span>
+              <span><strong>Nghiệm thu:</strong> Cắm adapter nguồn 5V/12V, kiểm tra đèn báo LED sáng và chụp ảnh toàn bộ trụ làm bằng chứng nộp task.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="pt-2 flex justify-end">
+          <button
+            onClick={onClose}
+            className="btn-primary text-xs py-2 px-5"
+          >
+            Đã hiểu & Đóng
+          </button>
         </div>
       </div>
     </div>

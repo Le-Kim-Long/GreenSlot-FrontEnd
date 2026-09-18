@@ -169,6 +169,27 @@ export interface GardeningTask {
   isEarlyHarvest?: boolean;
   customerName?: string;
   createdAt: string;
+  equipments?: Array<{
+    id?: number;
+    equipmentName: string;
+    serialNumber?: string;
+    description?: string;
+    status?: string;
+    pillarId?: number;
+    pillarCode?: string;
+    locationId?: number;
+    locationName?: string;
+    purchaseDate?: string;
+    lastMaintenanceDate?: string;
+    imageUrl?: string;
+  }>;
+  cameraStatus?: string;
+  cameraStreamUrl?: string;
+  deviceStatus?: string;
+  iotStatus?: string;
+  iotRecommendation?: string;
+  staffNotes?: string;
+  equipmentBindings?: PillarEquipmentBinding[];
 }
 
 export interface TaskAssignment {
@@ -180,9 +201,49 @@ export interface TaskAssignment {
   targetSlotId?: number;
 }
 
+export interface PillarEquipmentBinding {
+  pillarCode: string;
+  equipmentId?: number;
+  newEquipmentName?: string;
+  newSerialNumber?: string;
+  evidenceImageUrl?: string;
+  notes?: string;
+}
+
 export interface TaskStatusUpdate {
   status: string;
   evidenceImageUrl?: string;
+  staffNotes?: string;
+  equipmentBindings?: PillarEquipmentBinding[];
+}
+
+export interface PillarIoTStatus {
+  pillarCode: string;
+  pillarId?: number;
+  locationId?: number;
+  locationName?: string;
+  equipments: Array<{
+    id: number;
+    equipmentName: string;
+    serialNumber: string;
+    status: string;
+    locationName?: string;
+  }>;
+  latestSensorReading?: {
+    id: number;
+    temperature?: number;
+    humidity?: number;
+    ph?: number;
+    light?: number;
+    soilMoisture?: number;
+    waterLevel?: number;
+    co2Level?: number;
+    recordedAt?: string;
+  };
+  hasSignal: boolean;
+  lastSignalAt?: string;
+  cameraStatus?: string;
+  deviceStatus?: string;
 }
 
 export interface IssueReport {
