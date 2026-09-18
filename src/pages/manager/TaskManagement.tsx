@@ -471,11 +471,20 @@ export default function TaskManagement() {
                       <td className="p-4 text-gray-500 font-mono">#{task.id}</td>
                       <td className="p-4">
                         <div className="font-medium text-gray-900">{task.name}</div>
-                        {task.description ? (
-                          <div className="text-xs text-gray-500 bg-gray-50/80 p-2 rounded-lg border border-gray-100 mt-1.5 whitespace-pre-line leading-relaxed">
-                            {task.description}
-                          </div>
-                        ) : null}
+                        {task.description ? (() => {
+                          const isSetup = (task.name || '').toLowerCase().includes('lắp đặt bổ sung') ||
+                                          (task.name || '').toLowerCase().includes('lắp đặt trụ') ||
+                                          (task.name || '').toLowerCase().includes('bổ sung trụ');
+                          const displayDesc = (!isSetup && task.description.includes('[HƯỚNG DẪN THIẾT BỊ IOT]'))
+                            ? task.description.split('[HƯỚNG DẪN THIẾT BỊ IOT]')[0].trim()
+                            : task.description;
+
+                          return (
+                            <div className="text-xs text-gray-500 bg-gray-50/80 p-2 rounded-lg border border-gray-100 mt-1.5 whitespace-pre-line leading-relaxed">
+                              {displayDesc}
+                            </div>
+                          );
+                        })() : null}
                       </td>
                       <td className="p-4 font-medium text-green-700">{task.slotNumber}</td>
                       <td className="p-4 text-gray-600 text-xs">
@@ -1123,12 +1132,21 @@ export default function TaskManagement() {
                       </span>
                     </div>
 
-                    {selectedTask.description && (
-                      <div className="text-gray-700 text-xs bg-white p-3 rounded-lg border border-gray-200">
-                        <span className="font-semibold block mb-1">Mô tả:</span>
-                        {selectedTask.description}
-                      </div>
-                    )}
+                    {selectedTask.description && (() => {
+                      const isSetup = (selectedTask.name || '').toLowerCase().includes('lắp đặt bổ sung') ||
+                                      (selectedTask.name || '').toLowerCase().includes('lắp đặt trụ') ||
+                                      (selectedTask.name || '').toLowerCase().includes('bổ sung trụ');
+                      const displayDesc = (!isSetup && selectedTask.description.includes('[HƯỚNG DẪN THIẾT BỊ IOT]'))
+                        ? selectedTask.description.split('[HƯỚNG DẪN THIẾT BỊ IOT]')[0].trim()
+                        : selectedTask.description;
+
+                      return (
+                        <div className="text-gray-700 text-xs bg-white p-3 rounded-lg border border-gray-200 whitespace-pre-line leading-relaxed">
+                          <span className="font-semibold block mb-1">Mô tả:</span>
+                          {displayDesc}
+                        </div>
+                      );
+                    })()}
 
                     <div className="flex justify-between items-center text-xs text-gray-600 pt-1">
                       <span>Nhân viên: <strong className="text-gray-900">{selectedTask.assigneeName || 'Chưa phân công'}</strong></span>

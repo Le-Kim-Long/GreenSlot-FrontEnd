@@ -505,11 +505,20 @@ export default function GardenStaffDashboard() {
                                 </div>
                               </div>
 
-                              {task.description && (
-                                <p className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100 whitespace-pre-line leading-relaxed">
-                                  {task.description}
-                                </p>
-                              )}
+                              {task.description && (() => {
+                                const isSetup = (task.taskName || '').toLowerCase().includes('lắp đặt bổ sung') ||
+                                                (task.taskName || '').toLowerCase().includes('lắp đặt trụ') ||
+                                                (task.taskName || '').toLowerCase().includes('bổ sung trụ');
+                                const displayDesc = (!isSetup && task.description.includes('[HƯỚNG DẪN THIẾT BỊ IOT]'))
+                                  ? task.description.split('[HƯỚNG DẪN THIẾT BỊ IOT]')[0].trim()
+                                  : task.description;
+
+                                return (
+                                  <p className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100 whitespace-pre-line leading-relaxed">
+                                    {displayDesc}
+                                  </p>
+                                );
+                              })()}
 
                               {task.status === 'REJECTED' && task.rejectionReason && (
                                 <div className="text-xs text-rose-700 bg-rose-50 p-2 border border-rose-200 rounded-lg font-medium">
