@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { taskApi } from '../../api/taskApi';
 import { managerApi, LocationItem, GardenStaff } from '../../api/managerApi';
+import { iotApi, PillarIoTStatus } from '../../api/iotApi';
 import { 
   ClipboardList, UserPlus, X, Plus, Search, 
   MapPin, UserCheck, Loader2, Eye, Image as ImageIcon, 
-  ExternalLink, CheckCircle, Calendar, Upload
+  ExternalLink, CheckCircle, Calendar, Upload,
+  Cpu, Wifi, AlertTriangle
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -26,6 +28,7 @@ interface Task {
   evidenceImageUrl?: string;
   rejectionReason?: string;
   createdAt?: string;
+  pillarCodes?: string;
 }
 
 interface Slot {
@@ -116,7 +119,8 @@ export default function TaskManagement() {
         assigneeName: t.assignedStaffName,
         evidenceImageUrl: t.evidenceImageUrl || '',
         rejectionReason: t.rejectionReason || '',
-        createdAt: t.createdAt || ''
+        createdAt: t.createdAt || '',
+        pillarCodes: t.pillarCodes || ''
       }));
 
       setTasks(formattedTasks); 
@@ -128,6 +132,40 @@ export default function TaskManagement() {
   };
 
   useEffect(() => { fetchData(); }, [user?.locationId]);
+
+  // States lưu trữ thông tin thiết bị và cảm biến IoT của các trụ trong task
+  const [pillarIoTStatuses, setPillarIoTStatuses] = useState<Record<string, PillarIoTStatus>>({});
+  const [isLoadingPillarIoT, setIsLoadingPillarIoT] = useState(false);
+
+  const loadPillarIoT = async (pCodesStr?: string) => {
+    if (!pCodesStr) {
+      setPillarIoTStatuses({});
+      return;
+    }
+    const codes = pCodesStr.split(',').map(s => s.trim()).filter(Boolean);
+    if (codes.length === 0) {
+      setPillarIoTStatuses({});
+      return;
+    }
+    setIsLoadingPillarIoT(true);
+    try {
+      const results = await Promise.allSettled(
+        codes.map(c => iotApi.getPillarIoTStatus(c))
+      );
+      const statusMap: Record<string, PillarIoTStatus> = {};
+      results.forEach((res, idx) => {
+        const code = codes[idx];
+        if (res.status === 'fulfilled' && res.value) {
+          statusMap[code] = res.value;
+        }
+      });
+      setPillarIoTStatuses(statusMap);
+    } catch (e) {
+      console.error('Lỗi khi tải trạng thái IoT của trụ:', e);
+    } finally {
+      setIsLoadingPillarIoT(false);
+    }
+  };
 
   // Lấy danh sách Staff khi đổi Location
   useEffect(() => {
@@ -167,11 +205,13 @@ export default function TaskManagement() {
     setSelectedTask(task);
     setReviewForm({ action: 'APPROVE', rejectionReason: '' });
     setModalType('REVIEW');
+    loadPillarIoT(task.pillarCodes);
   };
 
   const handleOpenDetailModal = (task: Task) => {
     setSelectedTask(task);
     setModalType('DETAIL');
+    loadPillarIoT(task.pillarCodes);
   };
 
   const handleOpenImagePreview = (url: string) => {
@@ -183,6 +223,7 @@ export default function TaskManagement() {
     setModalType('NONE');
     setSelectedTask(null);
     setPreviewImageUrl('');
+    setPillarIoTStatuses({});
   };
 
   // Upload hình ảnh khi tạo task (hỗ trợ mọi dung lượng)
@@ -760,6 +801,103 @@ export default function TaskManagement() {
                 )}
               </div>
 
+              {/* Kiểm tra Thiết bị IoT & Tín hiệu Cảm biến các trụ */}
+              {selectedTask.pillarCodes && selectedTask.pillarCodes.trim() !== '' && (
+                <div className="mb-5 p-4 rounded-xl border border-indigo-200 bg-indigo-50/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm">
+                      <Cpu className="w-4 h-4 text-indigo-600" />
+                      <span>Kiểm tra Thiết bị & Cảm biến Trụ</span>
+                    </div>
+                    <span className="text-xs text-indigo-600 font-medium">
+                      Trụ: {selectedTask.pillarCodes}
+                    </span>
+                  </div>
+
+                  {isLoadingPillarIoT ? (
+                    <div className="flex items-center justify-center py-4 text-xs text-gray-500 gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                      Đang kiểm tra tín hiệu cảm biến từ trụ...
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {selectedTask.pillarCodes.split(',').map(s => s.trim()).filter(Boolean).map(code => {
+                        const status = pillarIoTStatuses[code];
+                        return (
+                          <div key={code} className="bg-white rounded-lg p-3 border border-indigo-100 shadow-xs space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">
+                                Mã trụ: {code}
+                              </span>
+                              {status?.hasSignal ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                  <Wifi className="w-3 h-3 text-emerald-600" /> Đã kết nối tín hiệu
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                  <AlertTriangle className="w-3 h-3 text-amber-600" /> Chưa nhận tín hiệu
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Danh sách thiết bị đã gắn */}
+                            <div className="text-xs text-gray-600 space-y-1">
+                              <div className="font-semibold text-gray-700 flex items-center gap-1">
+                                <span>Thiết bị IoT:</span>
+                              </div>
+                              {status?.equipments && status.equipments.length > 0 ? (
+                                <div className="space-y-1 pl-2">
+                                  {status.equipments.map(eq => (
+                                    <div key={eq.id} className="flex items-center justify-between text-[11px] bg-gray-50 p-1.5 rounded">
+                                      <span className="font-medium text-gray-800">{eq.equipmentName}</span>
+                                      <span className="font-mono text-gray-500 text-[10px]">SN: {eq.serialNumber || 'N/A'}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-rose-600 pl-2">
+                                  ⚠️ Trụ này chưa có thiết bị IoT nào được gắn trên hệ thống!
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Tín hiệu cảm biến & số đo */}
+                            {status?.latestSensorReading ? (
+                              <div className="bg-emerald-50/60 p-2 rounded text-[11px] border border-emerald-100 text-emerald-900 grid grid-cols-3 gap-1">
+                                {status.latestSensorReading.temperature != null && (
+                                  <div>Nhiệt độ: <strong>{status.latestSensorReading.temperature}°C</strong></div>
+                                )}
+                                {status.latestSensorReading.humidity != null && (
+                                  <div>Độ ẩm KK: <strong>{status.latestSensorReading.humidity}%</strong></div>
+                                )}
+                                {status.latestSensorReading.ph != null && (
+                                  <div>pH: <strong>{status.latestSensorReading.ph}</strong></div>
+                                )}
+                                {status.latestSensorReading.soilMoisture != null && (
+                                  <div>Độ ẩm đất: <strong>{status.latestSensorReading.soilMoisture}%</strong></div>
+                                )}
+                                {status.latestSensorReading.waterLevel != null && (
+                                  <div>Mực nước: <strong>{status.latestSensorReading.waterLevel}cm</strong></div>
+                                )}
+                                {status.latestSensorReading.recordedAt && (
+                                  <div className="col-span-3 text-[10px] text-gray-500 pt-0.5">
+                                    Ghi nhận lúc: {new Date(status.latestSensorReading.recordedAt).toLocaleString('vi-VN')}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="text-[11px] text-amber-700 bg-amber-50/70 p-2 rounded border border-amber-200 leading-tight">
+                                Chưa có dữ liệu cảm biến gần đây (ESP32 chưa gửi dữ liệu telemetry). Bạn vẫn có thể duyệt nếu đã kiểm tra mắt qua ảnh bằng chứng của nhân viên.
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <form onSubmit={handleReviewSubmit} noValidate className="space-y-4 text-sm">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Quyết định phê duyệt</label>
@@ -871,6 +1009,101 @@ export default function TaskManagement() {
                     </div>
                   )}
                 </div>
+
+                {/* Kiểm tra Thiết bị IoT & Tín hiệu Cảm biến các trụ */}
+                {selectedTask.pillarCodes && selectedTask.pillarCodes.trim() !== '' && (
+                  <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm">
+                        <Cpu className="w-4 h-4 text-indigo-600" />
+                        <span>Thiết bị IoT & Cảm biến Trụ</span>
+                      </div>
+                      <span className="text-xs text-indigo-600 font-medium">
+                        Trụ: {selectedTask.pillarCodes}
+                      </span>
+                    </div>
+
+                    {isLoadingPillarIoT ? (
+                      <div className="flex items-center justify-center py-4 text-xs text-gray-500 gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+                        Đang lấy thông tin cảm biến...
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {selectedTask.pillarCodes.split(',').map(s => s.trim()).filter(Boolean).map(code => {
+                          const status = pillarIoTStatuses[code];
+                          return (
+                            <div key={code} className="bg-white rounded-lg p-3 border border-indigo-100 shadow-xs space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">
+                                  Mã trụ: {code}
+                                </span>
+                                {status?.hasSignal ? (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                    <Wifi className="w-3 h-3 text-emerald-600" /> Đã có tín hiệu
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                                    <AlertTriangle className="w-3 h-3 text-amber-600" /> Chưa nhận tín hiệu
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Thiết bị gắn trên trụ */}
+                              <div className="text-xs text-gray-600 space-y-1">
+                                <div className="font-semibold text-gray-700">Thiết bị IoT:</div>
+                                {status?.equipments && status.equipments.length > 0 ? (
+                                  <div className="space-y-1 pl-2">
+                                    {status.equipments.map(eq => (
+                                      <div key={eq.id} className="flex items-center justify-between text-[11px] bg-gray-50 p-1.5 rounded">
+                                        <span className="font-medium text-gray-800">{eq.equipmentName}</span>
+                                        <span className="font-mono text-gray-500 text-[10px]">SN: {eq.serialNumber || 'N/A'}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-[11px] text-rose-600 pl-2">
+                                    ⚠️ Chưa gắn thiết bị IoT vào trụ này!
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Chỉ số cảm biến */}
+                              {status?.latestSensorReading ? (
+                                <div className="bg-emerald-50/60 p-2 rounded text-[11px] border border-emerald-100 text-emerald-900 grid grid-cols-3 gap-1">
+                                  {status.latestSensorReading.temperature != null && (
+                                    <div>Nhiệt độ: <strong>{status.latestSensorReading.temperature}°C</strong></div>
+                                  )}
+                                  {status.latestSensorReading.humidity != null && (
+                                    <div>Độ ẩm KK: <strong>{status.latestSensorReading.humidity}%</strong></div>
+                                  )}
+                                  {status.latestSensorReading.ph != null && (
+                                    <div>pH: <strong>{status.latestSensorReading.ph}</strong></div>
+                                  )}
+                                  {status.latestSensorReading.soilMoisture != null && (
+                                    <div>Độ ẩm đất: <strong>{status.latestSensorReading.soilMoisture}%</strong></div>
+                                  )}
+                                  {status.latestSensorReading.waterLevel != null && (
+                                    <div>Mực nước: <strong>{status.latestSensorReading.waterLevel}cm</strong></div>
+                                  )}
+                                  {status.latestSensorReading.recordedAt && (
+                                    <div className="col-span-3 text-[10px] text-gray-500 pt-0.5">
+                                      Ghi nhận: {new Date(status.latestSensorReading.recordedAt).toLocaleString('vi-VN')}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-amber-700 bg-amber-50/70 p-2 rounded border border-amber-200">
+                                  Chưa có dữ liệu cảm biến gần đây (ESP32 chưa gửi dữ liệu telemetry).
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Phần Hình ảnh Minh chứng */}
                 <div>

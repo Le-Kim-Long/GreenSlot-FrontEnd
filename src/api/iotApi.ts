@@ -1,7 +1,7 @@
 import apiClient from './axiosConfig';
-import type { SensorReading, SensorTypeInfo } from '../types/api';
+import type { SensorReading, SensorTypeInfo, PillarIoTStatus } from '../types/api';
 
-export type { SensorReading, SensorTypeInfo };
+export type { SensorReading, SensorTypeInfo, PillarIoTStatus };
 
 export interface SlotDeviceInfo {
   slotId: number;
@@ -37,4 +37,7 @@ export const iotApi = {
 
   getMonitoredPillars: (): Promise<any[]> =>
     apiClient.get('/iot/monitored-pillars').then(r => r.data),
+
+  getPillarIoTStatus: (pillarCode: string): Promise<PillarIoTStatus> =>
+    apiClient.get(`/iot/pillars/${pillarCode}/status`).then(r => r.data),
 };

@@ -9,7 +9,8 @@ import {
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { taskApi, EligibleHarvestRental } from '../../api/taskApi';
-import type { GardeningTask } from '../../types/api';
+import { equipmentApi, Equipment } from '../../api/equipmentApi';
+import type { GardeningTask, PillarEquipmentBinding } from '../../types/api';
 import clsx from 'clsx';
 
 const navItems = [
@@ -790,6 +791,80 @@ function CompleteTaskModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Tách danh sách trụ và xác định task lắp đặt/gieo trồng trụ
+  const pillarCodes = useMemo(() => {
+    if (!task.pillarCodes) return [];
+    return task.pillarCodes.split(',').map(s => s.trim()).filter(Boolean);
+  }, [task.pillarCodes]);
+
+  const isPillarSetupTask = useMemo(() => {
+    if (pillarCodes.length === 0) return false;
+    const type = (task.taskType || '').toUpperCase();
+    const name = (task.taskName || '').toLowerCase();
+    return ['SETUP', 'PLANT', 'INSTALL', 'MAINTENANCE'].includes(type) ||
+           ['trụ', 'lắp', 'gieo', 'chuẩn bị', 'setup', 'bổ sung'].some(k => name.includes(k));
+  }, [pillarCodes, task.taskType, task.taskName]);
+
+  const [availableEquipments, setAvailableEquipments] = useState<Equipment[]>([]);
+  const [loadingEquipments, setLoadingEquipments] = useState(false);
+
+  // State bindings: map pCode -> { mode, equipmentId, newEquipmentName, newSerialNumber }
+  interface BindingState {
+    mode: 'existing' | 'new';
+    equipmentId?: number;
+    newEquipmentName?: string;
+    newSerialNumber?: string;
+  }
+  const [bindings, setBindings] = useState<Record<string, BindingState>>({});
+
+  useEffect(() => {
+    if (isPillarSetupTask && pillarCodes.length > 0) {
+      setLoadingEquipments(true);
+      equipmentApi.getEquipments()
+        .then(eqs => {
+          // Lọc thiết bị AVAILABLE trong kho
+          const available = (eqs || []).filter(e => (e.status || '').toUpperCase() === 'AVAILABLE');
+          setAvailableEquipments(available);
+
+          // Khởi tạo binding cho từng trụ
+          const initialBindings: Record<string, BindingState> = {};
+          pillarCodes.forEach(code => {
+            initialBindings[code] = {
+              mode: available.length > 0 ? 'existing' : 'new',
+              equipmentId: undefined,
+              newEquipmentName: `Bộ IoT Trụ ${code}`,
+              newSerialNumber: '',
+            };
+          });
+          setBindings(initialBindings);
+        })
+        .catch(err => {
+          console.error('Lỗi tải danh sách thiết bị:', err);
+          const initialBindings: Record<string, BindingState> = {};
+          pillarCodes.forEach(code => {
+            initialBindings[code] = {
+              mode: 'new',
+              equipmentId: undefined,
+              newEquipmentName: `Bộ IoT Trụ ${code}`,
+              newSerialNumber: '',
+            };
+          });
+          setBindings(initialBindings);
+        })
+        .finally(() => setLoadingEquipments(false));
+    }
+  }, [isPillarSetupTask, pillarCodes]);
+
+  const handleBindingChange = (pCode: string, field: keyof BindingState, value: any) => {
+    setBindings(prev => ({
+      ...prev,
+      [pCode]: {
+        ...prev[pCode],
+        [field]: value
+      }
+    }));
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const f = e.target.files[0];
@@ -804,6 +879,41 @@ function CompleteTaskModal({
       setError('Vui lòng chọn hình ảnh bằng chứng công việc.');
       return;
     }
+
+    // Kiểm tra ràng buộc thiết bị nếu là task lắp đặt/gieo trồng trụ
+    let equipmentBindingsPayload: PillarEquipmentBinding[] | undefined = undefined;
+    if (isPillarSetupTask && pillarCodes.length > 0) {
+      const payloadList: PillarEquipmentBinding[] = [];
+      for (const code of pillarCodes) {
+        const b = bindings[code];
+        if (!b) {
+          setError(`Vui lòng thiết lập thiết bị cho trụ ${code}.`);
+          return;
+        }
+        if (b.mode === 'existing') {
+          if (!b.equipmentId) {
+            setError(`Vui lòng chọn thiết bị từ kho cho trụ ${code} (hoặc chuyển sang chế độ "Lắp mới").`);
+            return;
+          }
+          payloadList.push({
+            pillarCode: code,
+            equipmentId: Number(b.equipmentId)
+          });
+        } else {
+          if (!b.newSerialNumber || !b.newSerialNumber.trim()) {
+            setError(`Vui lòng nhập Serial Number cho thiết bị mới gắn tại trụ ${code}.`);
+            return;
+          }
+          payloadList.push({
+            pillarCode: code,
+            newEquipmentName: b.newEquipmentName?.trim() || `Bộ IoT Trụ ${code}`,
+            newSerialNumber: b.newSerialNumber.trim()
+          });
+        }
+      }
+      equipmentBindingsPayload = payloadList;
+    }
+
     setLoading(true);
     setError('');
     try {
@@ -811,6 +921,7 @@ function CompleteTaskModal({
       await taskApi.updateTaskStatus(task.id, {
         status: 'PENDING_APPROVAL',
         evidenceImageUrl: imgUrl,
+        equipmentBindings: equipmentBindingsPayload,
       });
       onSuccess();
     } catch (err: any) {
@@ -822,8 +933,8 @@ function CompleteTaskModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in backdrop-blur-xs" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 space-y-4" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-gray-100 space-y-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between pb-3 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
             <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
               <CheckCircle className="w-5 h-5" />
@@ -839,6 +950,109 @@ function CompleteTaskModal({
         </div>
 
         {error && <div className="bg-rose-50 text-rose-700 p-3 rounded-xl text-xs font-medium border border-rose-200">{error}</div>}
+
+        {/* BẮT BUỘC GẮN THIẾT BỊ IOT CHO CÁC TRỤ NẾU LÀ TASK LẮP ĐẶT TRỤ */}
+        {isPillarSetupTask && pillarCodes.length > 0 && (
+          <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 space-y-3">
+            <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
+              <Cpu className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Gắn thiết bị IoT cho trụ (Bắt buộc {pillarCodes.length} trụ)</span>
+            </div>
+            <p className="text-[11px] text-amber-800 leading-snug">
+              Nhiệm vụ này yêu cầu gắn thiết bị IoT (ESP32 / cảm biến) cho từng trụ để quản lý cơ sở kích hoạt theo dõi cảm biến khi duyệt hoàn thành.
+            </p>
+
+            {loadingEquipments ? (
+              <div className="flex items-center justify-center py-4 text-xs text-gray-500 gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-amber-600" /> Đang tải danh sách thiết bị kho...
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {pillarCodes.map(code => {
+                  const b = bindings[code] || { mode: 'existing' };
+                  return (
+                    <div key={code} className="bg-white p-3 rounded-lg border border-amber-200 shadow-xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-950 bg-amber-100 px-2.5 py-0.5 rounded-md border border-amber-200">
+                          Mã trụ: {code}
+                        </span>
+                        <div className="flex items-center gap-1 text-[11px]">
+                          <button
+                            type="button"
+                            onClick={() => handleBindingChange(code, 'mode', 'existing')}
+                            className={`px-2 py-0.5 rounded transition ${b.mode === 'existing' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                          >
+                            Kho có sẵn ({availableEquipments.length})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBindingChange(code, 'mode', 'new')}
+                            className={`px-2 py-0.5 rounded transition ${b.mode === 'new' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                          >
+                            Lắp mới (Serial)
+                          </button>
+                        </div>
+                      </div>
+
+                      {b.mode === 'existing' ? (
+                        <div>
+                          <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                            Chọn thiết bị sẵn sàng trong kho: <span className="text-rose-500">*</span>
+                          </label>
+                          {availableEquipments.length === 0 ? (
+                            <div className="text-[11px] text-amber-800 bg-amber-50/90 p-2 rounded border border-amber-200">
+                              Kho hiện không có thiết bị trống. Vui lòng bấm tab <strong>"Lắp mới (Serial)"</strong> bên cạnh để nhập mã Serial bóc hộp.
+                            </div>
+                          ) : (
+                            <select
+                              value={b.equipmentId || ''}
+                              onChange={e => handleBindingChange(code, 'equipmentId', e.target.value ? Number(e.target.value) : undefined)}
+                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white outline-none"
+                            >
+                              <option value="">-- Chọn thiết bị IoT gắn vào trụ {code} --</option>
+                              {availableEquipments.map(eq => (
+                                <option key={eq.id} value={eq.id}>
+                                  {eq.equipmentName} (SN: {eq.serialNumber || 'Chưa có'}) {eq.locationName ? `- ${eq.locationName}` : ''}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[11px] font-medium text-gray-600 mb-0.5">
+                              Tên thiết bị:
+                            </label>
+                            <input
+                              type="text"
+                              value={b.newEquipmentName || ''}
+                              onChange={e => handleBindingChange(code, 'newEquipmentName', e.target.value)}
+                              placeholder={`Bộ IoT Trụ ${code}`}
+                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-medium text-gray-600 mb-0.5">
+                              Số Serial / MAC: <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={b.newSerialNumber || ''}
+                              onChange={e => handleBindingChange(code, 'newSerialNumber', e.target.value)}
+                              placeholder="VD: ESP32-PL01"
+                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none font-mono"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="space-y-3">
           <label className="block text-xs font-bold text-gray-700">

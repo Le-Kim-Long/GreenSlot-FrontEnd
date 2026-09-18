@@ -199,9 +199,46 @@ export interface TaskAssignment {
   targetSlotId?: number;
 }
 
+export interface PillarEquipmentBinding {
+  pillarCode: string;
+  equipmentId?: number;
+  newEquipmentName?: string;
+  newSerialNumber?: string;
+}
+
 export interface TaskStatusUpdate {
   status: string;
   evidenceImageUrl?: string;
+  equipmentBindings?: PillarEquipmentBinding[];
+}
+
+export interface PillarIoTStatus {
+  pillarCode: string;
+  pillarId?: number;
+  locationId?: number;
+  locationName?: string;
+  equipments: Array<{
+    id: number;
+    equipmentName: string;
+    serialNumber: string;
+    status: string;
+    locationName?: string;
+  }>;
+  latestSensorReading?: {
+    id: number;
+    temperature?: number;
+    humidity?: number;
+    ph?: number;
+    light?: number;
+    soilMoisture?: number;
+    waterLevel?: number;
+    co2Level?: number;
+    recordedAt?: string;
+  };
+  hasSignal: boolean;
+  lastSignalAt?: string;
+  cameraStatus?: string;
+  deviceStatus?: string;
 }
 
 export interface IssueReport {
