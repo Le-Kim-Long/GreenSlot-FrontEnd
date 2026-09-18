@@ -506,7 +506,7 @@ export default function GardenStaffDashboard() {
                               </div>
 
                               {task.description && (
-                                <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 line-clamp-2 max-w-lg">
+                                <p className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-lg border border-gray-100 whitespace-pre-line leading-relaxed">
                                   {task.description}
                                 </p>
                               )}

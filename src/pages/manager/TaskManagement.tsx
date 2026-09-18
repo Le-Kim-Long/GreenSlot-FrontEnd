@@ -472,7 +472,9 @@ export default function TaskManagement() {
                       <td className="p-4">
                         <div className="font-medium text-gray-900">{task.name}</div>
                         {task.description ? (
-                          <div className="text-xs text-gray-400 truncate max-w-xs">{task.description}</div>
+                          <div className="text-xs text-gray-500 bg-gray-50/80 p-2 rounded-lg border border-gray-100 mt-1.5 whitespace-pre-line leading-relaxed">
+                            {task.description}
+                          </div>
                         ) : null}
                       </td>
                       <td className="p-4 font-medium text-green-700">{task.slotNumber}</td>
