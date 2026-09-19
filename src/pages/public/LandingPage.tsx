@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, Wifi, Users, Star, ArrowRight, CheckCircle, Sprout, ShieldCheck, BarChart3, Droplets, Thermometer, Sun, MapPin, ChevronRight, Play, Zap, Heart, ArrowDown, Quote, Grid3X3, Loader2 } from 'lucide-react';
+import { Leaf, Wifi, Users, Star, ArrowRight, CheckCircle, Sprout, ShieldCheck, Droplets, Thermometer, Sun, MapPin, ChevronRight, Play, Zap, Heart, ArrowDown, Quote, Grid3X3, Loader2, Camera } from 'lucide-react';
 import Navbar from '../../components/common/Navbar';
 import Footer from '../../components/common/Footer';
 import { useScrollReveal, useCounter } from '../../hooks/useScrollReveal';
@@ -64,7 +64,7 @@ function StatCard({ value, suffix, label, icon, isActive, delay }: { value: numb
       <div className="w-14 h-14 bg-green-100 rounded-2xl flex items-center justify-center text-green-400 mx-auto mb-4 group-hover:scale-110 group-hover:bg-green-200 transition-all duration-300">
         {icon}
       </div>
-      <div className="text-4xl font-black text-white mb-1">
+      <div className="text-4xl font-black text-emerald-700 mb-1">
         <AnimatedCounter end={value} suffix={suffix} isActive={isActive && isVisible} />
       </div>
       <div className="text-sm text-gray-500">{label}</div>
@@ -93,12 +93,12 @@ export default function LandingPage() {
   ];
 
   const services = [
-    { icon: <Droplets className="w-7 h-7" />, title: 'Tưới cây tự động', desc: 'Hệ thống tưới nhỏ giọt thông minh, điều chỉnh lượng nước theo nhu cầu', color: 'from-blue-500 to-cyan-500', bg: 'bg-blue-50 group-hover:bg-blue-100', iconColor: 'text-blue-500' },
-    { icon: <Thermometer className="w-7 h-7" />, title: 'Kiểm soát môi trường', desc: 'Giám sát và điều chỉnh nhiệt độ, độ ẩm, CO₂ tối ưu', color: 'from-red-500 to-orange-500', bg: 'bg-red-50 group-hover:bg-red-100', iconColor: 'text-red-500' },
-    { icon: <Sun className="w-7 h-7" />, title: 'Đèn LED chuyên dụng', desc: 'Đèn chiếu sáng spectrum đầy đủ, thay thế ánh sáng tự nhiên', color: 'from-yellow-500 to-amber-500', bg: 'bg-yellow-50 group-hover:bg-yellow-100', iconColor: 'text-yellow-500' },
-    { icon: <BarChart3 className="w-7 h-7" />, title: 'Phân tích dữ liệu', desc: 'Báo cáo chi tiết tăng trưởng, tiêu thụ năng lượng, năng suất', color: 'from-purple-500 to-violet-500', bg: 'bg-purple-50 group-hover:bg-purple-100', iconColor: 'text-purple-500' },
-    { icon: <ShieldCheck className="w-7 h-7" />, title: 'Bảo vệ cây trồng', desc: 'Phát hiện sớm sâu bệnh qua camera AI, can thiệp sinh học', color: 'from-green-500 to-emerald-500', bg: 'bg-green-50 group-hover:bg-green-100', iconColor: 'text-green-500' },
-    { icon: <Users className="w-7 h-7" />, title: 'Chăm sóc chuyên nghiệp', desc: 'Đội ngũ chuyên gia nông nghiệp đô thị hỗ trợ 6 ngày/tuần', color: 'from-indigo-500 to-blue-500', bg: 'bg-indigo-50 group-hover:bg-indigo-100', iconColor: 'text-indigo-500' },
+    { icon: <Droplets className="w-7 h-7" />, title: 'Hệ thống tưới & Máy bơm thông minh', desc: 'Máy bơm tự động kích hoạt tưới nước khi độ ẩm xuống thấp hoặc điều khiển từ xa qua ứng dụng.', color: 'from-blue-500 to-cyan-500', bg: 'bg-blue-50 group-hover:bg-blue-100', iconColor: 'text-blue-500' },
+    { icon: <Thermometer className="w-7 h-7" />, title: 'Cảm biến môi trường IoT', desc: 'Giám sát nhiệt độ, độ ẩm không khí và độ ẩm dung dịch theo thời gian thực 24/7.', color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-50 group-hover:bg-emerald-100', iconColor: 'text-emerald-500' },
+    { icon: <Sun className="w-7 h-7" />, title: 'Kiểm soát nồng độ pH & Dinh dưỡng EC', desc: 'Theo dõi độ kiềm/axit và chỉ số dinh dưỡng hòa tan tối ưu cho từng loại rau thủy canh.', color: 'from-amber-500 to-yellow-500', bg: 'bg-amber-50 group-hover:bg-amber-100', iconColor: 'text-amber-500' },
+    { icon: <Camera className="w-7 h-7" />, title: 'Camera quan sát ô vườn trực tiếp', desc: 'Theo dõi hình ảnh thực tế của từng trụ rau và ô vườn từ xa mà không cần đến tận nơi.', color: 'from-purple-500 to-violet-500', bg: 'bg-purple-50 group-hover:bg-purple-100', iconColor: 'text-purple-500' },
+    { icon: <ShieldCheck className="w-7 h-7" />, title: 'Cảnh báo bất thường tức thì', desc: 'Hệ thống tự động phát hiện vượt ngưỡng an toàn và gửi thông báo chuông kịp thời.', color: 'from-rose-500 to-red-500', bg: 'bg-rose-50 group-hover:bg-rose-100', iconColor: 'text-rose-500' },
+    { icon: <Users className="w-7 h-7" />, title: 'Chăm sóc & Thu hoạch tại chỗ', desc: 'Đội ngũ nhân viên cơ sở hỗ trợ lắp đặt trụ, gieo giống, bắt sâu và thu hoạch rau sạch theo yêu cầu.', color: 'from-indigo-500 to-blue-500', bg: 'bg-indigo-50 group-hover:bg-indigo-100', iconColor: 'text-indigo-500' },
   ];
 
   const testimonials = [
