@@ -68,12 +68,6 @@ export default function PillarManagement() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const determinePillarType = (holes: number): string => {
-    if (holes <= 24) return 'SMALL';
-    if (holes <= 36) return 'MEDIUM';
-    return 'LARGE';
-  };
-
   const handlePillarTypeChange = (newType: string) => {
     const matched = PILLAR_TYPES.find(t => t.value === newType);
     setForm(f => ({
@@ -81,18 +75,6 @@ export default function PillarManagement() {
       pillarType: newType,
       capacityHoles: matched ? matched.holes : 36,
       price: matched ? matched.defaultPrice : 200000,
-    }));
-  };
-
-  const handleHolesChange = (holesVal: number) => {
-    const safeHoles = isNaN(holesVal) ? 0 : holesVal;
-    const newType = determinePillarType(safeHoles);
-    const matched = PILLAR_TYPES.find(t => t.value === newType);
-    setForm(f => ({
-      ...f,
-      capacityHoles: safeHoles,
-      pillarType: newType,
-      price: matched ? matched.defaultPrice : f.price,
     }));
   };
 
@@ -406,27 +388,28 @@ export default function PillarManagement() {
                     ))}
                   </select>
                   <p className="text-[11px] text-gray-400 mt-1">
-                    Hệ thống sẽ tự động xác định Loại trụ và Giá đề xuất khi bạn nhập số hốc trồng (≤24: Trụ Nhỏ, 25-36: Trụ Vừa, &gt;36: Trụ Lớn).
+                    Số hốc trồng và giá đề xuất sẽ được tự động thiết lập theo chuẩn loại trụ bạn chọn.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="label font-medium text-gray-700">Số hốc trồng (1 - 100) *</label>
+                    <label className="label font-medium text-gray-700 flex items-center justify-between">
+                      <span>Số hốc trồng *</span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        Tự động
+                      </span>
+                    </label>
                     <input
                       type="number"
-                      className={clsx(
-                        "input rounded-xl",
-                        formError && (form.capacityHoles === undefined || form.capacityHoles === null || form.capacityHoles < 1 || form.capacityHoles > 100) && "border-red-500 ring-1 ring-red-500 bg-red-50/20"
-                      )}
+                      readOnly
+                      disabled
+                      className="input rounded-xl bg-gray-100 text-gray-800 font-black cursor-not-allowed border-gray-200"
                       value={form.capacityHoles}
-                      onChange={e => handleHolesChange(Number(e.target.value))}
-                      min={1}
-                      max={100}
                     />
-                    {formError && (form.capacityHoles === undefined || form.capacityHoles === null || form.capacityHoles < 1 || form.capacityHoles > 100) && (
-                      <p className="text-[11px] text-red-600 mt-1 font-medium">Hốc trồng phải từ 1 đến 100</p>
-                    )}
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Cố định theo chuẩn loại trụ đã chọn.
+                    </p>
                   </div>
                   <div>
                     <label className="label font-medium text-gray-700">Giá thuê trụ (VNĐ/tháng)</label>
