@@ -140,12 +140,6 @@ export default function Navbar() {
                 <Link to="/how-it-works" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">
                   Cách hoạt động
                 </Link>
-                <Link to="/services" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">
-                  Dịch vụ
-                </Link>
-                <Link to="/pricing" className="text-gray-600 hover:text-green-600 font-medium transition-colors text-sm">
-                  Bảng giá
-                </Link>
               </div>
             )}
 
@@ -366,12 +360,6 @@ export default function Navbar() {
                 </Link>
                 <Link to="/how-it-works" className="block text-gray-700 font-medium py-2">
                   Cách hoạt động
-                </Link>
-                <Link to="/services" className="block text-gray-700 font-medium py-2">
-                  Dịch vụ
-                </Link>
-                <Link to="/pricing" className="block text-gray-700 font-medium py-2">
-                  Bảng giá
                 </Link>
               </>
             )}

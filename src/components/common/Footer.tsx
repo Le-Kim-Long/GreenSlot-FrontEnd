@@ -30,7 +30,7 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold mb-4">Dịch vụ</h4>
             <ul className="space-y-2 text-sm">
-              {['Thuê vườn canh tác', 'Giám sát IoT', 'Chăm sóc cây trồng', 'Tư vấn nông nghiệp', 'Đào tạo canh tác'].map(item => (
+              {['Thuê vườn canh tác', 'Giám sát cảm biến IoT', 'Điều khiển tưới tự động', 'Camera quan sát ô vườn', 'Chăm sóc & Thu hoạch'].map(item => (
                 <li key={item}><a href="#" className="hover:text-green-400 transition-colors">{item}</a></li>
               ))}
             </ul>
