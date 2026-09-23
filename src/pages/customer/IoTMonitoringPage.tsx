@@ -53,7 +53,7 @@ const checkIsActive = (latestReadings: any[], historyReadings: any[]) => {
   if (maxTime === 0) return true; 
   
   // Kiểm tra: Nếu quá 5 phút (300,000 ms) không có dữ liệu mới -> Trụ đã bị tháo thiết bị hoặc mất mạng
-  return Math.abs(now - maxTime) < 60 * 1000;
+  return Math.abs(now - maxTime) < 90 * 1000;
 };
 
 export default function IoTMonitoringPage() {
@@ -360,7 +360,7 @@ export default function IoTMonitoringPage() {
                   <th className="p-3.5">Ô Vườn</th>
                   <th className="p-3.5">Giống Cây</th>
                   <th className="p-3.5">Độ Ẩm Đất</th>
-                  <th className="p-3.5">Độ pH Đất</th>
+                  <th className="p-3.5">Độ pH</th>
                   <th className="p-3.5">Ánh Sáng</th>
                   <th className="p-3.5">Trạng Thái</th>
                   <th className="p-3.5 text-right">Chi Tiết</th>
