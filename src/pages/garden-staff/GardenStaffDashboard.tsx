@@ -46,50 +46,27 @@ export function getTaskCategory(task: GardeningTask): Exclude<TaskCategoryKey, '
   const desc = (task.description || '').toLowerCase();
   const type = (task.taskType || '').toUpperCase();
 
-  // 1. Thu hoạch
   if (type === 'HARVEST' || name.includes('thu hoạch') || desc.includes('thu hoạch')) {
     return 'HARVEST';
   }
-
-  // 2. Báo cáo sự cố
   if (name.startsWith('issue report:') || type === 'INCIDENT' || name.includes('sự cố') || desc.includes('sự cố')) {
     return 'ISSUE';
   }
-
-  // 3. Gieo trồng & Chăm sóc cây (Bao gồm gieo giống, chăm sóc, bón phân, cắt cỏ, cắt tỉa, tưới nước, làm cỏ, ươm mầm, đổi cây)
   if (
     type === 'PLANTING' ||
-    name.includes('gieo') ||
-    name.includes('trồng') ||
-    name.includes('chăm sóc') ||
-    name.includes('bón phân') ||
-    name.includes('cắt cỏ') ||
-    name.includes('cắt tỉa') ||
-    name.includes('nhổ cỏ') ||
-    name.includes('làm cỏ') ||
-    name.includes('tưới') ||
-    name.includes('ươm') ||
-    name.includes('mầm') ||
-    name.includes('cây mới') ||
-    name.includes('đổi cây') ||
-    name.includes('chuẩn bị & gieo') ||
-    name.includes('chuẩn bị ô đất') ||
-    desc.includes('gieo') ||
-    desc.includes('cây giống') ||
-    desc.includes('chăm sóc') ||
-    desc.includes('trồng cây') ||
-    desc.includes('bón phân') ||
-    desc.includes('cắt cỏ')
+    name.includes('gieo') || name.includes('trồng') || name.includes('chăm sóc') ||
+    name.includes('bón phân') || name.includes('cắt cỏ') || name.includes('cắt tỉa') ||
+    name.includes('nhổ cỏ') || name.includes('làm cỏ') || name.includes('tưới') ||
+    name.includes('ươm') || name.includes('mầm') || name.includes('cây mới') ||
+    name.includes('đổi cây') || name.includes('chuẩn bị & gieo') || name.includes('chuẩn bị ô đất') ||
+    desc.includes('gieo') || desc.includes('cây giống') || desc.includes('chăm sóc') ||
+    desc.includes('trồng cây') || desc.includes('bón phân') || desc.includes('cắt cỏ')
   ) {
     return 'PLANTING_CARE';
   }
-
-  // 4. Dịch vụ theo yêu cầu của khách hàng
   if (type === 'SERVICE_REQUEST') {
     return 'SERVICE_REQUEST';
   }
-
-  // 5. Bảo trì hạ tầng, thiết bị, dọn dẹp, kiểm tra máy móc
   return 'MAINTENANCE';
 }
 
@@ -103,18 +80,15 @@ export default function GardenStaffDashboard() {
   const [error, setError] = useState('');
   const [claimingId, setClaimingId] = useState<number | null>(null);
   
-  // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [availPage, setAvailPage] = useState(1);
   const [availPageSize, setAvailPageSize] = useState(5);
 
-  // Modals
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [completeModalTask, setCompleteModalTask] = useState<GardeningTask | null>(null);
   const [issueModalTask, setIssueModalTask] = useState<GardeningTask | null>(null);
 
-  // Báo thu hoạch sớm (trước khi đủ số ngày sinh trưởng)
   const [eligibleRentals, setEligibleRentals] = useState<EligibleHarvestRental[]>([]);
   const [showEarlyPanel, setShowEarlyPanel] = useState(false);
   const [selectedEarlyItemKey, setSelectedEarlyItemKey] = useState('');
@@ -193,19 +167,10 @@ export default function GardenStaffDashboard() {
   const pendingCount = tasks.filter(t => t.status === 'PENDING').length;
   const inProgressCount = tasks.filter(t => t.status === 'IN_PROGRESS').length;
 
-  // Lọc danh sách công việc của tôi
   const filteredMyTasks = useMemo(() => {
     return tasks.filter(task => {
-      // Lọc theo Category
-      if (selectedCategory !== 'ALL') {
-        const cat = getTaskCategory(task);
-        if (cat !== selectedCategory) return false;
-      }
-      // Lọc theo Status
-      if (statusFilter !== 'ALL') {
-        if (task.status !== statusFilter) return false;
-      }
-      // Lọc theo Tìm kiếm
+      if (selectedCategory !== 'ALL' && getTaskCategory(task) !== selectedCategory) return false;
+      if (statusFilter !== 'ALL' && task.status !== statusFilter) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchName = task.taskName?.toLowerCase().includes(q);
@@ -220,20 +185,15 @@ export default function GardenStaffDashboard() {
     });
   }, [tasks, selectedCategory, statusFilter, search]);
 
-  // Phân trang công việc của tôi
   const totalPages = Math.max(1, Math.ceil(filteredMyTasks.length / pageSize));
   const paginatedMyTasks = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredMyTasks.slice(start, start + pageSize);
   }, [filteredMyTasks, currentPage, pageSize]);
 
-  // Lọc danh sách công việc có thể nhận
   const filteredAvailableTasks = useMemo(() => {
     return availableTasks.filter(task => {
-      if (selectedCategory !== 'ALL') {
-        const cat = getTaskCategory(task);
-        if (cat !== selectedCategory) return false;
-      }
+      if (selectedCategory !== 'ALL' && getTaskCategory(task) !== selectedCategory) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchName = task.taskName?.toLowerCase().includes(q);
@@ -248,14 +208,12 @@ export default function GardenStaffDashboard() {
     });
   }, [availableTasks, selectedCategory, search]);
 
-  // Phân trang công việc có thể nhận
   const availTotalPages = Math.max(1, Math.ceil(filteredAvailableTasks.length / availPageSize));
   const paginatedAvailTasks = useMemo(() => {
     const start = (availPage - 1) * availPageSize;
     return filteredAvailableTasks.slice(start, start + availPageSize);
   }, [filteredAvailableTasks, availPage, availPageSize]);
 
-  // Thống kê số lượng theo từng category
   const categoryCounts = useMemo(() => {
     const counts: Record<TaskCategoryKey, number> = {
       ALL: tasks.length + availableTasks.length,
@@ -309,11 +267,9 @@ export default function GardenStaffDashboard() {
           </div>
         </div>
 
-        {/* 2. Thanh bộ lọc & Tìm kiếm tích hợp Dropdown */}
+        {/* 2. Thanh bộ lọc & Tìm kiếm */}
         <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm space-y-3">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-            
-            {/* Bộ lọc Dropdown Loại công việc */}
             <div className="flex items-center gap-2 flex-wrap flex-1">
               <Filter className="w-4 h-4 text-emerald-600 shrink-0" />
               <span className="text-sm font-bold text-gray-700">Loại công việc:</span>
@@ -326,15 +282,14 @@ export default function GardenStaffDashboard() {
                   setAvailPage(1);
                 }}
               >
-                <option value="ALL">🌟 Tất cả loại công việc ({categoryCounts.ALL})</option>
+                <option value="ALL">🌟 Tất cả ({categoryCounts.ALL})</option>
                 <option value="PLANTING_CARE">🌱 Gieo trồng & Chăm sóc ({categoryCounts.PLANTING_CARE})</option>
                 <option value="HARVEST">🌾 Thu hoạch ({categoryCounts.HARVEST})</option>
                 <option value="ISSUE">⚠️ Báo cáo sự cố ({categoryCounts.ISSUE})</option>
-                <option value="SERVICE_REQUEST">🛠️ Dịch vụ khách yêu cầu ({categoryCounts.SERVICE_REQUEST})</option>
+                <option value="SERVICE_REQUEST">🛠️ Dịch vụ khách ({categoryCounts.SERVICE_REQUEST})</option>
                 <option value="MAINTENANCE">🧹 Bảo trì & Kỹ thuật ({categoryCounts.MAINTENANCE})</option>
               </select>
 
-              {/* Lọc theo Trạng thái */}
               <span className="text-sm font-bold text-gray-700 ml-2">Trạng thái:</span>
               <select
                 className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition bg-white font-medium shadow-xs"
@@ -353,7 +308,6 @@ export default function GardenStaffDashboard() {
               </select>
             </div>
 
-            {/* Ô tìm kiếm */}
             <div className="relative min-w-[240px] sm:w-72">
               <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
@@ -406,7 +360,7 @@ export default function GardenStaffDashboard() {
                 }}
                 className="text-emerald-600 hover:text-emerald-700 font-bold ml-auto hover:underline"
               >
-                ✕ Xóa tất cả bộ lọc
+                ✕ Xóa tất cả
               </button>
             </div>
           )}
@@ -422,7 +376,7 @@ export default function GardenStaffDashboard() {
           </div>
         )}
 
-        {/* 3. Bảng báo thu hoạch sớm (Collapsible Panel) */}
+        {/* 3. Bảng báo thu hoạch sớm */}
         <div className="bg-gradient-to-r from-amber-50/80 to-amber-100/40 rounded-2xl border border-amber-200 p-4 transition-all">
           <button
             onClick={() => setShowEarlyPanel(v => !v)}
@@ -442,7 +396,7 @@ export default function GardenStaffDashboard() {
           {showEarlyPanel && (
             <div className="mt-4 pt-4 border-t border-amber-200/60 space-y-3">
               <p className="text-xs text-amber-800 leading-relaxed">
-                Chọn chính xác trụ và cây trồng bạn <strong>đã nhận việc phụ trách</strong> để gửi đề xuất thu hoạch sớm lên Location Manager phê duyệt. Sau khi Quản lý duyệt, hệ thống sẽ tự động thông báo để khách hàng lựa chọn hình thức thu hoạch.
+                Chọn chính xác trụ và cây trồng bạn <strong>đã nhận việc phụ trách</strong> để gửi đề xuất thu hoạch sớm lên Location Manager phê duyệt.
               </p>
               {earlyError && <div className="bg-rose-50 text-rose-700 rounded-xl p-3 text-xs font-medium border border-rose-200">{earlyError}</div>}
               {earlySuccess && <div className="bg-emerald-50 text-emerald-700 rounded-xl p-3 text-xs font-medium border border-emerald-200">{earlySuccess}</div>}
@@ -486,7 +440,7 @@ export default function GardenStaffDashboard() {
           )}
         </div>
 
-        {/* 4. Bảng công việc chưa ai nhận (Available Tasks Table) */}
+        {/* 4. Bảng công việc chưa ai nhận */}
         {availableTasks.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden space-y-0">
             <div className="p-4 sm:p-5 border-b border-gray-100 bg-amber-50/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -537,20 +491,25 @@ export default function GardenStaffDashboard() {
                                     )}
                                   </div>
                                   {task.description && (
-                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-md">{task.description}</p>
+                                    <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100 max-w-lg h-auto mt-1.5">
+                                      <p className="text-xs text-gray-500 whitespace-normal break-words leading-relaxed m-0">
+                                        {task.description}
+                                      </p>
+                                    </div>
                                   )}
                                 </div>
                               </div>
                             </td>
-                            <td className="py-3.5 px-4 whitespace-nowrap">
+                            <td className="py-3.5 px-4">
                               <div className="space-y-1">
                                 <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-xs">
                                   <MapPin className="w-3 h-3" /> Ô: {task.targetSlotNumber || 'N/A'}
                                 </span>
                                 <div>
                                   {task.pillarCodes ? (
-                                    <span className="inline-flex items-center gap-1 text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded text-[11px]">
-                                      <Layers className="w-3 h-3" /> Trụ: {task.pillarCodes}
+                                    <span className="inline-flex items-start gap-1 font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-1 rounded-md text-[11px] whitespace-normal break-words max-w-[220px]">
+                                      <Layers className="w-3.5 h-3.5 shrink-0 mt-[1px]" />
+                                      <span className="leading-relaxed">Trụ: {task.pillarCodes}</span>
                                     </span>
                                   ) : (
                                     <span className="text-[11px] text-gray-400">Toàn bộ trụ</span>
@@ -558,7 +517,7 @@ export default function GardenStaffDashboard() {
                                 </div>
                               </div>
                             </td>
-                            <td className="py-3.5 px-4 whitespace-nowrap">
+                            <td className="py-3.5 px-4">
                               {task.treeName ? (
                                 <span className="inline-flex items-center gap-1 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-semibold">
                                   <Sprout className="w-3 h-3" /> {task.treeName}
@@ -567,12 +526,12 @@ export default function GardenStaffDashboard() {
                                 <span className="text-gray-400 text-xs">--</span>
                               )}
                             </td>
-                            <td className="py-3.5 px-4 whitespace-nowrap">
+                            <td className="py-3.5 px-4">
                               <span className={clsx('inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border', cat.badgeCls)}>
                                 {cat.icon} {cat.label}
                               </span>
                             </td>
-                            <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                            <td className="py-3.5 px-4 text-right">
                               <button
                                 disabled={claimingId === task.id}
                                 onClick={() => handleClaim(task.id)}
@@ -609,7 +568,7 @@ export default function GardenStaffDashboard() {
           </div>
         )}
 
-        {/* 5. Bảng Công việc của tôi (My Tasks Table) */}
+        {/* 5. Bảng Công việc của tôi */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-4 sm:p-5 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
@@ -640,12 +599,12 @@ export default function GardenStaffDashboard() {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-gray-50/80 text-gray-600 font-bold text-xs uppercase tracking-wider border-b border-gray-100">
                     <tr>
-                      <th className="py-3.5 px-4 min-w-[280px]">Mã & Tên công việc</th>
-                      <th className="py-3.5 px-4 whitespace-nowrap">Vị trí</th>
-                      <th className="py-3.5 px-4 whitespace-nowrap">Cây trồng</th>
-                      <th className="py-3.5 px-4 whitespace-nowrap">Loại việc</th>
-                      <th className="py-3.5 px-4 whitespace-nowrap">Trạng thái</th>
-                      <th className="py-3.5 px-4 text-right min-w-[200px]">Hành động</th>
+                      <th className="py-3.5 px-4 min-w-[200px]">Mã & Tên công việc</th>
+                      <th className="py-3.5 px-4">Vị trí</th>
+                      <th className="py-3.5 px-4">Cây trồng</th>
+                      <th className="py-3.5 px-4">Loại việc</th>
+                      <th className="py-3.5 px-4">Trạng thái</th>
+                      <th className="py-3.5 px-4 text-right min-w-[120px]">Hành động</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
@@ -656,7 +615,6 @@ export default function GardenStaffDashboard() {
 
                       return (
                         <tr key={task.id} className="hover:bg-gray-50/60 transition-colors">
-                          {/* 1. Mã & Tên công việc + Mô tả + Ảnh bằng chứng */}
                           <td className="py-3.5 px-4">
                             <div className="space-y-1.5">
                               <div className="flex items-start gap-2">
@@ -674,9 +632,11 @@ export default function GardenStaffDashboard() {
                               </div>
 
                               {task.description && (
-                                <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100 line-clamp-2 max-w-lg">
-                                  {task.description}
-                                </p>
+                                <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100 max-w-lg h-auto mt-1.5">
+                                  <p className="text-xs text-gray-500 whitespace-normal break-words leading-relaxed m-0">
+                                    {task.description}
+                                  </p>
+                                </div>
                               )}
 
                               {task.status === 'REJECTED' && task.rejectionReason && (
@@ -685,7 +645,6 @@ export default function GardenStaffDashboard() {
                                 </div>
                               )}
 
-                              {/* Thumbnail Ảnh Bằng Chứng Đã Nộp */}
                               {task.evidenceImageUrl && (
                                 <div className="flex items-center gap-2 pt-1">
                                   <div
@@ -709,23 +668,23 @@ export default function GardenStaffDashboard() {
                                     onClick={() => setPreviewImage(task.evidenceImageUrl!)}
                                     className="text-emerald-700 hover:text-emerald-800 text-xs font-semibold inline-flex items-center gap-1 hover:underline"
                                   >
-                                    <Eye className="w-3 h-3" /> Xem ảnh bằng chứng
+                                    <Eye className="w-3 h-3" /> Xem ảnh
                                   </button>
                                 </div>
                               )}
                             </div>
                           </td>
 
-                          {/* 2. Vị trí */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
+                          <td className="py-3.5 px-4">
                             <div className="space-y-1">
                               <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-xs">
                                 <MapPin className="w-3 h-3" /> Ô: {task.targetSlotNumber || 'N/A'}
                               </span>
                               <div>
                                 {task.pillarCodes ? (
-                                  <span className="inline-flex items-center gap-1 font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded text-[11px]">
-                                    <Layers className="w-3 h-3" /> Trụ {task.pillarCodes}
+                                  <span className="inline-flex items-start gap-1 font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-1 rounded-md text-[11px] whitespace-normal break-words max-w-[220px]">
+                                    <Layers className="w-3.5 h-3.5 shrink-0 mt-[1px]" />
+                                    <span className="leading-relaxed">Trụ: {task.pillarCodes}</span>
                                   </span>
                                 ) : (
                                   <span className="text-[11px] text-gray-400">Toàn bộ trụ</span>
@@ -737,8 +696,7 @@ export default function GardenStaffDashboard() {
                             </div>
                           </td>
 
-                          {/* 3. Cây trồng */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
+                          <td className="py-3.5 px-4">
                             {task.treeName ? (
                               <span className="inline-flex items-center gap-1 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-semibold">
                                 <Sprout className="w-3 h-3" /> {task.treeName}
@@ -748,25 +706,21 @@ export default function GardenStaffDashboard() {
                             )}
                           </td>
 
-                          {/* 4. Phân loại việc */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
+                          <td className="py-3.5 px-4">
                             <span className={clsx('inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg border', cat.badgeCls)}>
                               {cat.icon} {cat.label}
                             </span>
                           </td>
 
-                          {/* 5. Trạng thái */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
+                          <td className="py-3.5 px-4">
                             <span className={clsx('inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border', st.cls)}>
                               <span className={clsx('w-1.5 h-1.5 rounded-full', st.dotCls)} />
                               {st.label}
                             </span>
                           </td>
 
-                          {/* 6. Thao tác hành động */}
-                          <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                          <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                              {/* Bắt đầu làm (khi PENDING) */}
                               {task.status === 'PENDING' && (
                                 <button
                                   onClick={() => handleStartTask(task.id)}
@@ -776,7 +730,6 @@ export default function GardenStaffDashboard() {
                                 </button>
                               )}
 
-                              {/* Báo khách thu hoạch (khi HARVEST và IN_PROGRESS) */}
                               {task.taskType === 'HARVEST' && task.status === 'IN_PROGRESS' && (
                                 <button
                                   onClick={() => handleNotifyHarvest(task.id)}
@@ -786,7 +739,6 @@ export default function GardenStaffDashboard() {
                                 </button>
                               )}
 
-                              {/* Hoàn thành & Nộp bằng chứng (khi IN_PROGRESS hoặc REJECTED) */}
                               {(task.status === 'IN_PROGRESS' || task.status === 'REJECTED') && (
                                 <button
                                   onClick={() => setCompleteModalTask(task)}
@@ -797,7 +749,6 @@ export default function GardenStaffDashboard() {
                                 </button>
                               )}
 
-                              {/* Báo sự cố */}
                               {task.status !== 'COMPLETED' && task.status !== 'CANCELLED' && (
                                 <button
                                   onClick={() => setIssueModalTask(task)}
@@ -816,7 +767,6 @@ export default function GardenStaffDashboard() {
                 </table>
               </div>
 
-              {/* Phân trang chuẩn hóa Pagination */}
               <div className="p-4 border-t border-gray-100 bg-gray-50/50">
                 <Pagination
                   currentPage={currentPage}
@@ -838,7 +788,6 @@ export default function GardenStaffDashboard() {
 
       </div>
 
-      {/* MODAL 1: Hoàn thành & Tải ảnh bằng chứng */}
       {completeModalTask && (
         <CompleteTaskModal
           task={completeModalTask}
@@ -850,7 +799,6 @@ export default function GardenStaffDashboard() {
         />
       )}
 
-      {/* MODAL 2: Báo cáo sự cố */}
       {issueModalTask && (
         <ReportIssueModal
           task={issueModalTask}
@@ -862,7 +810,6 @@ export default function GardenStaffDashboard() {
         />
       )}
 
-      {/* MODAL 3: Lightbox Xem ảnh phóng to */}
       {previewImage && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 animate-in fade-in backdrop-blur-sm"
@@ -900,7 +847,6 @@ export default function GardenStaffDashboard() {
   );
 }
 
-// Modal component: Hoàn thành & Nộp ảnh bằng chứng
 function CompleteTaskModal({
   task,
   onClose,
@@ -1011,7 +957,6 @@ function CompleteTaskModal({
   );
 }
 
-// Modal component: Báo cáo sự cố
 function ReportIssueModal({
   task,
   onClose,

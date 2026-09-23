@@ -18,15 +18,20 @@ app.get('/', (req, res) => {
 
 // ================= CẤU HÌNH =================
 const PROXY_PORT = 3000; 
-const ESP32_IP = '10.10.10.237'; 
+const ESP32_IP = '192.168.1.4'; // CHÚ Ý: Kiểm tra lại IP ESP32 lúc demo
 const ESP32_STREAM_URL = `http://${ESP32_IP}:81/stream`;
 const BACKEND_API_URL = 'https://greenslot-backend.onrender.com/api/cameras/ping';
 
-const CLOUDFLARE_URL = 'https://browse-phones-walk-len.trycloudflare.com';
+// 👇 DÁN LINK CLOUDFLARE VÀO ĐÂY MỖI LẦN CHẠY 👇
+const CLOUDFLARE_URL = 'https://wells-rubber-youth-favorite.trycloudflare.com';
 
-// ================= 1. HỆ THỐNG PROXY ĐỘNG (THÔNG MINH) =================
+// ================= 1. HỆ THỐNG PROXY ĐỘNG CÓ CACHE =================
 let clients = []; 
-let esp32Controller = null; // Cầu dao để ngắt ESP32 khi không ai xem
+let esp32Controller = null; 
+
+// KHỞI TẠO VÙNG NHỚ CACHE MỞ RỘNG (Giữ khung hình mới nhất)
+let frameCache = null; 
+let cacheUpdateTime = 0;
 
 function startESP32Stream() {
     console.log("🔄 Bắt đầu yêu cầu luồng video từ ESP32...");
@@ -39,7 +44,12 @@ function startESP32Stream() {
         signal: esp32Controller.signal
     }).then(response => {
         console.log("✅ Đã kết nối thành công tới ESP32-CAM!");
+        
         response.data.on('data', (chunk) => {
+            // LƯU VÀO CACHE: Cập nhật vùng nhớ đệm liên tục
+            frameCache = chunk;
+            cacheUpdateTime = Date.now();
+
             clients.forEach(client => {
                 try { client.write(chunk); } catch(e) {}
             });
@@ -61,25 +71,30 @@ function stopESP32Stream() {
         esp32Controller.abort();
         esp32Controller = null;
     }
+    // Xoá cache khi ngừng stream để giải phóng RAM
+    frameCache = null; 
 }
 
 app.get('/stream', (req, res) => {
-    // Ép Cloudflare không được ngậm dữ liệu (Chống màn hình trắng)
     res.writeHead(200, {
         'Content-Type': 'multipart/x-mixed-replace; boundary=123456789000000000000987654321',
         'Cache-Control': 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0',
         'Connection': 'keep-alive',
         'Pragma': 'no-cache',
-        'X-Accel-Buffering': 'no' // Chìa khóa vàng chống đệm
+        'X-Accel-Buffering': 'no'
     });
 
-    // Gửi ngay dải phân cách chuẩn để trình duyệt không bị ngợp
     res.write('\r\n--123456789000000000000987654321\r\n');
+
+    // PHỤC VỤ TỪ CACHE (Nếu Cache chưa quá cũ - ví dụ < 5 giây)
+    if (frameCache && (Date.now() - cacheUpdateTime < 5000)) {
+        res.write(frameCache);
+        console.log("⚡ Đã phục vụ khung hình đầu tiên từ vùng nhớ Cache!");
+    }
 
     clients.push(res);
     console.log(`🎥 Có người mới vào xem. Tổng số người đang xem: ${clients.length}`);
 
-    // Đánh thức ESP32 nếu đây là người đầu tiên vào xem
     if (clients.length === 1) {
         startESP32Stream();
     }
@@ -88,7 +103,6 @@ app.get('/stream', (req, res) => {
         clients = clients.filter(client => client !== res);
         console.log(`👋 Một người vừa thoát. Còn lại: ${clients.length}`);
         
-        // Tránh cháy mạch: Cho ESP32 nghỉ ngơi khi tất cả đã thoát
         if (clients.length === 0) {
             stopESP32Stream();
         }
@@ -106,7 +120,7 @@ async function autoUpdateCameraUrl() {
         const streamUrl = CLOUDFLARE_URL + "/stream"; 
         await axios.post(BACKEND_API_URL, {
             cam_id: "CAM_SVIET_01",
-            name: "Vườn Rau Tầng 1 (Cloudflare Proxy)",
+            name: "Vườn Rau Tầng 1 (Cloudflare Cache)",
             ip: "Mạng 4G Đồ Án", 
             stream_url: streamUrl,
             capture_url: ""
