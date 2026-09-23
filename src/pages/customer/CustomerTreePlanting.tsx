@@ -266,24 +266,39 @@ export default function CustomerTreePlanting() {
   const selectedPillar = selectedRental?.pillars?.find(p => p.id === Number(formData.targetPillarId));
   const pillarCount = selectedPillar ? 1 : (selectedRental?.pillars?.length || selectedRental?.pillarCodes?.length || 1);
 
-  const getTreePriceForPillarCapacity = (tree: any, holes: number = 24) => {
+  const formatPillarTypeLabel = (p?: { pillarType?: string; capacityHoles?: number }) => {
+    if (!p) return 'Trụ';
+    const type = p.pillarType?.toUpperCase();
+    const holes = p.capacityHoles || (type === 'LARGE' ? 48 : type === 'MEDIUM' ? 36 : 24);
+    if (type === 'LARGE' || holes >= 48) return `Trụ Lớn - ${holes} hốc`;
+    if (type === 'MEDIUM' || holes >= 36) return `Trụ Vừa - ${holes} hốc`;
+    return `Trụ Nhỏ - ${holes} hốc`;
+  };
+
+  const getTreePriceForPillar = (tree: any, p?: { capacityHoles?: number; pillarType?: string }) => {
     if (!tree) return 0;
-    if (holes >= 48) return Number(tree.priceLarge != null ? tree.priceLarge : ((tree.price || 0) * 2.0));
-    if (holes >= 36) return Number(tree.priceMedium != null ? tree.priceMedium : ((tree.price || 0) * 1.5));
+    const holes = p?.capacityHoles || 24;
+    const type = p?.pillarType?.toUpperCase();
+    if (holes >= 48 || type === 'LARGE' || type === 'TRỤ LỚN') {
+      return Number(tree.priceLarge != null ? tree.priceLarge : ((tree.price || 0) * 2.0));
+    }
+    if (holes >= 36 || type === 'MEDIUM' || type === 'TRỤ VỪA') {
+      return Number(tree.priceMedium != null ? tree.priceMedium : ((tree.price || 0) * 1.5));
+    }
     return Number(tree.priceSmall != null ? tree.priceSmall : (tree.price || 0));
   };
 
   let estimatedTreeCost = 0;
   if (selectedTree) {
     if (selectedPillar) {
-      estimatedTreeCost = getTreePriceForPillarCapacity(selectedTree, selectedPillar.capacityHoles || 24);
+      estimatedTreeCost = getTreePriceForPillar(selectedTree, selectedPillar);
     } else if (selectedRental?.pillars && selectedRental.pillars.length > 0) {
       estimatedTreeCost = selectedRental.pillars.reduce(
-        (acc, p) => acc + getTreePriceForPillarCapacity(selectedTree, p.capacityHoles || 24),
+        (acc, p) => acc + getTreePriceForPillar(selectedTree, p),
         0
       );
     } else {
-      estimatedTreeCost = getTreePriceForPillarCapacity(selectedTree, 24) * pillarCount;
+      estimatedTreeCost = getTreePriceForPillar(selectedTree, { capacityHoles: 24 }) * pillarCount;
     }
   }
 
@@ -305,7 +320,7 @@ export default function CustomerTreePlanting() {
     }
 
     const targetDesc = selectedPillar 
-      ? `Trụ ${selectedPillar.pillarCode} (${selectedPillar.capacityHoles || 24} hốc)` 
+      ? `Trụ ${selectedPillar.pillarCode} (${formatPillarTypeLabel(selectedPillar)})` 
       : `Toàn bộ ${pillarCount} trụ trong ô`;
 
     const confirmed = await toast.confirm({
@@ -672,12 +687,18 @@ export default function CustomerTreePlanting() {
                       value={formData.targetPillarId || ''}
                       onChange={e => setFormData({ ...formData, targetPillarId: e.target.value ? Number(e.target.value) : undefined })}
                     >
-                      <option value="">-- Toàn bộ các trụ trong ô ({selectedRental.pillars.length} trụ) --</option>
-                      {selectedRental.pillars.map((pillar) => (
-                        <option key={pillar.id} value={pillar.id}>
-                          Trụ {pillar.pillarCode} ({pillar.pillarType || 'Trụ'} - {pillar.capacityHoles || 24} hốc)
-                        </option>
-                      ))}
+                      <option value="">
+                        -- Toàn bộ các trụ trong ô ({selectedRental.pillars.length} trụ)
+                        {selectedTree ? ` • Tổng: ${Math.round(selectedRental.pillars.reduce((acc, p) => acc + getTreePriceForPillar(selectedTree, p), 0)).toLocaleString('vi-VN')} VNĐ` : ''} --
+                      </option>
+                      {selectedRental.pillars.map((pillar) => {
+                        const pillarPrice = selectedTree ? getTreePriceForPillar(selectedTree, pillar) : 0;
+                        return (
+                          <option key={pillar.id} value={pillar.id}>
+                            Trụ {pillar.pillarCode} ({formatPillarTypeLabel(pillar)}){selectedTree ? ` - ${Math.round(pillarPrice).toLocaleString('vi-VN')} VNĐ` : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                     <span className="text-[11px] text-gray-400 mt-1 block">
                       Bạn có thể chọn gieo giống cây này cho 1 trụ cụ thể (tỷ lệ 1-1) hoặc gieo đồng loạt cho tất cả các trụ đã thuê.
@@ -736,8 +757,8 @@ export default function CustomerTreePlanting() {
                   <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200/80 text-xs flex justify-between items-center">
                     <div>
                       <span className="font-bold text-gray-900 block">Chi phí phôi giống đợt mới:</span>
-                      <span className="text-[11px] text-gray-500">
-                        {selectedTree.treeName} ({selectedPillar ? `Trụ ${selectedPillar.pillarCode} - ${selectedPillar.capacityHoles || 24} hốc` : `${pillarCount} trụ canh tác`})
+                      <span className="text-[11px] text-gray-600">
+                        {selectedTree.treeName} • {selectedPillar ? `Trụ ${selectedPillar.pillarCode} (${formatPillarTypeLabel(selectedPillar)})` : `Toàn bộ ${pillarCount} trụ trong ô (tổng cộng)`}
                       </span>
                     </div>
                     <div className="text-right">
