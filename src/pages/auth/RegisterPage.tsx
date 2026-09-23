@@ -23,7 +23,10 @@ function GrowingPlant({ delay, x }: { delay: number; x: number }) {
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { register, loginWithGoogle, verifyOtp, user } = useAuth();
+  const { loginWithGoogle, verifyOtp, user } = useAuth();
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsError, setTermsError] = useState(false);
+  const [demoOtp, setDemoOtp] = useState<string | null>(null);
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [form, setForm] = useState({ username: '', name: '', email: '', password: '', confirmPwd: '', phone: '' });
   const [otp, setOtp] = useState('');
@@ -88,6 +91,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
     setInfoMsg('');
+    setTermsError(false);
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
     if (!form.username.trim()) {
@@ -118,15 +122,31 @@ export default function RegisterPage() {
       setError('Số điện thoại không đúng định dạng (ví dụ: 0912345678)');
       return;
     }
+    if (!agreedToTerms) {
+      setTermsError(true);
+      return;
+    }
     setLoading(true);
-    const ok = await register(form.username.trim(), form.name, form.email.trim(), form.password, form.phone);
-    setLoading(false);
-    if (ok === true) {
+    try {
+      const res: any = await authApi.register({
+        username: form.username.trim(),
+        email: form.email.trim(),
+        password: form.password,
+        fullName: form.name.trim(),
+        phone: form.phone.trim() || undefined,
+      });
+      if (res?.demoOtp) {
+        setDemoOtp(res.demoOtp);
+      }
       setStep('otp');
       setCountdown(60);
       setInfoMsg(`Mã OTP xác thực 6 số đã được gửi đến ${form.email}. Vui lòng kiểm tra hộp thư!`);
-    } else {
-      setError(ok);
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Đăng ký thất bại. Vui lòng thử lại.';
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -159,7 +179,10 @@ export default function RegisterPage() {
     setInfoMsg('');
     setResendLoading(true);
     try {
-      await authApi.resendOtp({ email: form.email.trim() });
+      const res: any = await authApi.resendOtp({ email: form.email.trim() });
+      if (res?.demoOtp) {
+        setDemoOtp(res.demoOtp);
+      }
       setCountdown(60);
       setInfoMsg('Mã OTP mới đã được gửi đến email của bạn.');
     } catch (err: any) {
@@ -414,9 +437,38 @@ export default function RegisterPage() {
                   </div>
 
                   {/* Terms */}
-                  <div className="flex items-start gap-2.5 text-sm text-gray-600">
-                    <input type="checkbox" className="mt-1 rounded border-gray-300 text-green-600 focus:ring-green-500" required />
-                    <span>Tôi đồng ý với <a href="#" className="text-green-600 hover:underline font-medium">Điều khoản dịch vụ</a> và <a href="#" className="text-green-600 hover:underline font-medium">Chính sách bảo mật</a></span>
+                  <div>
+                    <label className="flex items-start gap-2.5 text-sm text-gray-600 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={agreedToTerms}
+                        onChange={(e) => {
+                          setAgreedToTerms(e.target.checked);
+                          if (e.target.checked) setTermsError(false);
+                        }}
+                        className={`mt-1 rounded transition-colors ${
+                          termsError
+                            ? 'border-2 border-red-500 ring-2 ring-red-400 text-red-600'
+                            : 'border-gray-300 text-green-600 focus:ring-green-500'
+                        }`}
+                      />
+                      <span>
+                        Tôi đồng ý với{' '}
+                        <a href="#" className="text-green-600 hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                          Điều khoản dịch vụ
+                        </a>{' '}
+                        và{' '}
+                        <a href="#" className="text-green-600 hover:underline font-medium" onClick={(e) => e.stopPropagation()}>
+                          Chính sách bảo mật
+                        </a>
+                      </span>
+                    </label>
+                    {termsError && (
+                      <p className="text-xs text-red-500 mt-1.5 flex items-center gap-1 animate-shake font-medium">
+                        <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        Vui lòng đồng ý với Điều khoản dịch vụ và Chính sách bảo mật
+                      </p>
+                    )}
                   </div>
 
                   <button
@@ -517,7 +569,29 @@ export default function RegisterPage() {
                       onChange={e => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
                       required
                     />
-                    <p className="text-xs text-gray-400 mt-2 text-center">Mã OTP có hiệu lực trong vòng 10 phút</p>
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      Mã OTP có hiệu lực trong 10 phút. Nếu không thấy email trong Hộp thư đến, vui lòng kiểm tra thư mục <strong className="text-gray-700">Spam (Thư rác)</strong> hoặc <strong className="text-gray-700">Quảng cáo</strong>.
+                    </p>
+
+                    {demoOtp && (
+                      <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
+                        <p className="text-xs text-amber-800 mb-1.5">
+                          💡 <strong>Hỗ trợ kiểm thử / Demo:</strong> Mã OTP dự phòng:
+                        </p>
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="font-mono text-lg font-bold text-amber-900 tracking-widest bg-amber-100 px-3 py-1 rounded-lg border border-amber-300">
+                            {demoOtp}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setOtp(demoOtp)}
+                            className="text-xs bg-amber-600 hover:bg-amber-700 text-white font-medium px-2.5 py-1.5 rounded-lg transition shadow-sm"
+                          >
+                            Tự điền mã này
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <button
@@ -539,7 +613,7 @@ export default function RegisterPage() {
                   <div className="flex items-center justify-between text-sm pt-2">
                     <button
                       type="button"
-                      onClick={() => { setStep('form'); setError(''); setInfoMsg(''); }}
+                      onClick={() => { setStep('form'); setError(''); setInfoMsg(''); setOtp(''); setDemoOtp(null); }}
                       className="text-gray-500 hover:text-gray-700 font-medium hover:underline"
                     >
                       ← Sửa thông tin
