@@ -499,19 +499,48 @@ export default function MyRentalsPage() {
 
             {/* Chi tiết chi phí gia hạn */}
             {(() => {
-              const unitPrice = extendModal.monthlyPrice || 0;
+              const landPrice = extendModal.landPrice ?? 0;
+              const monthlyPillarsPrice = extendModal.monthlyPillarsPrice ?? (
+                extendModal.pillars?.reduce((sum, p) => sum + (p.price ?? 0), 0) ?? 0
+              );
+              const unitPrice = extendModal.monthlyPrice || (landPrice + monthlyPillarsPrice);
               const totalCost = (extendMonths > 0 ? extendMonths : 0) * unitPrice;
+              const pillarsCount = extendModal.pillars?.length || extendModal.pillarCodes?.length || 1;
+
               return (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
-                  <div className="flex justify-between items-center text-sm text-gray-600 mb-1.5">
-                    <span>Đơn giá thuê ô vườn:</span>
-                    <span className="font-semibold text-gray-900">{unitPrice.toLocaleString('vi-VN')} đ/tháng</span>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 space-y-2">
+                  <div className="flex justify-between items-center text-sm text-gray-600">
+                    <span>Tiền thuê đất ô vườn:</span>
+                    <span className="font-semibold text-gray-900">{landPrice.toLocaleString('vi-VN')} đ/tháng</span>
                   </div>
-                  <div className="flex justify-between items-center text-sm text-gray-600 mb-1.5">
+                  <div className="flex justify-between items-center text-sm text-gray-600">
+                    <span>Tiền thuê trụ ({pillarsCount} trụ):</span>
+                    <span className="font-semibold text-gray-900">{monthlyPillarsPrice.toLocaleString('vi-VN')} đ/tháng</span>
+                  </div>
+                  {extendModal.pillars && extendModal.pillars.length > 0 && (
+                    <div className="text-[11px] text-gray-500 pl-2.5 py-1 border-l-2 border-emerald-300 space-y-0.5 bg-emerald-100/40 rounded-r">
+                      {extendModal.pillars.map((p, idx) => {
+                        const type = p.pillarType?.toUpperCase();
+                        const holes = p.capacityHoles || (type === 'LARGE' ? 48 : type === 'MEDIUM' ? 36 : 24);
+                        const label = type === 'LARGE' || holes >= 48 ? `Trụ Lớn (${holes} hốc)` : type === 'MEDIUM' || holes >= 36 ? `Trụ Vừa (${holes} hốc)` : `Trụ Nhỏ (${holes} hốc)`;
+                        return (
+                          <div key={p.id || idx} className="flex justify-between">
+                            <span>• {p.pillarCode} - {label}:</span>
+                            <span className="font-medium text-gray-700">{(p.price || 0).toLocaleString('vi-VN')} đ/tháng</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-sm text-gray-700 font-medium pt-1.5 border-t border-emerald-200/60">
+                    <span>Tổng đơn giá thuê ô & trụ:</span>
+                    <span className="font-semibold text-emerald-800">{unitPrice.toLocaleString('vi-VN')} đ/tháng</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-gray-600">
                     <span>Thời gian gia hạn:</span>
                     <span className="font-semibold text-gray-900">{extendMonths > 0 ? `${extendMonths} tháng` : '--'}</span>
                   </div>
-                  <div className="border-t border-emerald-200 pt-2.5 mt-2 flex justify-between items-center">
+                  <div className="border-t border-emerald-200 pt-2.5 flex justify-between items-center">
                     <span className="font-bold text-gray-900">Tổng tiền cần thanh toán:</span>
                     <span className="text-lg font-bold text-emerald-700">
                       {totalCost.toLocaleString('vi-VN')} đ
@@ -530,7 +559,7 @@ export default function MyRentalsPage() {
               {extending
                 ? 'Đang xử lý...'
                 : extendMonths > 0 && extendModal.monthlyPrice
-                ? `Xác nhận & Thanh toán VNPay (${((extendMonths > 0 ? extendMonths : 0) * extendModal.monthlyPrice).toLocaleString('vi-VN')} đ)`
+                ? `Xác nhận & Thanh toán VNPay (${((extendMonths > 0 ? extendMonths : 0) * (extendModal.monthlyPrice || 0)).toLocaleString('vi-VN')} đ)`
                 : 'Xác nhận & Thanh toán VNPay'}
             </button>
           </div>

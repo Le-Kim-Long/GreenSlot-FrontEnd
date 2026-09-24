@@ -20,6 +20,7 @@ export interface PillarDetail {
   pillarTypeName?: string;
   capacityHoles?: number;
   price?: number;
+  monthlyPrice?: number;
   requiredArea?: number;
   defaultTreeId?: number;
   defaultTreeName?: string;
@@ -118,6 +119,8 @@ export interface RentalHistoryDTO {
   plantedAt?: string;
   expectedHarvestAt?: string;
   monthlyPrice?: number;
+  landPrice?: number;
+  monthlyPillarsPrice?: number;
 }
 
 export interface BookingHistory {
@@ -135,6 +138,8 @@ export interface BookingHistory {
   endTime?: string;
   totalPrice: number;
   monthlyPrice?: number;
+  landPrice?: number;
+  monthlyPillarsPrice?: number;
   status: string;
   paymentStatus?: string;
   transactions: PaymentTransactionInfo[];
