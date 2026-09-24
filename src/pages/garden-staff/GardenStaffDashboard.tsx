@@ -506,9 +506,11 @@ export default function GardenStaffDashboard() {
                               </div>
 
                               {task.description && (() => {
-                                const isSetup = (task.taskName || '').toLowerCase().includes('lắp đặt bổ sung') ||
-                                                (task.taskName || '').toLowerCase().includes('lắp đặt trụ') ||
-                                                (task.taskName || '').toLowerCase().includes('bổ sung trụ');
+                                const isSetup = (task.taskName || '').toLowerCase().includes('lắp đặt') ||
+                                                (task.taskName || '').toLowerCase().includes('thiết bị') ||
+                                                (task.taskName || '').toLowerCase().includes('bổ sung trụ') ||
+                                                (task.taskName || '').toLowerCase().includes('chuẩn bị trụ') ||
+                                                (task.taskName || '').toLowerCase().includes('iot');
                                 const displayDesc = (!isSetup && task.description.includes('[HƯỚNG DẪN THIẾT BỊ IOT]'))
                                   ? task.description.split('[HƯỚNG DẪN THIẾT BỊ IOT]')[0].trim()
                                   : task.description;
@@ -526,13 +528,15 @@ export default function GardenStaffDashboard() {
                                 </div>
                               )}
 
-                              {/* Hiển thị badge / nút Kiểm tra thiết bị IoT: CHỈ HIỂN THỊ TRÊN TASK LẮP ĐẶT BỔ SUNG TRỤ */}
+                              {/* Hiển thị badge / nút Kiểm tra thiết bị IoT: HIỂN THỊ TRÊN TASK LẮP ĐẶT HOẶC CÓ THIẾT BỊ */}
                               {Boolean(
-                                task.pillarCodes && (
-                                  (task.taskName || '').toLowerCase().includes('lắp đặt bổ sung') ||
-                                  (task.taskName || '').toLowerCase().includes('lắp đặt trụ') ||
-                                  (task.taskName || '').toLowerCase().includes('bổ sung trụ')
-                                )
+                                (task.taskName || '').toLowerCase().includes('lắp đặt') ||
+                                (task.taskName || '').toLowerCase().includes('thiết bị') ||
+                                (task.taskName || '').toLowerCase().includes('bổ sung trụ') ||
+                                (task.taskName || '').toLowerCase().includes('chuẩn bị trụ') ||
+                                (task.taskName || '').toLowerCase().includes('iot') ||
+                                (task.equipments && task.equipments.length > 0) ||
+                                (task.pillarCodes && task.pillarCodes.trim())
                               ) && (
                                 <div className="pt-1 flex items-center gap-2 flex-wrap">
                                   {task.iotStatus === 'NEEDS_SETUP' || (!task.equipments || task.equipments.length === 0) ? (
@@ -803,17 +807,47 @@ function CompleteTaskModal({
 }) {
   // Tách danh sách trụ và xác định task lắp đặt/bổ sung trụ
   const pillarCodes = useMemo(() => {
-    if (!task.pillarCodes) return [];
-    return task.pillarCodes.split(',').map(s => s.trim()).filter(Boolean);
-  }, [task.pillarCodes]);
+    if (task.pillarCodes && task.pillarCodes.trim()) {
+      return task.pillarCodes.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (task.equipments && task.equipments.length > 0) {
+      const eqCodes = task.equipments.map(e => e.pillarCode).filter(Boolean) as string[];
+      if (eqCodes.length > 0) return Array.from(new Set(eqCodes));
+    }
+    if (task.targetSlotNumber) {
+      return [`Ô ${task.targetSlotNumber}`];
+    }
+    return ['Trụ 1'];
+  }, [task.pillarCodes, task.equipments, task.targetSlotNumber]);
 
   const isPillarSetupTask = useMemo(() => {
-    if (pillarCodes.length === 0) return false;
     const name = (task.taskName || '').toLowerCase();
-    return name.includes('lắp đặt bổ sung') ||
-           name.includes('lắp đặt trụ') ||
-           name.includes('bổ sung trụ');
-  }, [pillarCodes, task.taskName]);
+    const desc = (task.description || '').toLowerCase();
+    return (
+      (task.pillarCodes && task.pillarCodes.trim().length > 0) ||
+      name.includes('lắp đặt') ||
+      name.includes('thiết bị') ||
+      name.includes('bổ sung trụ') ||
+      name.includes('chuẩn bị trụ') ||
+      name.includes('gắn thiết bị') ||
+      name.includes('gán thiết bị') ||
+      name.includes('iot') ||
+      name.includes('cảm biến') ||
+      name.includes('camera') ||
+      desc.includes('lắp đặt') ||
+      desc.includes('thiết bị iot') ||
+      desc.includes('gắn thiết bị') ||
+      desc.includes('bổ sung trụ')
+    );
+  }, [task.pillarCodes, task.taskName, task.description]);
+
+  const [submissionMode, setSubmissionMode] = useState<'pillar' | 'single'>(
+    isPillarSetupTask ? 'pillar' : 'single'
+  );
+
+  useEffect(() => {
+    setSubmissionMode(isPillarSetupTask ? 'pillar' : 'single');
+  }, [isPillarSetupTask]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -839,46 +873,54 @@ function CompleteTaskModal({
   const [pillarForms, setPillarForms] = useState<Record<string, PillarBindingForm>>({});
 
   useEffect(() => {
-    if (isPillarSetupTask && pillarCodes.length > 0) {
+    if (submissionMode === 'pillar' && pillarCodes.length > 0) {
       setLoadingEquipments(true);
       equipmentApi.getEquipments()
         .then(eqs => {
           const available = (eqs || []).filter(e => (e.status || '').toUpperCase() === 'AVAILABLE');
           setAvailableEquipments(available);
 
-          const initialForms: Record<string, PillarBindingForm> = {};
-          pillarCodes.forEach(code => {
-            initialForms[code] = {
-              mode: available.length > 0 ? 'existing' : 'new',
-              equipmentId: undefined,
-              newEquipmentName: `Bộ IoT Trụ ${code}`,
-              newSerialNumber: '',
-              file: null,
-              preview: null,
-              notes: '',
-            };
+          setPillarForms(prev => {
+            const initialForms: Record<string, PillarBindingForm> = { ...prev };
+            pillarCodes.forEach(code => {
+              if (!initialForms[code]) {
+                initialForms[code] = {
+                  mode: available.length > 0 ? 'existing' : 'new',
+                  equipmentId: undefined,
+                  newEquipmentName: `Bộ IoT Trụ ${code}`,
+                  newSerialNumber: '',
+                  file: null,
+                  preview: null,
+                  notes: '',
+                };
+              }
+            });
+            return initialForms;
           });
-          setPillarForms(initialForms);
         })
         .catch(err => {
           console.error('Lỗi tải danh sách thiết bị:', err);
-          const initialForms: Record<string, PillarBindingForm> = {};
-          pillarCodes.forEach(code => {
-            initialForms[code] = {
-              mode: 'new',
-              equipmentId: undefined,
-              newEquipmentName: `Bộ IoT Trụ ${code}`,
-              newSerialNumber: '',
-              file: null,
-              preview: null,
-              notes: '',
-            };
+          setPillarForms(prev => {
+            const initialForms: Record<string, PillarBindingForm> = { ...prev };
+            pillarCodes.forEach(code => {
+              if (!initialForms[code]) {
+                initialForms[code] = {
+                  mode: 'new',
+                  equipmentId: undefined,
+                  newEquipmentName: `Bộ IoT Trụ ${code}`,
+                  newSerialNumber: '',
+                  file: null,
+                  preview: null,
+                  notes: '',
+                };
+              }
+            });
+            return initialForms;
           });
-          setPillarForms(initialForms);
         })
         .finally(() => setLoadingEquipments(false));
     }
-  }, [isPillarSetupTask, pillarCodes]);
+  }, [submissionMode, pillarCodes]);
 
   const handlePillarFormChange = (pCode: string, field: keyof PillarBindingForm, value: any) => {
     setPillarForms(prev => ({
@@ -919,8 +961,8 @@ function CompleteTaskModal({
   const handleSubmit = async () => {
     setError('');
 
-    // TRƯỜNG HỢP 1: Task Lắp đặt bổ sung trụ
-    if (isPillarSetupTask && pillarCodes.length > 0) {
+    // TRƯỜNG HỢP 1: Chế độ nộp theo từng trụ (gắn thiết bị từ kho)
+    if (submissionMode === 'pillar' && pillarCodes.length > 0) {
       // Validate từng trụ
       for (const code of pillarCodes) {
         const pf = pillarForms[code];
@@ -985,7 +1027,7 @@ function CompleteTaskModal({
       return;
     }
 
-    // TRƯỜNG HỢP 2: Task thông thường (Gieo giống, chăm sóc...)
+    // TRƯỜNG HỢP 2: Chế độ nộp 1 ảnh báo cáo chung
     if (!singleFile) {
       setError('Vui lòng chọn hình ảnh bằng chứng công việc.');
       return;
@@ -1026,16 +1068,44 @@ function CompleteTaskModal({
 
         {error && <div className="bg-rose-50 text-rose-700 p-3 rounded-xl text-xs font-medium border border-rose-200">{error}</div>}
 
-        {/* 1. NẾU LÀ TASK LẮP ĐẶT BỔ SUNG: NỘP THEO TỪNG TRỤ (ẢNH + THIẾT BỊ + GHI CHÚ) */}
-        {isPillarSetupTask && pillarCodes.length > 0 ? (
+        {/* Thanh chuyển đổi chế độ nộp bằng chứng */}
+        <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl border border-gray-200">
+          <button
+            type="button"
+            onClick={() => setSubmissionMode('pillar')}
+            className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+              submissionMode === 'pillar'
+                ? 'bg-white text-emerald-700 shadow-xs border border-gray-200'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5 text-amber-600" />
+            <span>Gắn thiết bị từ kho ({pillarCodes.length} trụ)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubmissionMode('single')}
+            className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+              submissionMode === 'single'
+                ? 'bg-white text-emerald-700 shadow-xs border border-gray-200'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5 text-blue-600" />
+            <span>Nộp 1 ảnh báo cáo chung</span>
+          </button>
+        </div>
+
+        {/* 1. NẾU LÀ CHẾ ĐỘ GẮN THIẾT BỊ TỪ KHO THEO TỪNG TRỤ */}
+        {submissionMode === 'pillar' && pillarCodes.length > 0 ? (
           <div className="space-y-4">
             <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 space-y-1">
               <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
                 <Cpu className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Nghiệm thu Lắp đặt Bổ sung Trụ ({pillarCodes.length} trụ)</span>
+                <span>Nghiệm thu Lắp đặt & Gắn Thiết Bị Theo Từng Trụ ({pillarCodes.length} trụ)</span>
               </div>
               <p className="text-[11px] text-amber-800 leading-snug">
-                Vui lòng gán thiết bị IoT, tải lên đúng <strong>1 ảnh chụp rõ thực tế</strong> và <strong>ghi chú cụ thể</strong> cho từng trụ để Quản lý cơ sở kiểm tra và kích hoạt cảm biến.
+                Vui lòng chọn thiết bị IoT từ kho hoặc bóc hộp Serial mới, tải lên đúng <strong>1 ảnh chụp rõ thực tế</strong> và <strong>ghi chú cụ thể</strong> cho từng trụ để Quản lý cơ sở kiểm tra và kích hoạt cảm biến.
               </p>
             </div>
 
@@ -1179,7 +1249,7 @@ function CompleteTaskModal({
             )}
           </div>
         ) : (
-          /* 2. TASK THÔNG THƯỜNG (Gieo giống, chăm sóc...): 1 ảnh + ghi chú đơn giản */
+          /* 2. CHẾ ĐỘ NỘP 1 ẢNH BÁO CÁO CHUNG (Gieo giống, chăm sóc, hoặc báo cáo nhanh) */
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-bold text-gray-700 mb-1">
