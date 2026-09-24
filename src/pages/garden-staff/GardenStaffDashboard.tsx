@@ -603,26 +603,28 @@ export default function GardenStaffDashboard() {
                             </div>
                           </td>
 
-                          {/* 2. Vị trí */}
-                          <td className="py-3.5 px-4 whitespace-nowrap">
-                            <div className="space-y-1">
-                              <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-xs">
-                                <MapPin className="w-3 h-3" /> Ô: {task.targetSlotNumber || 'N/A'}
-                              </span>
-                              <div>
-                                {task.pillarCodes ? (
-                                  <span className="inline-flex items-center gap-1 font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded text-[11px]">
-                                    <Layers className="w-3 h-3" /> Trụ {task.pillarCodes}
-                                  </span>
-                                ) : (
-                                  <span className="text-[11px] text-gray-400">Toàn bộ trụ</span>
-                                )}
-                              </div>
-                              {task.locationName && (
-                                <div className="text-[11px] text-gray-400">({task.locationName})</div>
-                              )}
-                            </div>
-                          </td>
+{/* 2. Vị trí */}
+<td className="py-3.5 px-4">
+  <div className="space-y-1.5">
+    <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md text-xs">
+      <MapPin className="w-3 h-3 shrink-0" /> 
+      <span>Ô: {task.targetSlotNumber || 'N/A'}</span>
+    </span>
+    <div>
+      {task.pillarCodes ? (
+        <span className="inline-flex items-start gap-1 font-semibold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-1 rounded-md text-[11px] whitespace-normal break-words max-w-[240px]">
+          <Layers className="w-3.5 h-3.5 shrink-0 mt-[1px]" />
+          <span className="leading-relaxed">Trụ: {task.pillarCodes}</span>
+        </span>
+      ) : (
+        <span className="text-[11px] text-gray-400">Toàn bộ trụ</span>
+      )}
+    </div>
+    {task.locationName && (
+      <div className="text-[11px] text-gray-400">({task.locationName})</div>
+    )}
+  </div>
+</td>
 
                           {/* 3. Cây trồng */}
                           <td className="py-3.5 px-4 whitespace-nowrap">
