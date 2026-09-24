@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  CreditCard, Loader2, RotateCw, ShoppingBag, Sprout, 
+  CreditCard, Loader2, RotateCw, ShoppingBag, Sprout, PlusCircle,
   Eye, Download, Printer, X, CheckCircle2, AlertCircle, 
   XCircle, Clock, FileText, Building2,
   Receipt, ShieldCheck
@@ -16,9 +16,10 @@ import { useToast } from '../../context/ToastContext';
 
 // vnpTxnRef được BE sinh theo dạng "BOOK_<slotId>_<months>_<uuid>" (thuê mới),
 // "EXT_<rentalId>_<months>_<uuid>" (gia hạn), hoặc "PLANT_<requestId>_<uuid>" (mua giống cây)
-function getTxnKind(vnpTxnRef: string): 'EXTEND' | 'BOOK' | 'PLANT' {
+function getTxnKind(vnpTxnRef: string): 'EXTEND' | 'BOOK' | 'PLANT' | 'ADD_PILLAR' {
   if (vnpTxnRef?.startsWith('EXT_')) return 'EXTEND';
   if (vnpTxnRef?.startsWith('PLANT_')) return 'PLANT';
+  if (vnpTxnRef?.startsWith('ADDPILLAR_')) return 'ADD_PILLAR';
   return 'BOOK';
 }
 
@@ -29,9 +30,10 @@ function getExtendedMonths(vnpTxnRef: string): number | null {
   return Number.isFinite(months) ? months : null;
 }
 
-type FilterKind = 'ALL' | 'BOOK' | 'EXTEND' | 'PLANT';
+type FilterKind = 'ALL' | 'BOOK' | 'EXTEND' | 'PLANT' | 'ADD_PILLAR';
 
 interface DetailedTransaction extends PaymentTransactionInfo {
+  kind: 'EXTEND' | 'BOOK' | 'PLANT' | 'ADD_PILLAR';
   rentalId?: number;
   slotNumber?: string;
   locationName?: string;
@@ -45,7 +47,6 @@ interface DetailedTransaction extends PaymentTransactionInfo {
   pillarCodes?: string[];
   pillars?: PillarInfo[];
   monthlyPrice?: number;
-  kind: 'EXTEND' | 'BOOK' | 'PLANT';
   extendedMonths: number | null;
 }
 
@@ -96,6 +97,7 @@ export default function PaymentHistoryPage() {
   const bookCount = allTransactions.filter(t => t.kind === 'BOOK').length;
   const extendCount = allTransactions.filter(t => t.kind === 'EXTEND').length;
   const plantCount = allTransactions.filter(t => t.kind === 'PLANT').length;
+  const addPillarCount = allTransactions.filter(t => t.kind === 'ADD_PILLAR').length;
 
   const statusLabel: Record<string, { label: string; cls: string; icon: any }> = {
     SUCCESS: { label: 'Đã thanh toán', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
@@ -109,6 +111,7 @@ export default function PaymentHistoryPage() {
     { key: 'BOOK', label: `Thuê mới (${bookCount})` },
     { key: 'EXTEND', label: `Gia hạn (${extendCount})` },
     { key: 'PLANT', label: `Mua giống rau (${plantCount})` },
+    { key: 'ADD_PILLAR', label: `Thuê thêm trụ (${addPillarCount})` },
   ];
 
   const handleDownloadPdf = async (txn: DetailedTransaction) => {
@@ -219,10 +222,12 @@ export default function PaymentHistoryPage() {
                         "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 font-bold transition-transform group-hover:scale-105",
                         t.kind === 'EXTEND' ? "bg-amber-50 text-amber-700 border border-amber-200" :
                         t.kind === 'PLANT' ? "bg-teal-50 text-teal-700 border border-teal-200" :
+                        t.kind === 'ADD_PILLAR' ? "bg-indigo-50 text-indigo-700 border border-indigo-200" :
                         "bg-green-50 text-green-700 border border-green-200"
                       )}>
                         {t.kind === 'EXTEND' ? <RotateCw className="w-5 h-5" /> :
                          t.kind === 'PLANT' ? <Sprout className="w-5 h-5" /> :
+                         t.kind === 'ADD_PILLAR' ? <PlusCircle className="w-5 h-5" /> :
                          <ShoppingBag className="w-5 h-5" />}
                       </div>
 
@@ -235,9 +240,10 @@ export default function PaymentHistoryPage() {
                             'text-[11px] font-bold px-2.5 py-0.5 rounded-full border',
                             t.kind === 'EXTEND' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                             t.kind === 'PLANT' ? 'bg-teal-50 text-teal-700 border-teal-200' :
+                            t.kind === 'ADD_PILLAR' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
                             'bg-green-50 text-green-700 border-green-200'
                           )}>
-                            {t.kind === 'EXTEND' ? 'Gia hạn' : t.kind === 'PLANT' ? 'Mua giống cây' : 'Thuê mới'}
+                            {t.kind === 'EXTEND' ? 'Gia hạn' : t.kind === 'PLANT' ? 'Mua giống cây' : t.kind === 'ADD_PILLAR' ? 'Thuê thêm trụ' : 'Thuê mới'}
                           </span>
                         </div>
 
@@ -359,6 +365,8 @@ export default function PaymentHistoryPage() {
                         ? `Gia hạn hợp đồng thuê (${selectedTxn.extendedMonths || 1} tháng)` 
                         : selectedTxn.kind === 'PLANT'
                         ? 'Mua phôi giống rau canh tác mới'
+                        : selectedTxn.kind === 'ADD_PILLAR'
+                        ? 'Thuê thêm trụ khí canh vào ô vườn'
                         : 'Đăng ký thuê ô vườn mới'}
                     </span>
                   </div>
@@ -385,7 +393,20 @@ export default function PaymentHistoryPage() {
                 {(() => {
                   const total = Number(selectedTxn.amount) || 0;
                   const isPlantOnly = selectedTxn.kind === 'PLANT';
+                  const isAddPillar = selectedTxn.kind === 'ADD_PILLAR';
                   const isSinglePillarPlant = isPlantOnly && !!selectedTxn.targetPillarCode && selectedTxn.targetPillarCode !== 'Toàn bộ các trụ';
+
+                  const addPillarInfo = (() => {
+                    if (!isAddPillar || !selectedTxn.vnpTxnRef) return null;
+                    const parts = selectedTxn.vnpTxnRef.split('_');
+                    if (parts.length >= 5) {
+                      const s = Number(parts[2]) || 0;
+                      const m = Number(parts[3]) || 0;
+                      const l = Number(parts[4]) || 0;
+                      return { small: s, medium: m, large: l, total: s + m + l };
+                    }
+                    return null;
+                  })();
                   
                   const pillarsCount = isSinglePillarPlant
                     ? 1
@@ -401,9 +422,10 @@ export default function PaymentHistoryPage() {
                     }
                   }
 
-                  const slotPricePerMonth = isPlantOnly ? 0 : (selectedTxn.monthlyPrice || 500000);
-                  const slotSubtotal = isPlantOnly ? 0 : Math.min(total, slotPricePerMonth * months);
-                  const treeSubtotal = isPlantOnly ? total : Math.max(0, total - slotSubtotal);
+                  const isExtend = selectedTxn.kind === 'EXTEND';
+                  const slotPricePerMonth = isPlantOnly || isAddPillar ? 0 : (isExtend ? Math.round(total / Math.max(1, months)) : (selectedTxn.monthlyPrice || 500000));
+                  const slotSubtotal = isPlantOnly || isAddPillar ? 0 : (isExtend ? total : Math.min(total, slotPricePerMonth * months));
+                  const treeSubtotal = isPlantOnly ? total : (isAddPillar || isExtend ? 0 : Math.max(0, total - slotSubtotal));
                   const treePricePerPillar = treeSubtotal > 0 ? Math.round(treeSubtotal / Math.max(1, pillarsCount)) : 0;
 
                   return (
@@ -413,7 +435,7 @@ export default function PaymentHistoryPage() {
                           <Receipt className="w-4 h-4 text-green-600" /> Bảng kê chi tiết thanh toán (Itemized Breakdown)
                         </h3>
                         <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                          {selectedTxn.kind === 'EXTEND' ? 'Gia hạn' : selectedTxn.kind === 'PLANT' ? 'Phôi giống' : 'Thuê mới'}
+                          {selectedTxn.kind === 'EXTEND' ? 'Gia hạn' : selectedTxn.kind === 'PLANT' ? 'Phôi giống' : selectedTxn.kind === 'ADD_PILLAR' ? 'Thuê thêm trụ' : 'Thuê mới'}
                         </span>
                       </div>
 
@@ -428,6 +450,31 @@ export default function PaymentHistoryPage() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-100">
+                            {/* Dòng đặc thù: Thuê thêm trụ khí canh */}
+                            {isAddPillar && (
+                              <tr>
+                                <td className="py-2.5">
+                                  <div className="font-bold text-indigo-900 flex items-center gap-1">
+                                    <PlusCircle className="w-3.5 h-3.5 text-indigo-600" />
+                                    <span>Thuê thêm trụ khí canh vào Ô #{selectedTxn.slotNumber}</span>
+                                  </div>
+                                  <div className="text-[11px] text-gray-500 mt-0.5">
+                                    {addPillarInfo 
+                                      ? `Bổ sung ${addPillarInfo.total} trụ (Nhỏ: ${addPillarInfo.small}, Vừa: ${addPillarInfo.medium}, Lớn: ${addPillarInfo.large}) - Tính pro-rated theo hạn hợp đồng`
+                                      : 'Trụ khí canh bổ sung tính pro-rated theo thời hạn hợp đồng'}
+                                  </div>
+                                </td>
+                                <td className="py-2.5 text-right font-mono text-gray-700">
+                                  Pro-rated
+                                </td>
+                                <td className="py-2.5 text-center text-gray-600 font-semibold">
+                                  {addPillarInfo ? `${addPillarInfo.total} trụ` : '1 gói'}
+                                </td>
+                                <td className="py-2.5 text-right font-bold font-mono text-indigo-700">
+                                  {total.toLocaleString('vi-VN')} đ
+                                </td>
+                              </tr>
+                            )}
                             {/* Dòng 1: Tiền thuê ô đất */}
                             {slotSubtotal > 0 && (
                               <tr>
@@ -438,7 +485,7 @@ export default function PaymentHistoryPage() {
                                   </div>
                                   <div className="text-[11px] text-gray-500 mt-0.5">
                                     {selectedTxn.kind === 'EXTEND' 
-                                      ? `Phí gia hạn thời hạn hợp đồng (${months} tháng)` 
+                                      ? `Phí gia hạn thời hạn hợp đồng (${months} tháng) - gồm tiền thuê đất và ${pillarsCount} trụ` 
                                       : `Mặt bằng canh tác công nghệ cao (${pillarsCount} trụ)`}
                                   </div>
                                 </td>

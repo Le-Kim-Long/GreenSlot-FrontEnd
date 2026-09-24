@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout } from 'lucide-react';
+import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout, PlusCircle, Plus, Minus, Info, Layers } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
+import type { AddPillarsPreview } from '../../types/api';
 import { managerApi } from '../../api/managerApi';
 import { taskApi } from '../../api/taskApi';
 import { customerNavItems as navItems } from './customerNavItems';
@@ -226,6 +227,78 @@ export default function MyRentalsPage() {
     }
   };
 
+  // Thuê thêm trụ
+  const [addPillarsModal, setAddPillarsModal] = useState<BookingHistory | null>(null);
+  const [smallCount, setSmallCount] = useState(0);
+  const [mediumCount, setMediumCount] = useState(0);
+  const [largeCount, setLargeCount] = useState(0);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewData, setPreviewData] = useState<AddPillarsPreview | null>(null);
+  const [addPillarsSubmitting, setAddPillarsSubmitting] = useState(false);
+  const [addPillarsError, setAddPillarsError] = useState('');
+
+  const handleOpenAddPillars = (rental: BookingHistory) => {
+    setAddPillarsModal(rental);
+    setSmallCount(0);
+    setMediumCount(0);
+    setLargeCount(0);
+    setAddPillarsError('');
+    setPreviewData(null);
+  };
+
+  useEffect(() => {
+    if (!addPillarsModal) return;
+    let isMounted = true;
+    setPreviewLoading(true);
+    bookingApi.previewAddPillars(addPillarsModal.id, { smallCount, mediumCount, largeCount })
+      .then(data => {
+        if (isMounted) {
+          setPreviewData(data);
+          setAddPillarsError('');
+        }
+      })
+      .catch((err: unknown) => {
+        if (isMounted) {
+          const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+          setAddPillarsError(msg || 'Lỗi khi tính toán chi phí thuê thêm trụ.');
+        }
+      })
+      .finally(() => {
+        if (isMounted) setPreviewLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, [addPillarsModal, smallCount, mediumCount, largeCount]);
+
+  const handleAddPillarsSubmit = async () => {
+    if (!addPillarsModal) return;
+    const total = smallCount + mediumCount + largeCount;
+    if (total <= 0) {
+      setAddPillarsError('Vui lòng chọn ít nhất 1 trụ muốn thuê thêm.');
+      return;
+    }
+    setAddPillarsSubmitting(true);
+    setAddPillarsError('');
+    try {
+      const result = await bookingApi.addPillars(addPillarsModal.id, {
+        smallCount,
+        mediumCount,
+        largeCount,
+        redirectUrl: `${window.location.origin}/payment-result`,
+      });
+      if (result.paymentUrl) {
+        window.location.href = result.paymentUrl;
+      } else {
+        setAddPillarsModal(null);
+        fetchHistory();
+      }
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setAddPillarsError(msg || 'Thuê thêm trụ thất bại. Vui lòng thử lại.');
+    } finally {
+      setAddPillarsSubmitting(false);
+    }
+  };
+
   return (
     <DashboardLayout navItems={navItems} title="Vườn đang thuê">
       <div className="flex items-center justify-between mb-6">
@@ -267,6 +340,15 @@ export default function MyRentalsPage() {
                 {paginatedRentals.map((rental: BookingHistory) => {
                   const st = statusConfig[rental.status] || { label: rental.status, cls: 'badge-gray' };
                   const pay = rental.paymentStatus ? paymentConfig[rental.paymentStatus] : null;
+                  const slotArea = rental.slotArea || 10.0;
+                  let currentUsedArea = (rental.pillars || []).reduce((sum, p) => {
+                    const req = p.requiredArea || (p.capacityHoles && p.capacityHoles >= 48 ? 2.0 : (p.capacityHoles && p.capacityHoles >= 36 ? 1.5 : 1.0));
+                    return sum + req;
+                  }, 0);
+                  if (currentUsedArea === 0 && rental.pillarCode && rental.pillarCode !== 'N/A' && rental.pillarCode !== 'arduino-greenhouse-01') {
+                    currentUsedArea = 1.0;
+                  }
+                  const availableArea = Math.max(0, Number((slotArea - currentUsedArea).toFixed(1)));
                   return (
                     <div key={rental.id} className="card">
                       <div className="flex flex-col sm:flex-row gap-4">
@@ -306,6 +388,16 @@ export default function MyRentalsPage() {
                             })()}
                           </div>
                           {rental.locationName && <div className="text-sm text-gray-500">{rental.locationName}</div>}
+                          <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500 flex-wrap">
+                            <span className="inline-flex items-center gap-1">
+                              <Layers className="w-3.5 h-3.5 text-gray-400" />
+                              Diện tích ô: <span className="font-semibold text-gray-700">{slotArea} m²</span>
+                            </span>
+                            <span>•</span>
+                            <span>Đã dùng: <span className="font-semibold text-emerald-700">{currentUsedArea.toFixed(1)} m²</span></span>
+                            <span>•</span>
+                            <span>Còn trống: <span className={clsx("font-semibold", availableArea >= 1.0 ? "text-green-600 font-bold" : "text-amber-600")}>{availableArea.toFixed(1)} m²</span></span>
+                          </div>
                           <div className="flex flex-wrap gap-2 mt-2">
                             <span className={st.cls}>{st.label}</span>
                             {pay && rental.status !== 'ACTIVE' && rental.paymentStatus !== 'SUCCESS' && rental.paymentStatus !== 'PAID' && (
@@ -377,7 +469,20 @@ export default function MyRentalsPage() {
                               >
                                 <Sprout className="w-3.5 h-3.5" /> Trồng cây mới
                               </Link>
-                              <button onClick={() => { setExtendModal(rental); setExtendMonths(1); }}
+                              <button
+                                onClick={() => handleOpenAddPillars(rental)}
+                                disabled={availableArea < 1.0}
+                                title={availableArea < 1.0 ? "Ô vườn đã hết diện tích trống để đặt thêm trụ" : "Thuê thêm trụ khí canh vào ô vườn"}
+                                className={clsx(
+                                  "text-xs flex items-center gap-1 h-fit px-3 py-1.5 rounded-lg border font-medium transition-colors",
+                                  availableArea >= 1.0
+                                    ? "border-emerald-600 text-emerald-700 hover:bg-emerald-50 cursor-pointer"
+                                    : "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
+                                )}
+                              >
+                                <PlusCircle className="w-3.5 h-3.5" /> Thuê thêm trụ
+                              </button>
+                              <button onClick={() => { setExtendModal(rental); setExtendMonths(1); setExtendMonthsInput('1'); setExtendMonthsError(''); setExtendError(''); }}
                                 className="btn-outline-green text-xs flex items-center gap-1 h-fit">
                                 <Clock className="w-3.5 h-3.5" /> Gia hạn
                               </button>
@@ -499,40 +604,71 @@ export default function MyRentalsPage() {
 
             {/* Chi tiết chi phí gia hạn */}
             {(() => {
-              const unitPrice = extendModal.monthlyPrice || 0;
-              const totalCost = (extendMonths > 0 ? extendMonths : 0) * unitPrice;
+              const extLandPrice = extendModal.landPrice ?? 0;
+              const extPillarsPrice = extendModal.monthlyPillarsPrice ?? (
+                extendModal.pillars?.reduce((sum, p) => sum + (p.price ?? 0), 0) ?? 0
+              );
+              const extUnitPrice = extendModal.monthlyPrice || (extLandPrice + extPillarsPrice);
+              const extTotalCost = (extendMonths > 0 ? extendMonths : 0) * extUnitPrice;
+              const pillarsCount = extendModal.pillars?.length || extendModal.pillarCodes?.length || 1;
+
               return (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
-                  <div className="flex justify-between items-center text-sm text-gray-600 mb-1.5">
-                    <span>Đơn giá thuê ô vườn:</span>
-                    <span className="font-semibold text-gray-900">{unitPrice.toLocaleString('vi-VN')} đ/tháng</span>
+                <>
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 space-y-2">
+                    <div className="flex justify-between items-center text-sm text-gray-600">
+                      <span>Tiền thuê đất ô vườn:</span>
+                      <span className="font-semibold text-gray-900">{extLandPrice.toLocaleString('vi-VN')} đ/tháng</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-gray-600">
+                      <span>Tiền thuê trụ ({pillarsCount} trụ):</span>
+                      <span className="font-semibold text-gray-900">{extPillarsPrice.toLocaleString('vi-VN')} đ/tháng</span>
+                    </div>
+                    {extendModal.pillars && extendModal.pillars.length > 0 && (
+                      <div className="text-[11px] text-gray-500 pl-2.5 py-1 border-l-2 border-emerald-300 space-y-0.5 bg-emerald-100/40 rounded-r">
+                        {extendModal.pillars.map((p, idx) => {
+                          const type = p.pillarType?.toUpperCase();
+                          const holes = p.capacityHoles || (type === 'LARGE' ? 48 : type === 'MEDIUM' ? 36 : 24);
+                          const label = type === 'LARGE' || holes >= 48 ? `Trụ Lớn (${holes} hốc)` : type === 'MEDIUM' || holes >= 36 ? `Trụ Vừa (${holes} hốc)` : `Trụ Nhỏ (${holes} hốc)`;
+                          return (
+                            <div key={p.id || idx} className="flex justify-between">
+                              <span>• {p.pillarCode} - {label}:</span>
+                              <span className="font-medium text-gray-700">{(p.price || 0).toLocaleString('vi-VN')} đ/tháng</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-sm text-gray-700 font-medium pt-1.5 border-t border-emerald-200/60">
+                      <span>Tổng đơn giá thuê ô & trụ:</span>
+                      <span className="font-semibold text-emerald-800">{extUnitPrice.toLocaleString('vi-VN')} đ/tháng</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm text-gray-600">
+                      <span>Thời gian gia hạn:</span>
+                      <span className="font-semibold text-gray-900">{extendMonths > 0 ? `${extendMonths} tháng` : '--'}</span>
+                    </div>
+                    <div className="border-t border-emerald-200 pt-2.5 flex justify-between items-center">
+                      <span className="font-bold text-gray-900">Tổng tiền cần thanh toán:</span>
+                      <span className="text-lg font-bold text-emerald-700">
+                        {extTotalCost.toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-center text-sm text-gray-600 mb-1.5">
-                    <span>Thời gian gia hạn:</span>
-                    <span className="font-semibold text-gray-900">{extendMonths > 0 ? `${extendMonths} tháng` : '--'}</span>
-                  </div>
-                  <div className="border-t border-emerald-200 pt-2.5 mt-2 flex justify-between items-center">
-                    <span className="font-bold text-gray-900">Tổng tiền cần thanh toán:</span>
-                    <span className="text-lg font-bold text-emerald-700">
-                      {totalCost.toLocaleString('vi-VN')} đ
-                    </span>
-                  </div>
-                </div>
+
+                  {extendError && <div className="text-red-600 text-sm mb-3">{extendError}</div>}
+                  <button
+                    onClick={handleExtend}
+                    disabled={extending || !extendMonths || extendMonths < 1 || Boolean(extendMonthsError)}
+                    className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed font-semibold py-3"
+                  >
+                    {extending
+                      ? 'Đang xử lý...'
+                      : extTotalCost > 0
+                      ? `Xác nhận & Thanh toán VNPay (${extTotalCost.toLocaleString('vi-VN')} đ)`
+                      : 'Xác nhận & Thanh toán VNPay'}
+                  </button>
+                </>
               );
             })()}
-
-            {extendError && <div className="text-red-600 text-sm mb-3">{extendError}</div>}
-            <button
-              onClick={handleExtend}
-              disabled={extending || !extendMonths || extendMonths < 1 || Boolean(extendMonthsError)}
-              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed font-semibold py-3"
-            >
-              {extending
-                ? 'Đang xử lý...'
-                : extendMonths > 0 && extendModal.monthlyPrice
-                ? `Xác nhận & Thanh toán VNPay (${((extendMonths > 0 ? extendMonths : 0) * extendModal.monthlyPrice).toLocaleString('vi-VN')} đ)`
-                : 'Xác nhận & Thanh toán VNPay'}
-            </button>
           </div>
         </div>
       )}
@@ -613,6 +749,261 @@ export default function MyRentalsPage() {
               >
                 {reporting ? <Loader2 className="w-4 h-4 animate-spin inline mr-1" /> : null}
                 {reporting ? 'Đang gửi...' : 'Gửi báo cáo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Thuê thêm trụ */}
+      {addPillarsModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <PlusCircle className="w-5 h-5 text-emerald-600" />
+                  Thuê thêm trụ khí canh
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Ô vườn: <span className="font-semibold text-emerald-700">{addPillarsModal.slotNumber}</span>
+                  {addPillarsModal.locationName ? ` · ${addPillarsModal.locationName}` : ''}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setAddPillarsModal(null);
+                  setAddPillarsError('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Thông tin diện tích và thời hạn hợp đồng */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                <div className="text-xs text-gray-500 mb-0.5">Thời hạn hợp đồng còn lại</div>
+                <div className="text-base font-bold text-gray-900 flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-emerald-600" />
+                  <span>{previewData ? `${previewData.daysRemaining} ngày` : 'Đang tính...'}</span>
+                </div>
+                <div className="text-[11px] text-gray-400 mt-0.5">Hết hạn: {addPillarsModal.endDate}</div>
+              </div>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                <div className="text-xs text-emerald-700 mb-0.5">Diện tích ô còn trống</div>
+                <div className="text-base font-bold text-emerald-800">
+                  {previewData ? `${previewData.availableArea.toFixed(1)} m²` : 'Đang tính...'}
+                  <span className="text-xs font-normal text-emerald-600 ml-1">/ {previewData?.slotTotalArea || (addPillarsModal.slotArea || 10)} m²</span>
+                </div>
+                <div className="text-[11px] text-emerald-600 mt-0.5">
+                  Còn lại sau chọn:{' '}
+                  <span className={clsx("font-semibold", (previewData?.remainingAreaAfter ?? 0) < 0 ? "text-red-600" : "text-emerald-700")}>
+                    {previewData ? `${previewData.remainingAreaAfter.toFixed(1)} m²` : '--'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Danh sách các loại trụ để chọn số lượng */}
+            <div className="space-y-3 mb-4">
+              <div className="text-sm font-semibold text-gray-800 flex items-center justify-between">
+                <span>Chọn số lượng trụ muốn thuê thêm:</span>
+                {previewLoading && (
+                  <span className="text-xs text-emerald-600 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> Đang cập nhật...
+                  </span>
+                )}
+              </div>
+
+              {/* Trụ nhỏ */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-gray-200 bg-white hover:border-emerald-300 transition-colors">
+                <div>
+                  <div className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <span>Trụ Nhỏ</span>
+                    <span className="badge-green text-[10px] px-1.5 py-0.5">24 hốc · 1.0 m²</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    150.000 đ/tháng
+                    {previewData && (
+                      <span className="text-emerald-700 font-medium ml-1.5">
+                        (~{Math.round(150000 * (previewData.daysRemaining / 30)).toLocaleString('vi-VN')} đ cho {previewData.daysRemaining} ngày)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setSmallCount(Math.max(0, smallCount - 1))}
+                    disabled={smallCount <= 0}
+                    className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-6 text-center font-bold text-sm text-gray-900">{smallCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => setSmallCount(smallCount + 1)}
+                    disabled={previewData ? previewData.remainingAreaAfter < 1.0 : false}
+                    className="w-8 h-8 rounded-lg border border-emerald-600 bg-emerald-50 flex items-center justify-center text-emerald-700 hover:bg-emerald-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Trụ vừa */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-gray-200 bg-white hover:border-emerald-300 transition-colors">
+                <div>
+                  <div className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <span>Trụ Vừa</span>
+                    <span className="badge-green text-[10px] px-1.5 py-0.5">36 hốc · 1.5 m²</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    200.000 đ/tháng
+                    {previewData && (
+                      <span className="text-emerald-700 font-medium ml-1.5">
+                        (~{Math.round(200000 * (previewData.daysRemaining / 30)).toLocaleString('vi-VN')} đ cho {previewData.daysRemaining} ngày)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setMediumCount(Math.max(0, mediumCount - 1))}
+                    disabled={mediumCount <= 0}
+                    className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-6 text-center font-bold text-sm text-gray-900">{mediumCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => setMediumCount(mediumCount + 1)}
+                    disabled={previewData ? previewData.remainingAreaAfter < 1.5 : false}
+                    className="w-8 h-8 rounded-lg border border-emerald-600 bg-emerald-50 flex items-center justify-center text-emerald-700 hover:bg-emerald-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Trụ lớn */}
+              <div className="flex items-center justify-between p-3.5 rounded-xl border border-gray-200 bg-white hover:border-emerald-300 transition-colors">
+                <div>
+                  <div className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <span>Trụ Lớn</span>
+                    <span className="badge-green text-[10px] px-1.5 py-0.5">48 hốc · 2.0 m²</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">
+                    300.000 đ/tháng
+                    {previewData && (
+                      <span className="text-emerald-700 font-medium ml-1.5">
+                        (~{Math.round(300000 * (previewData.daysRemaining / 30)).toLocaleString('vi-VN')} đ cho {previewData.daysRemaining} ngày)
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setLargeCount(Math.max(0, largeCount - 1))}
+                    disabled={largeCount <= 0}
+                    className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="w-6 text-center font-bold text-sm text-gray-900">{largeCount}</span>
+                  <button
+                    type="button"
+                    onClick={() => setLargeCount(largeCount + 1)}
+                    disabled={previewData ? previewData.remainingAreaAfter < 2.0 : false}
+                    className="w-8 h-8 rounded-lg border border-emerald-600 bg-emerald-50 flex items-center justify-center text-emerald-700 hover:bg-emerald-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Khối tóm tắt chi phí pro-rated */}
+            {previewData && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4 space-y-2">
+                <div className="flex justify-between items-center text-sm text-gray-600">
+                  <span>Tổng số trụ thuê thêm:</span>
+                  <span className="font-semibold text-gray-900">{previewData.totalPillars} trụ</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-gray-600">
+                  <span>Diện tích chiếm dụng:</span>
+                  <span className="font-semibold text-gray-900">{previewData.requestedArea.toFixed(1)} m²</span>
+                </div>
+                <div className="flex justify-between items-center text-sm text-gray-600">
+                  <span>Đơn giá thuê trụ gốc:</span>
+                  <span className="font-semibold text-gray-900">{previewData.monthlyPillarsPrice.toLocaleString('vi-VN')} đ/tháng</span>
+                </div>
+                <div className="flex justify-between items-center text-xs text-gray-500 pt-1 border-t border-emerald-200/60">
+                  <span>Tính theo thời hạn hợp đồng:</span>
+                  <span className="font-medium text-gray-700">
+                    {previewData.daysRemaining} ngày / 30 ngày = {(previewData.daysRemaining / 30).toFixed(2)} tháng
+                  </span>
+                </div>
+                <div className="border-t border-emerald-200 pt-2.5 flex justify-between items-center">
+                  <span className="font-bold text-gray-900">Tổng thanh toán pro-rated:</span>
+                  <span className="text-lg font-bold text-emerald-700">
+                    {previewData.totalAmount.toLocaleString('vi-VN')} đ
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Ghi chú quy trình sau thanh toán */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-800 flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <strong>Quy trình thực hiện:</strong> Sau khi thanh toán thành công, hệ thống sẽ cấp phát trụ mới và tạo công việc lắp đặt cho nhân viên tại vườn. Bạn có thể vào mục <strong>"Trồng cây mới"</strong> để chọn loại rau/cây giống yêu thích trồng lên trụ.
+              </div>
+            </div>
+
+            {addPillarsError && (
+              <div className="text-red-600 text-sm mb-3 bg-red-50 p-2.5 rounded-lg border border-red-200">
+                ⚠️ {addPillarsError}
+              </div>
+            )}
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setAddPillarsModal(null);
+                  setAddPillarsError('');
+                }}
+                disabled={addPillarsSubmitting}
+                className="btn-secondary flex-1"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                onClick={handleAddPillarsSubmit}
+                disabled={
+                  addPillarsSubmitting ||
+                  !previewData ||
+                  !previewData.canAdd ||
+                  smallCount + mediumCount + largeCount <= 0
+                }
+                className="btn-primary flex-1 py-3 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              >
+                {addPillarsSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Đang tạo giao dịch...
+                  </>
+                ) : (
+                  `Xác nhận & Thanh toán (${(previewData?.totalAmount ?? 0).toLocaleString('vi-VN')} đ)`
+                )}
               </button>
             </div>
           </div>
