@@ -1,6 +1,8 @@
 import apiClient from './axiosConfig';
 import { mapRentalHistoryList } from '../utils/bookingAdapter';
 import type {
+  AddPillarsPreview,
+  AddPillarsRequest,
   AvailableSlotDTO,
   BookingHistory,
   BookingRequest,
@@ -27,6 +29,17 @@ export const bookingApi = {
 
   extendBooking: (data: ExtensionRequest): Promise<BookingResponse> =>
     apiClient.post<BookingResponse>('/bookings/extend', data).then(r => r.data),
+
+  previewAddPillars: (
+    rentalId: number,
+    params?: { smallCount?: number; mediumCount?: number; largeCount?: number }
+  ): Promise<AddPillarsPreview> =>
+    apiClient
+      .get<AddPillarsPreview>(`/bookings/${rentalId}/add-pillars/preview`, { params })
+      .then(r => r.data),
+
+  addPillars: (rentalId: number, data: AddPillarsRequest): Promise<BookingResponse> =>
+    apiClient.post<BookingResponse>(`/bookings/${rentalId}/add-pillars`, data).then(r => r.data),
 
   getPaymentUrl: (rentalId: number): Promise<BookingResponse> =>
     apiClient.get<BookingResponse>(`/bookings/${rentalId}/pay`).then(r => r.data),

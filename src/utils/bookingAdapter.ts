@@ -55,6 +55,7 @@ export function mapRentalHistory(dto: RentalHistoryDTO): BookingHistory {
     monthlyPrice,
     landPrice: dto.landPrice,
     monthlyPillarsPrice: dto.monthlyPillarsPrice,
+    slotArea: dto.slotArea,
     status: computedStatus,
     paymentStatus: paidTx?.status || latestTx?.status,
     transactions: dto.transactions ?? [],

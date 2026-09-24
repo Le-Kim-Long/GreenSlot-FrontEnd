@@ -87,6 +87,31 @@ export interface ExtensionRequest {
   redirectUrl?: string;
 }
 
+export interface AddPillarsRequest {
+  smallCount?: number;
+  mediumCount?: number;
+  largeCount?: number;
+  redirectUrl?: string;
+}
+
+export interface AddPillarsPreview {
+  rentalId: number;
+  slotNumber: string;
+  daysRemaining: number;
+  slotTotalArea: number;
+  currentUsedArea: number;
+  availableArea: number;
+  requestedArea: number;
+  remainingAreaAfter: number;
+  smallCount: number;
+  mediumCount: number;
+  largeCount: number;
+  totalPillars: number;
+  monthlyPillarsPrice: number;
+  totalAmount: number;
+  canAdd: boolean;
+  message: string;
+}
 
 export interface PaymentTransactionInfo {
   id: number;
@@ -121,6 +146,7 @@ export interface RentalHistoryDTO {
   monthlyPrice?: number;
   landPrice?: number;
   monthlyPillarsPrice?: number;
+  slotArea?: number;
 }
 
 export interface BookingHistory {
@@ -140,6 +166,7 @@ export interface BookingHistory {
   monthlyPrice?: number;
   landPrice?: number;
   monthlyPillarsPrice?: number;
+  slotArea?: number;
   status: string;
   paymentStatus?: string;
   transactions: PaymentTransactionInfo[];
