@@ -45,3 +45,22 @@ export const deleteTreeImage = async (imageUrl: string): Promise<void> => {
     console.warn("Không thể xóa ảnh cũ trên Firebase (Có thể ảnh đã bị xóa trước đó):", error);
   }
 };
+
+// Upload ảnh ô vườn lên Firebase Storage trực tiếp
+export const uploadSlotImage = async (file: File): Promise<string> => {
+  const fileName = `slots/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
+  const storageRef = ref(storage, fileName);
+  const uploadTask = await uploadBytesResumable(storageRef, file);
+  return getDownloadURL(uploadTask.ref);
+};
+
+export const deleteSlotImage = async (imageUrl: string): Promise<void> => {
+  try {
+    if (!imageUrl || !imageUrl.includes("firebasestorage.googleapis.com")) return;
+    const imageRef = ref(storage, imageUrl);
+    await deleteObject(imageRef);
+    console.log("♻️ Đã dọn dẹp ảnh ô vườn trên Firebase Storage:", imageUrl);
+  } catch (error) {
+    console.warn("Không thể xóa ảnh ô vườn cũ trên Firebase:", error);
+  }
+};

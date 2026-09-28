@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Grid3X3, Plus, Edit2, X, Search, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle, Filter, DollarSign } from 'lucide-react';
+import { Grid3X3, Plus, Edit2, X, Search, Trash2, Loader2, Image as ImageIcon, MapPin, Maximize2, Layers, CheckSquare, Square, AlertCircle, Filter, DollarSign, Upload } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { managerApi, type SlotItem, type PillarItem, type LocationItem, type SlotFormData } from '../../api/managerApi';
 import { staffNavItems } from './staffNav';
 import { formatFirebaseUrl } from '../../utils/firebaseUrl';
+import { uploadSlotImage, deleteSlotImage } from '../../utils/firebaseUpload';
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 
@@ -39,9 +40,47 @@ export default function SlotManagement() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState('');
   const [formError, setFormError] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   
   const [confirmDelete, setConfirmDelete] = useState<SlotItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setFormError('Vui lòng chọn tệp hình ảnh hợp lệ (JPG, PNG, WEBP).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setFormError('Dung lượng ảnh không được vượt quá 5MB.');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    setFormError('');
+    try {
+      if (form.imageUrl && form.imageUrl.includes('firebasestorage.googleapis.com')) {
+        await deleteSlotImage(form.imageUrl);
+      }
+      const firebaseUrl = await uploadSlotImage(file);
+      setForm(prev => ({ ...prev, imageUrl: firebaseUrl }));
+    } catch (err) {
+      console.error('Lỗi upload ảnh ô vườn lên Firebase:', err);
+      setFormError('Không thể tải ảnh lên Firebase Storage. Vui lòng thử lại.');
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (form.imageUrl && form.imageUrl.includes('firebasestorage.googleapis.com')) {
+      await deleteSlotImage(form.imageUrl);
+    }
+    setForm(prev => ({ ...prev, imageUrl: '' }));
+  };
 
   const fetchData = async () => {
     try {
@@ -704,30 +743,65 @@ export default function SlotManagement() {
                   </select>
                 </div>
 
+                {/* HÌNH ẢNH Ô VƯỜN */}
                 <div>
                   <label className="label flex items-center gap-1.5 font-medium text-gray-700">
-                    <ImageIcon className="w-3.5 h-3.5" /> Ảnh ô vườn (URL)
+                    <ImageIcon className="w-3.5 h-3.5" /> Hình ảnh ô vườn
                   </label>
-                  <input
-                    className="input rounded-xl"
-                    value={form.imageUrl}
-                    onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))}
-                    placeholder="Dán URL hình ảnh..."
-                  />
-                  {form.imageUrl && (
-                    <img
-                      src={formatFirebaseUrl(form.imageUrl)}
-                      alt="Xem trước"
-                      className="mt-2 w-full h-28 object-cover rounded-2xl border border-gray-100"
-                      onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                    />
-                  )}
+                  
+                  <div className="mt-1 flex flex-col gap-3">
+                    <div className="flex items-center gap-3">
+                      <label className={clsx(
+                        "inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer shadow-sm transition",
+                        isUploadingImage && "opacity-50 pointer-events-none"
+                      )}>
+                        {isUploadingImage ? (
+                          <Loader2 className="w-4 h-4 text-green-600 animate-spin" />
+                        ) : (
+                          <Upload className="w-4 h-4 text-green-600" />
+                        )}
+                        <span>{isUploadingImage ? 'Đang gửi ảnh lên...' : form.imageUrl ? 'Gửi ảnh khác' : 'Gửi ảnh từ máy'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageFileChange}
+                          disabled={isUploadingImage}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {form.imageUrl && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          disabled={isUploadingImage}
+                          className="text-xs text-red-600 hover:text-red-700 font-medium px-2.5 py-1.5 rounded-lg hover:bg-red-50 transition"
+                        >
+                          Xóa ảnh
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Hỗ trợ định dạng JPG, PNG, WEBP. Dung lượng tối đa 5MB. Ảnh sẽ được tự động lưu trữ trên Firebase Cloud Storage.
+                    </p>
+
+                    {form.imageUrl && (
+                      <div className="relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-50 max-w-sm">
+                        <img
+                          src={formatFirebaseUrl(form.imageUrl)}
+                          alt="Xem trước ô vườn"
+                          className="w-full h-36 object-cover"
+                          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-3 border-t border-gray-100">
                   <button
                     onClick={handleSubmit}
-                    disabled={saving || totalRequiredArea > form.area}
+                    disabled={saving || isUploadingImage || totalRequiredArea > form.area}
                     className="btn-primary flex-1 py-3 rounded-xl flex items-center justify-center gap-2 font-bold shadow-md disabled:opacity-50"
                   >
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}

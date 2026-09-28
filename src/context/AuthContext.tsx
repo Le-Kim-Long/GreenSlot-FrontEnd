@@ -70,7 +70,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (error.response.status === 429) {
         message = error.response.data?.message || 'Quá nhiều lần thử đăng nhập. Vui lòng thử lại sau ít phút.';
       } else if (error.response.data?.message) {
-        message = error.response.data.message;
+        const rawMsg = String(error.response.data.message);
+        if (rawMsg.toLowerCase().includes('bad credentials')) {
+          message = 'Mật khẩu không chính xác. Vui lòng kiểm tra lại.';
+        } else {
+          message = rawMsg;
+        }
       }
       return { success: false, message };
     }
