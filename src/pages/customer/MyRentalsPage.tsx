@@ -191,6 +191,11 @@ export default function MyRentalsPage() {
     try {
       await bookingApi.recordHarvestDecision(rentalId, decision);
       fetchHistory();
+      if (decision === 'SELF') {
+        alert('Đã ghi nhận bạn tự thu hoạch thành công! Dữ liệu đã được lưu vào Lịch sử thu hoạch.');
+      } else {
+        alert('Đã gửi yêu cầu nhân viên hỗ trợ thu hoạch. Nhân viên sẽ tiến hành thu hoạch và bàn giao cho bạn!');
+      }
     } catch {
       setError('Ghi nhận lựa chọn thất bại. Vui lòng thử lại.');
     } finally {
@@ -456,6 +461,18 @@ export default function MyRentalsPage() {
                                   {decidingId === rental.id ? <Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> : null}
                                   Nhờ nhân viên giúp
                                 </button>
+                              </div>
+                            </div>
+                          )}
+
+                          {rental.status === 'ACTIVE' && rental.harvestDecision === 'STAFF' && (
+                            <div className="mt-3 bg-blue-50 border border-blue-200 rounded-xl p-3 shadow-2xs flex items-center gap-2.5">
+                              <Clock className="w-4 h-4 text-blue-600 shrink-0" />
+                              <div>
+                                <div className="text-xs font-bold text-blue-900">Đang chờ nhân viên thu hoạch</div>
+                                <p className="text-[11px] text-blue-700 leading-snug">
+                                  Yêu cầu đã được gửi đến nhân viên làm vườn. Lịch sử thu hoạch sẽ được cập nhật sau khi hoàn tất nghiệm thu.
+                                </p>
                               </div>
                             </div>
                           )}
