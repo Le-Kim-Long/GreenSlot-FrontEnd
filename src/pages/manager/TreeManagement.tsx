@@ -87,8 +87,8 @@ const emptyForm: Partial<Tree> = {
   imageUrl: '',
   soilMoistureMin: 30,
   soilMoistureMax: 70,
-  lightMin: 6,
-  lightMax: 10,
+  lightMin: 1000,
+  lightMax: 30000,
   phMin: 5.5,
   phMax: 7.0,
   compensationPercentage: 50,
@@ -324,17 +324,17 @@ export default function TreeManagement() {
       return;
     }
     if (
-      (formData.lightMin != null && (formData.lightMin < 0 || formData.lightMin > 24)) ||
-      (formData.lightMax != null && (formData.lightMax < 0 || formData.lightMax > 24))
+      (formData.lightMin != null && (formData.lightMin < 0 || formData.lightMin > 100000)) ||
+      (formData.lightMax != null && (formData.lightMax < 0 || formData.lightMax > 100000))
     ) {
-      showToast('warning', 'Thời gian chiếu sáng ngoài giới hạn', 'Thời gian chiếu sáng hàng ngày chỉ được thiết lập từ 0 đến 24 giờ.');
+      showToast('warning', 'Cường độ ánh sáng ngoài giới hạn', 'Cường độ ánh sáng chỉ được thiết lập từ 0 đến 100.000 Lux.');
       return;
     }
     if (isLightInvalid) {
       showToast(
         'warning',
-        'Thời gian chiếu sáng chưa chuẩn xác',
-        `Ngưỡng chiếu sáng tối đa (${formData.lightMax} giờ) phải lớn hơn ngưỡng tối thiểu (${formData.lightMin} giờ).`
+        'Cường độ ánh sáng chưa chuẩn xác',
+        `Ngưỡng cường độ ánh sáng tối đa (${formData.lightMax?.toLocaleString()} Lux) phải lớn hơn ngưỡng tối thiểu (${formData.lightMin?.toLocaleString()} Lux).`
       );
       return;
     }
@@ -522,7 +522,7 @@ export default function TreeManagement() {
                     <td className="p-4">
                       <div className="flex flex-col gap-1 text-xs text-gray-600">
                         <span className="flex items-center gap-1.5"><Droplets className="w-3.5 h-3.5 text-blue-500" /> Ẩm: {tree.soilMoistureMin}% - {tree.soilMoistureMax}%</span>
-                        <span className="flex items-center gap-1.5"><Sun className="w-3.5 h-3.5 text-amber-500" /> Sáng: {tree.lightMin} - {tree.lightMax} giờ</span>
+                        <span className="flex items-center gap-1.5"><Sun className="w-3.5 h-3.5 text-amber-500" /> Sáng: {tree.lightMin?.toLocaleString()} - {tree.lightMax?.toLocaleString()} Lux</span>
                         <span className="flex items-center gap-1.5"><Beaker className="w-3.5 h-3.5 text-purple-500" /> pH: {tree.phMin} - {tree.phMax}</span>
                       </div>
                     </td>
@@ -896,24 +896,24 @@ export default function TreeManagement() {
                         isLightInvalid ? "bg-rose-50/50 border-rose-300 ring-2 ring-rose-500/10" : "bg-gray-50/80 border-gray-200/80 hover:border-amber-300/60"
                       )}>
                         <span className="font-semibold text-amber-700 block mb-2.5 flex items-center justify-between">
-                          <span className="flex items-center gap-1.5 text-xs"><Sun className="w-4 h-4 text-amber-500"/> Ánh sáng (Giờ)</span>
-                          <span className="text-[10px] bg-amber-100/70 text-amber-700 px-1.5 py-0.5 rounded font-bold">0 - 24h</span>
+                          <span className="flex items-center gap-1.5 text-xs"><Sun className="w-4 h-4 text-amber-500"/> Ánh sáng (Lux)</span>
+                          <span className="text-[10px] bg-amber-100/70 text-amber-700 px-1.5 py-0.5 rounded font-bold">0 - 100.000 Lux</span>
                         </span>
                         <div className="flex items-center gap-2">
                           <div className="flex-1">
                             <input 
-                              type="number" step="any" min={0} max={24} placeholder="Min" 
+                              type="number" step="any" min={0} max={100000} placeholder="Min Lux" 
                               onKeyDown={blockNegative}
                               className="w-full p-2 border border-gray-200 rounded-lg text-center text-sm font-semibold focus:border-amber-500 focus:ring-1 focus:ring-amber-500 outline-none bg-white transition shadow-2xs" 
                               value={formData.lightMin ?? ''} 
                               onChange={e => setFormData({...formData, lightMin: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))})} 
                             />
-                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối thiểu</span>
+                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối thiểu (Lux)</span>
                           </div>
                           <span className="text-gray-300 font-bold mb-3">-</span>
                           <div className="flex-1">
                             <input 
-                              type="number" step="any" min={0} max={24} placeholder="Max" 
+                              type="number" step="any" min={0} max={100000} placeholder="Max Lux" 
                               onKeyDown={blockNegative}
                               className={clsx(
                                 "w-full p-2 border rounded-lg text-center text-sm font-semibold outline-none bg-white transition shadow-2xs",
@@ -922,13 +922,13 @@ export default function TreeManagement() {
                               value={formData.lightMax ?? ''} 
                               onChange={e => setFormData({...formData, lightMax: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value))})} 
                             />
-                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối đa</span>
+                            <span className="text-[10px] text-gray-400 block text-center mt-1">Tối đa (Lux)</span>
                           </div>
                         </div>
                         {isLightInvalid && (
                           <div className="text-[11px] text-rose-700 bg-rose-50 border border-rose-200/80 rounded-lg p-2 mt-2 flex items-start gap-1.5 animate-in fade-in duration-200">
                             <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0 mt-0.5" />
-                            <span>Ngưỡng chiếu sáng tối đa phải lớn hơn {formData.lightMin} giờ.</span>
+                            <span>Ngưỡng cường độ ánh sáng tối đa phải lớn hơn {formData.lightMin?.toLocaleString()} Lux.</span>
                           </div>
                         )}
                       </div>
