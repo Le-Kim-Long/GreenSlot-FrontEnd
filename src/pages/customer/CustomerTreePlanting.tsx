@@ -394,12 +394,7 @@ export default function CustomerTreePlanting() {
         item.newTreeName?.toLowerCase().includes(search.toLowerCase()) ||
         item.reason?.toLowerCase().includes(search.toLowerCase());
       
-      const matchStatus = (() => {
-        if (!statusFilter) return true;
-        if (statusFilter === 'PAID_PENDING') return item.status === 'PENDING' && isRequestPaid(item);
-        if (statusFilter === 'UNPAID_PENDING') return item.status === 'PENDING' && !isRequestPaid(item) && !!item.paymentUrl;
-        return item.status === statusFilter;
-      })();
+      const matchStatus = !statusFilter ? true : item.status === statusFilter;
 
       return matchSearch && matchStatus;
     })
@@ -413,12 +408,11 @@ export default function CustomerTreePlanting() {
   const totalPages = Math.ceil(filteredRequests.length / pageSize) || 1;
   const paginatedRequests = filteredRequests.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  // Thống kê nhanh
+  // Thống kê nhanh (Chuẩn y như Mobile)
   const stats = {
     total: requests.length,
-    paidPending: requests.filter(r => r.status === 'PENDING' && isRequestPaid(r)).length,
     pending: requests.filter(r => r.status === 'PENDING').length,
-    approved: requests.filter(r => r.status === 'APPROVED').length,
+    approved: requests.filter(r => r.status === 'APPROVED' || r.status === 'COMPLETED').length,
     rejected: requests.filter(r => r.status === 'REJECTED').length,
   };
 
@@ -480,7 +474,7 @@ export default function CustomerTreePlanting() {
         </button>
       </div>
 
-      {/* Thẻ Thống Kê Nhanh (Stats Cards) */}
+      {/* Thẻ Thống Kê Nhanh (Stats Cards - Đồng bộ y hệt Mobile) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg">
@@ -492,12 +486,12 @@ export default function CustomerTreePlanting() {
           </div>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg">
-            <CheckCircle2 className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">
+            <Clock className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-blue-600">{stats.paidPending}</div>
-            <div className="text-xs text-gray-500 font-medium">Đã thanh toán (Chờ duyệt)</div>
+            <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
+            <div className="text-xs text-gray-500 font-medium">Chờ duyệt</div>
           </div>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
@@ -506,7 +500,7 @@ export default function CustomerTreePlanting() {
           </div>
           <div>
             <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
-            <div className="text-xs text-gray-500 font-medium">Đã chấp thuận</div>
+            <div className="text-xs text-gray-500 font-medium">Đã duyệt</div>
           </div>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
@@ -515,7 +509,7 @@ export default function CustomerTreePlanting() {
           </div>
           <div>
             <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-            <div className="text-xs text-gray-500 font-medium">Chưa phù hợp</div>
+            <div className="text-xs text-gray-500 font-medium">Từ chối</div>
           </div>
         </div>
       </div>
@@ -547,11 +541,9 @@ export default function CustomerTreePlanting() {
           }}
           options={[
             { value: "", label: "Tất cả trạng thái" },
-            { value: "PAID_PENDING", label: "Đã thanh toán (Chờ duyệt)" },
-            { value: "UNPAID_PENDING", label: "Chờ thanh toán" },
-            { value: "PENDING", label: "Chờ duyệt (Tất cả)" },
-            { value: "APPROVED", label: "Đã đồng ý trồng" },
-            { value: "REJECTED", label: "Đã từ chối" },
+            { value: "PENDING", label: "Chờ duyệt" },
+            { value: "APPROVED", label: "Đã duyệt" },
+            { value: "REJECTED", label: "Từ chối" },
           ]}
         />
       </div>
