@@ -10,7 +10,7 @@ export interface TreePlantingRequest {
   newTreeName: string;
   requestedById: number;
   requestedByName: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'COMPLETED';
   reason: string;
   notes?: string;
   requestedAt: string;
@@ -21,6 +21,7 @@ export interface TreePlantingRequest {
   paymentUrl?: string;
   targetPillarId?: number;
   targetPillarCode?: string;
+  isPaid?: boolean;
 }
 
 // 👉 Interface cho request body gửi lên khi tạo mới (Theo đúng Swagger POST)

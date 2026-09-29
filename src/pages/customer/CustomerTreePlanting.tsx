@@ -156,6 +156,7 @@ export default function CustomerTreePlanting() {
   const [requests, setRequests] = useState<TreePlantingRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [paidRequestIds, setPaidRequestIds] = useState<Set<number>>(new Set());
 
   // Danh sách hợp đồng thuê & giống cây để chọn trong modal
   const [myRentals, setMyRentals] = useState<BookingHistory[]>([]);
@@ -178,6 +179,14 @@ export default function CustomerTreePlanting() {
 
   const [searchParams] = useSearchParams();
 
+  const isRequestPaid = (item: TreePlantingRequest | null | undefined): boolean => {
+    if (!item) return false;
+    if (item.isPaid) return true;
+    if (paidRequestIds.has(item.id)) return true;
+    if (item.status === 'APPROVED' || item.status === 'COMPLETED') return true;
+    return false;
+  };
+
   const fetchMyRequests = async () => {
     setIsLoading(true);
     try {
@@ -197,6 +206,24 @@ export default function CustomerTreePlanting() {
         bookingApi.getHistory().catch(() => []),
         treeApi.getTrees().catch(() => []),
       ]);
+      // Quét các giao dịch thanh toán phôi giống VNPay thành công (PLANT_<requestId>_...)
+      if (rentalsData && Array.isArray(rentalsData)) {
+        const paidIds = new Set<number>();
+        rentalsData.forEach((rental: BookingHistory) => {
+          rental.transactions?.forEach((tx) => {
+            if (tx.vnpTxnRef?.startsWith('PLANT_') && (tx.status === 'SUCCESS' || tx.status === 'PAID')) {
+              const parts = tx.vnpTxnRef.split('_');
+              if (parts.length >= 2) {
+                const rId = parseInt(parts[1], 10);
+                if (!isNaN(rId)) paidIds.add(rId);
+              }
+            }
+          });
+        });
+        if (paidIds.size > 0) {
+          setPaidRequestIds(prev => new Set([...prev, ...paidIds]));
+        }
+      }
       // Cho phép chọn tất cả hợp đồng đang hoạt động (ACTIVE)
       setMyRentals((rentalsData || []).filter((r: BookingHistory) => r.status === 'ACTIVE'));
       setAvailableTrees((treesData || []).filter((t: Tree) => t.isActive !== false));
@@ -366,7 +393,14 @@ export default function CustomerTreePlanting() {
         item.slotNumber?.toLowerCase().includes(search.toLowerCase()) ||
         item.newTreeName?.toLowerCase().includes(search.toLowerCase()) ||
         item.reason?.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
+      
+      const matchStatus = (() => {
+        if (!statusFilter) return true;
+        if (statusFilter === 'PAID_PENDING') return item.status === 'PENDING' && isRequestPaid(item);
+        if (statusFilter === 'UNPAID_PENDING') return item.status === 'PENDING' && !isRequestPaid(item) && !!item.paymentUrl;
+        return item.status === statusFilter;
+      })();
+
       return matchSearch && matchStatus;
     })
     .sort((a, b) => {
@@ -382,20 +416,46 @@ export default function CustomerTreePlanting() {
   // Thống kê nhanh
   const stats = {
     total: requests.length,
+    paidPending: requests.filter(r => r.status === 'PENDING' && isRequestPaid(r)).length,
     pending: requests.filter(r => r.status === 'PENDING').length,
     approved: requests.filter(r => r.status === 'APPROVED').length,
     rejected: requests.filter(r => r.status === 'REJECTED').length,
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'APPROVED':
-        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200/60"><CheckCircle2 className="w-3.5 h-3.5" /> Đã chấp thuận</span>;
-      case 'REJECTED':
-        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200/60"><XCircle className="w-3.5 h-3.5" /> Bị từ chối</span>;
-      default:
-        return <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200/60"><Clock className="w-3.5 h-3.5" /> Chờ xử lý</span>;
+  const getStatusBadge = (item: TreePlantingRequest) => {
+    if (item.status === 'APPROVED' || item.status === 'COMPLETED') {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200/60">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt
+        </span>
+      );
     }
+    if (item.status === 'REJECTED') {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200/60">
+          <XCircle className="w-3.5 h-3.5" /> Từ chối
+        </span>
+      );
+    }
+    if (isRequestPaid(item)) {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 border border-blue-200/60">
+          <CheckCircle2 className="w-3.5 h-3.5" /> Đã thanh toán (Chờ duyệt)
+        </span>
+      );
+    }
+    if (item.paymentUrl) {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200/60">
+          <CreditCard className="w-3.5 h-3.5" /> Chờ thanh toán
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200/60">
+        <Clock className="w-3.5 h-3.5" /> Chờ duyệt
+      </span>
+    );
   };
 
   return (
@@ -432,12 +492,12 @@ export default function CustomerTreePlanting() {
           </div>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-lg">
-            <Clock className="w-6 h-6" />
+          <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
-            <div className="text-xs text-gray-500 font-medium">Chờ phản hồi</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.paidPending}</div>
+            <div className="text-xs text-gray-500 font-medium">Đã thanh toán (Chờ duyệt)</div>
           </div>
         </div>
         <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
@@ -487,7 +547,9 @@ export default function CustomerTreePlanting() {
           }}
           options={[
             { value: "", label: "Tất cả trạng thái" },
-            { value: "PENDING", label: "Chờ nhà vườn phản hồi" },
+            { value: "PAID_PENDING", label: "Đã thanh toán (Chờ duyệt)" },
+            { value: "UNPAID_PENDING", label: "Chờ thanh toán" },
+            { value: "PENDING", label: "Chờ duyệt (Tất cả)" },
             { value: "APPROVED", label: "Đã đồng ý trồng" },
             { value: "REJECTED", label: "Đã từ chối" },
           ]}
@@ -561,11 +623,11 @@ export default function CustomerTreePlanting() {
                     </div>
                   </td>
                   <td className="p-4">
-                    {getStatusBadge(item.status)}
+                    {getStatusBadge(item)}
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      {item.status === 'PENDING' && item.paymentUrl && (
+                      {item.status === 'PENDING' && !isRequestPaid(item) && item.paymentUrl && (
                         <a
                           href={item.paymentUrl}
                           className="px-3 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition inline-flex items-center gap-1 shadow-sm shadow-blue-600/20"
@@ -868,7 +930,7 @@ export default function CustomerTreePlanting() {
               <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-100 space-y-2.5">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-500">Trạng thái:</span>
-                  <div>{getStatusBadge(selectedDetail.status)}</div>
+                  <div>{getStatusBadge(selectedDetail)}</div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Vị trí ô đất:</span>
@@ -886,6 +948,19 @@ export default function CustomerTreePlanting() {
                   <span className="text-gray-800 font-medium">{new Date(selectedDetail.requestedAt).toLocaleString('vi-VN')}</span>
                 </div>
               </div>
+
+              {/* Hộp thông báo đã thanh toán tiền phôi giống */}
+              {isRequestPaid(selectedDetail) && (
+                <div className="bg-blue-50/80 border border-blue-200/80 p-3.5 rounded-2xl text-xs text-blue-900 flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold text-blue-900 mb-0.5">Đã hoàn tất thanh toán VNPay</p>
+                    <p className="text-blue-800">
+                      Khoản thanh toán tiền phôi giống đã được xác nhận thành công qua VNPay. Yêu cầu đang được quản lý nhà vườn duyệt.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <span className="block text-xs font-semibold text-gray-500 uppercase mb-1">Lý do & Ghi chú của bạn:</span>
@@ -931,7 +1006,7 @@ export default function CustomerTreePlanting() {
               </div>
 
               <div className="flex justify-end gap-2.5 pt-3 border-t border-gray-100">
-                {selectedDetail.status === 'PENDING' && selectedDetail.paymentUrl && (
+                {selectedDetail.status === 'PENDING' && !isRequestPaid(selectedDetail) && selectedDetail.paymentUrl && (
                   <a
                     href={selectedDetail.paymentUrl}
                     className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition text-sm inline-flex items-center gap-1.5 shadow-md shadow-blue-600/20"
