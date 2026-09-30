@@ -61,7 +61,7 @@ export const taskApi = {
     apiClient.get('/tasks/harvest/eligible-rentals').then(r => r.data),
 
   // Staff chủ động báo thu hoạch sớm cho 1 ô đất / trụ, không cần đợi hệ thống tự tạo task theo số ngày
-  notifyEarlyHarvest: (payload: { rentalId: number; pillarId?: number; pillarCode?: string } | number): Promise<GardeningTask> => {
+  notifyEarlyHarvest: (payload: { rentalId: number; pillarId?: number; pillarCode?: string; evidenceImageUrl?: string; staffNotes?: string } | number): Promise<GardeningTask> => {
     const body = typeof payload === 'number' ? { rentalId: payload } : payload;
     return apiClient.post('/tasks/harvest/early', body).then(r => r.data);
   },
