@@ -972,7 +972,11 @@ function CompleteTaskModal({
       setLoadingEquipments(true);
       equipmentApi.getEquipments()
         .then(eqs => {
-          const available = (eqs || []).filter(e => (e.status || '').toUpperCase() === 'AVAILABLE' && (e.quantity == null || e.quantity > 0));
+          const available = (eqs || []).filter(e => 
+            (e.status || '').toUpperCase() === 'AVAILABLE' && 
+            (e.quantity == null || e.quantity > 0) &&
+            !e.pillarId
+          );
           setAvailableEquipments(available);
 
           setPillarForms(prev => {
@@ -1058,8 +1062,8 @@ function CompleteTaskModal({
   const handleSubmit = async () => {
     setError('');
 
-    // TRƯỜNG HỢP 1: Chế độ nộp theo từng trụ (gắn thiết bị từ kho) - CHỈ CHO TASK LẮP ĐẶT BỔ SUNG TRỤ
-    if (isPillarSetupTask && submissionMode === 'pillar' && pillarCodes.length > 0) {
+    // TRƯỜNG HỢP 1: Chế độ nộp theo từng trụ (gắn thiết bị từ kho) - BẮT BUỘC CHO TASK LẮP ĐẶT BỔ SUNG TRỤ
+    if (isPillarSetupTask && pillarCodes.length > 0) {
       // Validate từng trụ
       for (const code of pillarCodes) {
         const pf = pillarForms[code];
@@ -1184,38 +1188,8 @@ function CompleteTaskModal({
 
         {error && <div className="bg-rose-50 text-rose-700 p-3 rounded-xl text-xs font-medium border border-rose-200">{error}</div>}
 
-        {/* Thanh chuyển đổi chế độ nộp bằng chứng: CHỈ HIỂN THỊ KHI LÀ TASK LẮP ĐẶT BỔ SUNG TRỤ */}
-        {isPillarSetupTask && (
-          <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl border border-gray-200">
-            <button
-              type="button"
-              onClick={() => setSubmissionMode('pillar')}
-              className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
-                submissionMode === 'pillar'
-                  ? 'bg-white text-emerald-700 shadow-xs border border-gray-200'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <Cpu className="w-3.5 h-3.5 text-amber-600" />
-              <span>Gắn thiết bị từ kho ({pillarCodes.length} trụ)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSubmissionMode('single')}
-              className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
-                submissionMode === 'single'
-                  ? 'bg-white text-emerald-700 shadow-xs border border-gray-200'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <Camera className="w-3.5 h-3.5 text-blue-600" />
-              <span>Nộp 1 ảnh báo cáo chung</span>
-            </button>
-          </div>
-        )}
-
-        {/* 1. NẾU LÀ CHẾ ĐỘ GẮN THIẾT BỊ TỪ KHO THEO TỪNG TRỤ (CHỈ ÁP DỤNG CHO TASK LẮP ĐẶT BỔ SUNG TRỤ) */}
-        {isPillarSetupTask && submissionMode === 'pillar' && pillarCodes.length > 0 ? (
+        {/* 1. NẾU LÀ TASK LẮP ĐẶT BỔ SUNG TRỤ: BẮT BUỘC NGHIỆM THU THEO TỪNG TRỤ VÀ GẮN THIẾT BỊ */}
+        {isPillarSetupTask && pillarCodes.length > 0 ? (
           <div className="space-y-4">
             <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 space-y-1">
               <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">
