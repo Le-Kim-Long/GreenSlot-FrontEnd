@@ -107,10 +107,10 @@ export default function StaffDashboard() {
     fetchLocationMetrics();
   }, [selectedLocationId, startDate, endDate]);
 
-  // Tính toán dữ liệu Biểu đồ Tỷ lệ Lấp đầy
-  const totalSlots = metrics?.totalSlots || (metrics?.activeRentals || 0) + (metrics?.availableSlots || 0) || 10;
+  // Tính toán dữ liệu Biểu đồ Tỷ lệ Lấp đầy theo cơ sở
+  const totalSlots = metrics?.totalSlots ?? ((metrics?.activeRentals || 0) + (metrics?.availableSlots || 0) || 0);
   const activeRentalsCount = metrics?.activeRentals || 0;
-  const availableSlotsCount = metrics?.availableSlots ?? (totalSlots - activeRentalsCount);
+  const availableSlotsCount = metrics?.availableSlots ?? Math.max(0, totalSlots - activeRentalsCount);
 
   const occupancyData = [
     { name: 'Đang cho thuê', value: activeRentalsCount },
@@ -120,7 +120,7 @@ export default function StaffDashboard() {
   const statCards = [
     { label: 'Cơ sở', value: stats.locations, icon: <MapPin className="w-6 h-6" />, bg: 'bg-green-50 text-green-600', link: '/dashboard/staff/locations' },
     { label: 'Trụ vườn', value: stats.pillars, icon: <Columns3 className="w-6 h-6" />, bg: 'bg-purple-50 text-purple-600', link: '/dashboard/staff/pillars' },
-    { label: 'Ô vườn', value: `${stats.availableSlots}/${stats.slots}`, icon: <Grid3X3 className="w-6 h-6" />, bg: 'bg-blue-50 text-blue-600', link: '/dashboard/staff/slots', sublabel: 'trống/tổng' },
+    { label: 'Ô vườn', value: stats.slots, icon: <Grid3X3 className="w-6 h-6" />, bg: 'bg-blue-50 text-blue-600', link: '/dashboard/staff/slots', sublabel: `${stats.availableSlots} ô còn trống` },
     { label: 'Đang thuê', value: stats.activeRentals, icon: <Calendar className="w-6 h-6" />, bg: 'bg-orange-50 text-orange-600', link: '/dashboard/staff/rentals' },
     { label: 'Loại dịch vụ', value: stats.serviceTypes, icon: <Wrench className="w-6 h-6" />, bg: 'bg-cyan-50 text-cyan-600', link: '/dashboard/staff/services' },
     { label: 'Công việc', value: stats.totalTasks, icon: <ClipboardList className="w-6 h-6" />, bg: 'bg-yellow-50 text-yellow-600', link: '/dashboard/staff/tasks' },
