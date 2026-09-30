@@ -60,11 +60,16 @@ export default function IoTMonitoringPage() {
   const isStaffView = window.location.pathname.includes('garden-staff');
   const navItems = isStaffView ? staffNav : customerNav;
 
+  const queryParams = useMemo(() => new URLSearchParams(window.location.search), []);
+  const urlPillarCode = queryParams.get('pillarCode') || queryParams.get('device');
+
   const [activeRentals, setActiveRentals] = useState<BookingHistory[]>([]);
   const [staffPillars, setStaffPillars] = useState<PillarOption[]>([]);
   const [sensorTypes, setSensorTypes] = useState<SensorTypeInfo[]>([]);
   
-  const [selectedDeviceId, setSelectedDeviceId] = useState('arduino-greenhouse-01');
+  const [selectedDeviceId, setSelectedDeviceId] = useState(urlPillarCode || 'arduino-greenhouse-01');
+  const [isCurrentDeviceOnline, setIsCurrentDeviceOnline] = useState(true);
+  const [lastRecordedTime, setLastRecordedTime] = useState<string>('');
   const [latestData, setLatestData] = useState<Record<string, number>>({});
   
   const [allPillarsData, setAllPillarsData] = useState<Record<string, { data: Record<string, number>, isActive: boolean }>>({});
@@ -142,6 +147,16 @@ export default function IoTMonitoringPage() {
     return availablePillars.find(p => p.pillarCode === selectedDeviceId);
   }, [availablePillars, selectedDeviceId]);
 
+  // Tự động chuyển đến đúng trụ nếu được chuyển hướng từ trang "Vườn đang thuê" qua URL parameter
+  useEffect(() => {
+    if (urlPillarCode && availablePillars.length > 0) {
+      const match = availablePillars.find(p => p.pillarCode?.toLowerCase() === urlPillarCode.toLowerCase());
+      if (match && selectedDeviceId !== match.pillarCode) {
+        setSelectedDeviceId(match.pillarCode);
+      }
+    }
+  }, [urlPillarCode, availablePillars, selectedDeviceId]);
+
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
 
@@ -164,11 +179,19 @@ export default function IoTMonitoringPage() {
         ]);
 
         const isActive = (latest && latest.length > 0) && checkIsActive(latest, history);
+        setIsCurrentDeviceOnline(isActive);
 
-        if (isActive) {
+        if (latest && latest.length > 0) {
           const latestMap: Record<string, number> = {};
-          latest.forEach(r => { latestMap[r.sensorType] = r.value; });
+          let latestTimeStr = '';
+          latest.forEach(r => {
+            latestMap[r.sensorType] = r.value;
+            if (r.recordedAt) {
+              latestTimeStr = new Date(r.recordedAt).toLocaleString('vi-VN');
+            }
+          });
           setLatestData(latestMap);
+          setLastRecordedTime(latestTimeStr);
 
           const timeMap: Record<string, Record<string, unknown>> = {};
           history.forEach(r => {
@@ -180,6 +203,7 @@ export default function IoTMonitoringPage() {
         } else {
           setLatestData({});
           setChartData([]);
+          setLastRecordedTime('');
         }
       }
 
@@ -207,9 +231,7 @@ export default function IoTMonitoringPage() {
           
           if (res.latest && res.latest.length > 0) {
             isActive = checkIsActive(res.latest, res.history);
-            if (isActive) {
-              res.latest.forEach((r: any) => { map[r.sensorType] = r.value; });
-            }
+            res.latest.forEach((r: any) => { map[r.sensorType] = r.value; });
           }
           mapAll[res.pillarCode] = { data: map, isActive };
         });
@@ -301,11 +323,16 @@ export default function IoTMonitoringPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-green-50/60 border border-green-200/60 px-4 py-3 rounded-2xl text-xs">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 font-bold text-green-900">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+            <span className={`w-2.5 h-2.5 rounded-full ${(!isAllView && !isCurrentDeviceOnline) ? 'bg-amber-500' : 'bg-green-500 animate-pulse'}`} />
             <span>Đang theo dõi:</span>
             <span className="bg-green-200/80 text-green-900 px-2.5 py-0.5 rounded-md font-mono font-bold">
               {currentPillarInfo ? `Trụ ${currentPillarInfo.pillarCode} (Ô ${currentPillarInfo.slotNumber})` : `Tất cả các trụ (${availablePillars.length} trụ)`}
             </span>
+            {!isAllView && (
+              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${isCurrentDeviceOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                {isCurrentDeviceOnline ? '● Trực tuyến' : '● Chờ đồng bộ'}
+              </span>
+            )}
           </div>
           {currentPillarInfo?.treeName ? (
             <div className="text-green-800 bg-white/80 px-2.5 py-0.5 rounded-md border border-green-200">
@@ -397,21 +424,21 @@ export default function IoTMonitoringPage() {
                       </td>
                       
                       <td className="p-3.5 font-bold text-gray-800">
-                        {isActive && soilMoisture != null ? (
+                        {soilMoisture != null ? (
                           <span className={soilMoisture < 40 ? 'text-amber-600' : 'text-green-600'}>
                             {soilMoisture} %
                           </span>
                         ) : '--'}
                       </td>
                       <td className="p-3.5 font-bold text-gray-800">
-                        {isActive && ph != null ? `${ph} pH` : '--'}
+                        {ph != null ? `${ph} pH` : '--'}
                       </td>
                       <td className="p-3.5 font-bold text-gray-800">
-                        {isActive && light != null ? `${light} Lux` : '--'}
+                        {light != null ? `${light} Lux` : '--'}
                       </td>
                       <td className="p-3.5">
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${isActive ? 'text-green-700 bg-green-100/70' : 'text-gray-500 bg-gray-100'}`}>
-                          <CheckCircle className={`w-3 h-3 ${isActive ? 'text-green-600' : 'text-gray-400'}`} /> {isActive ? 'Trực tuyến' : 'Ngoại tuyến'}
+                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${isActive ? 'text-green-700 bg-green-100/70' : 'text-amber-700 bg-amber-100/70'}`}>
+                          <CheckCircle className={`w-3 h-3 ${isActive ? 'text-green-600' : 'text-amber-500'}`} /> {isActive ? 'Trực tuyến' : 'Chờ đồng bộ'}
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
@@ -455,6 +482,17 @@ export default function IoTMonitoringPage() {
           </div>
         ) : (
           <>
+            {!isCurrentDeviceOnline && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-5 text-xs text-amber-900 flex items-center justify-between gap-2 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                  <span>
+                    Cảm biến đang chờ đồng bộ dữ liệu mới. Đang hiển thị số liệu đo đạc gần nhất
+                    {lastRecordedTime ? ` (Ghi nhận lúc: ${lastRecordedTime})` : ''}.
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
               {sensorTypes.map(st => {
                 const val = latestData[st.name];

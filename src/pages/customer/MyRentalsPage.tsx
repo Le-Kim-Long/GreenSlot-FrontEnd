@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout, PlusCircle, Plus, Minus, Info, Layers } from 'lucide-react';
+import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout, PlusCircle, Plus, Minus, Info, Layers, Wifi } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
@@ -480,6 +480,12 @@ export default function MyRentalsPage() {
                         <div className="flex flex-row sm:flex-col gap-2 h-fit">
                           {rental.status === 'ACTIVE' && (
                             <>
+                              <Link
+                                to={`/dashboard/customer/monitoring?pillarCode=${rental.pillars?.[0]?.pillarCode || rental.pillarCode || ''}`}
+                                className="text-xs flex items-center gap-1.5 h-fit px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 text-indigo-700 hover:bg-indigo-100 font-semibold transition-colors shadow-2xs"
+                              >
+                                <Wifi className="w-3.5 h-3.5 text-indigo-600" /> Theo dõi cảm biến
+                              </Link>
                               <Link
                                 to={`/dashboard/customer/tree-planting?rentalId=${rental.id}`}
                                 className="btn-primary text-xs flex items-center gap-1 h-fit shadow-xs bg-emerald-600 hover:bg-emerald-700"

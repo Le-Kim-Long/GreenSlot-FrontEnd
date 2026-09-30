@@ -31,6 +31,7 @@ interface Task {
   createdAt?: string;
   pillarCodes?: string;
   staffNotes?: string;
+  isEarlyHarvest?: boolean;
   equipmentBindings?: PillarEquipmentBinding[];
 }
 
@@ -125,6 +126,7 @@ export default function TaskManagement() {
         createdAt: t.createdAt || '',
         pillarCodes: t.pillarCodes || '',
         staffNotes: t.staffNotes || '',
+        isEarlyHarvest: Boolean(t.isEarlyHarvest),
         equipmentBindings: t.equipmentBindings || []
       }));
 
@@ -765,7 +767,12 @@ export default function TaskManagement() {
             MODAL 3: DUYỆT CÔNG VIỆC (REVIEW)
         ========================================= */}
         {modalType === 'REVIEW' && selectedTask && (() => {
-          const isPillarSetupTask = Boolean(
+          const isEarlyHarvestTask = Boolean(
+            selectedTask.isEarlyHarvest ||
+            selectedTask.name.toLowerCase().includes('thu hoạch sớm') ||
+            selectedTask.name.toLowerCase().includes('đề xuất thu hoạch')
+          );
+          const isPillarSetupTask = !isEarlyHarvestTask && Boolean(
             selectedTask.pillarCodes &&
             selectedTask.pillarCodes.trim() !== '' &&
             (selectedTask.name.toLowerCase().includes('lắp đặt bổ sung') ||
@@ -780,16 +787,32 @@ export default function TaskManagement() {
                   <X className="w-5 h-5" />
                 </button>
                 
-                <h2 className="text-xl font-bold mb-5 text-gray-900">Duyệt Công Việc</h2>
+                <h2 className="text-xl font-bold mb-5 text-gray-900">
+                  {isEarlyHarvestTask ? 'Phê duyệt Đề xuất Thu hoạch sớm' : 'Duyệt Công Việc'}
+                </h2>
                 
-                <div className="bg-purple-50/60 border border-purple-100 p-4 rounded-xl mb-5">
-                  <p className="font-semibold text-gray-900 text-base">{selectedTask.name}</p>
-                  <div className="flex flex-wrap gap-2 mt-2 text-xs font-medium text-purple-700">
-                    <span className="bg-white px-2 py-1 rounded border border-purple-200">Loại: {TASK_TYPE_MAP[selectedTask.type] || selectedTask.type}</span>
-                    <span className="bg-white px-2 py-1 rounded border border-purple-200">Ô vườn: {selectedTask.slotNumber}</span>
-                    <span className="bg-white px-2 py-1 rounded border border-purple-200">Nhân viên: {selectedTask.assigneeName || 'Chưa gán'}</span>
+                {isEarlyHarvestTask ? (
+                  <div className="bg-amber-50/70 border border-amber-200 p-4 rounded-xl mb-5">
+                    <p className="font-semibold text-amber-900 text-base">{selectedTask.name}</p>
+                    <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                      {selectedTask.description || 'Nhân viên đề xuất thu hoạch sớm. Sau khi duyệt, hệ thống sẽ kích hoạt thông báo cho khách hàng lựa chọn hình thức thu hoạch.'}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-2.5 text-xs font-medium text-amber-900">
+                      <span className="bg-white px-2 py-1 rounded border border-amber-200">Ô vườn: {selectedTask.slotNumber}</span>
+                      {selectedTask.pillarCodes && <span className="bg-white px-2 py-1 rounded border border-amber-200">Trụ: {selectedTask.pillarCodes}</span>}
+                      <span className="bg-white px-2 py-1 rounded border border-amber-200">Nhân viên đề xuất: {selectedTask.assigneeName || 'N/A'}</span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="bg-purple-50/60 border border-purple-100 p-4 rounded-xl mb-5">
+                    <p className="font-semibold text-gray-900 text-base">{selectedTask.name}</p>
+                    <div className="flex flex-wrap gap-2 mt-2 text-xs font-medium text-purple-700">
+                      <span className="bg-white px-2 py-1 rounded border border-purple-200">Loại: {TASK_TYPE_MAP[selectedTask.type] || selectedTask.type}</span>
+                      <span className="bg-white px-2 py-1 rounded border border-purple-200">Ô vườn: {selectedTask.slotNumber}</span>
+                      <span className="bg-white px-2 py-1 rounded border border-purple-200">Nhân viên: {selectedTask.assigneeName || 'Chưa gán'}</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Nếu là Task Lắp đặt bổ sung trụ: Hiển thị Thẻ (Card) chi tiết từng trụ */}
                 {isPillarSetupTask ? (
@@ -987,11 +1010,11 @@ export default function TaskManagement() {
                     )}
                   </div>
                 ) : (
-                  /* Giao diện Task thông thường: Hiển thị 1 ảnh bằng chứng chung và ghi chú */
+                  /* Giao diện Task thông thường / Đề xuất thu hoạch sớm */
                   <>
                     <div className="mb-5">
                       <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
-                        <span>📸 Ảnh Bằng Chứng Hoàn Thành</span>
+                        <span>{isEarlyHarvestTask ? '📸 Ảnh Chụp Cây Rau Thực Tế (Gửi kèm đề xuất)' : '📸 Ảnh Bằng Chứng Hoàn Thành'}</span>
                         {selectedTask.evidenceImageUrl && (
                           <a 
                             href={selectedTask.evidenceImageUrl} 
@@ -1016,6 +1039,10 @@ export default function TaskManagement() {
                             }}
                           />
                         </div>
+                      ) : isEarlyHarvestTask ? (
+                        <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-xl text-center text-amber-800 text-xs">
+                          ℹ️ Nhân viên không đính kèm ảnh chụp cây rau khi gửi đề xuất này.
+                        </div>
                       ) : (
                         <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-xl text-center text-yellow-800 text-sm">
                           ⚠️ Nhân viên chưa đính kèm ảnh bằng chứng.
@@ -1027,7 +1054,7 @@ export default function TaskManagement() {
                     {selectedTask.staffNotes && (
                       <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900">
                         <div className="font-semibold text-amber-800 mb-1 flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-amber-600" /> Ghi chú của nhân viên:
+                          <FileText className="w-3.5 h-3.5 text-amber-600" /> {isEarlyHarvestTask ? 'Ghi chú tình trạng rau của nhân viên:' : 'Ghi chú của nhân viên:'}
                         </div>
                         <p className="whitespace-pre-line leading-relaxed">{selectedTask.staffNotes}</p>
                       </div>
@@ -1048,7 +1075,9 @@ export default function TaskManagement() {
                           onChange={() => setReviewForm({ ...reviewForm, action: 'APPROVE' })}
                           className="w-4 h-4 text-green-600 focus:ring-green-500"
                         />
-                        <span className="font-semibold text-green-700">Duyệt (Hoàn thành)</span>
+                        <span className="font-semibold text-green-700">
+                          {isEarlyHarvestTask ? 'Duyệt đề xuất (Báo khách hàng)' : 'Duyệt (Hoàn thành)'}
+                        </span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-xl flex-1 hover:bg-red-50/50 transition">
                         <input 
@@ -1059,10 +1088,18 @@ export default function TaskManagement() {
                           onChange={() => setReviewForm({ ...reviewForm, action: 'REJECT' })}
                           className="w-4 h-4 text-red-600 focus:ring-red-500"
                         />
-                        <span className="font-semibold text-red-700">Từ chối (Làm lại)</span>
+                        <span className="font-semibold text-red-700">
+                          {isEarlyHarvestTask ? 'Từ chối đề xuất' : 'Từ chối (Làm lại)'}
+                        </span>
                       </label>
                     </div>
                   </div>
+
+                  {isEarlyHarvestTask && reviewForm.action === 'APPROVE' && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 leading-relaxed">
+                      💡 Khi duyệt đề xuất này, hệ thống sẽ gửi thông báo đến tài khoản Khách hàng để khách lựa chọn phương thức: <strong>Tự thu hoạch</strong> hoặc <strong>Nhờ nhân viên thu hoạch gửi về</strong>.
+                    </div>
+                  )}
 
                   {reviewForm.action === 'REJECT' && (
                     <div>

@@ -4,7 +4,7 @@ import {
   Loader2, ShieldAlert, Upload, Calendar, Bell, Eye,
   X, ExternalLink, Sprout, Zap, History, Wrench, Camera,
   MapPin, Layers, Filter, Play, Search, AlertCircle, Sparkles,
-  Cpu
+  Cpu, Image as ImageIcon, FileText
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -117,6 +117,9 @@ export default function GardenStaffDashboard() {
   const [eligibleRentals, setEligibleRentals] = useState<EligibleHarvestRental[]>([]);
   const [showEarlyPanel, setShowEarlyPanel] = useState(false);
   const [selectedEarlyItemKey, setSelectedEarlyItemKey] = useState('');
+  const [earlyImageFile, setEarlyImageFile] = useState<File | null>(null);
+  const [earlyImagePreview, setEarlyImagePreview] = useState<string | null>(null);
+  const [earlyNotes, setEarlyNotes] = useState('');
   const [earlyNotifying, setEarlyNotifying] = useState(false);
   const [earlyError, setEarlyError] = useState('');
   const [earlySuccess, setEarlySuccess] = useState('');
@@ -143,13 +146,23 @@ export default function GardenStaffDashboard() {
     setEarlyError('');
     setEarlySuccess('');
     try {
+      let evidenceImageUrl: string | undefined = undefined;
+      if (earlyImageFile) {
+        evidenceImageUrl = await taskApi.uploadEvidenceImage(earlyImageFile);
+      }
+
       await taskApi.notifyEarlyHarvest({
         rentalId: selectedItem.rentalId,
         pillarId: selectedItem.pillarId,
         pillarCode: selectedItem.pillarCode || selectedItem.pillarCodes,
+        evidenceImageUrl,
+        staffNotes: earlyNotes.trim() || undefined,
       });
       setEarlySuccess(`Đã gửi đề xuất thu hoạch sớm cho Ô ${selectedItem.slotNumber}${selectedItem.pillarCode ? ` (Trụ ${selectedItem.pillarCode})` : ''} lên Location Manager phê duyệt thành công!`);
       setSelectedEarlyItemKey('');
+      setEarlyImageFile(null);
+      setEarlyImagePreview(null);
+      setEarlyNotes('');
       fetchTasks();
     } catch (err: any) {
       setEarlyError(err?.response?.data?.message || 'Báo thu hoạch sớm thất bại.');
@@ -403,9 +416,9 @@ export default function GardenStaffDashboard() {
               {earlySuccess && <div className="bg-emerald-50 text-emerald-700 rounded-xl p-3 text-xs font-medium border border-emerald-200">{earlySuccess}</div>}
               
               {eligibleRentals.length > 0 ? (
-                <div className="flex flex-col sm:flex-row gap-2.5">
+                <div className="space-y-3">
                   <select
-                    className="input text-sm flex-1 bg-white border-amber-300 focus:border-amber-500 rounded-xl"
+                    className="input text-sm w-full bg-white border-amber-300 focus:border-amber-500 rounded-xl"
                     value={selectedEarlyItemKey}
                     onChange={e => setSelectedEarlyItemKey(e.target.value)}
                   >
@@ -422,14 +435,73 @@ export default function GardenStaffDashboard() {
                       );
                     })}
                   </select>
-                  <button
-                    disabled={!selectedEarlyItemKey || earlyNotifying}
-                    onClick={handleNotifyEarlyHarvest}
-                    className="btn-primary text-xs py-2 px-5 whitespace-nowrap flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm"
-                  >
-                    {earlyNotifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sprout className="w-3.5 h-3.5" />}
-                    Gửi đề xuất thu hoạch sớm
-                  </button>
+
+                  {/* Ảnh thực tế và Ghi chú */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <label className="block text-xs font-semibold text-amber-900 mb-1 flex items-center gap-1">
+                        <ImageIcon className="w-3.5 h-3.5 text-amber-700" />
+                        Ảnh chụp cây rau thực tế (Khuyên dùng để Quản lý duyệt):
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-amber-300 rounded-xl text-xs font-medium text-amber-900 hover:bg-amber-50 cursor-pointer shadow-xs">
+                          <Upload className="w-3.5 h-3.5 text-amber-700" />
+                          <span>{earlyImageFile ? 'Đổi ảnh khác' : 'Chọn ảnh thực tế'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setEarlyImageFile(file);
+                                setEarlyImagePreview(URL.createObjectURL(file));
+                              }
+                            }}
+                          />
+                        </label>
+                        {earlyImageFile && (
+                          <button
+                            type="button"
+                            onClick={() => { setEarlyImageFile(null); setEarlyImagePreview(null); }}
+                            className="text-xs text-rose-600 hover:underline font-medium"
+                          >
+                            Xóa ảnh
+                          </button>
+                        )}
+                      </div>
+                      {earlyImagePreview && (
+                        <div className="mt-2 relative w-20 h-20 rounded-lg overflow-hidden border border-amber-300 bg-white shadow-xs">
+                          <img src={earlyImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-amber-900 mb-1 flex items-center gap-1">
+                        <FileText className="w-3.5 h-3.5 text-amber-700" />
+                        Ghi chú tình trạng rau (Tùy chọn):
+                      </label>
+                      <input
+                        type="text"
+                        className="input text-xs w-full bg-white border-amber-300 focus:border-amber-500 rounded-xl"
+                        placeholder="VD: Cây đã đạt kích thước lớn, lá to xanh tốt..."
+                        value={earlyNotes}
+                        onChange={e => setEarlyNotes(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      disabled={!selectedEarlyItemKey || earlyNotifying}
+                      onClick={handleNotifyEarlyHarvest}
+                      className="btn-primary text-xs py-2 px-5 whitespace-nowrap flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm"
+                    >
+                      {earlyNotifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sprout className="w-3.5 h-3.5" />}
+                      Gửi đề xuất thu hoạch sớm
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="p-3 bg-white/80 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
