@@ -4,7 +4,7 @@ import { managerApi } from '../../api/managerApi';
 import {
   Wrench, Plus, Edit2, Trash2, X, Search, Filter,
   Loader2, Calendar, ShieldCheck, ChevronDown,
-  Upload, Image as ImageIcon, Hash, Layers, MapPin, Package
+  Upload, Image as ImageIcon, Hash, Layers, MapPin, Package, PackageMinus
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -148,6 +148,31 @@ export default function EquipmentManagement() {
   const [confirmDelete, setConfirmDelete] = useState<Equipment | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Unbind to Warehouse State
+  const [confirmUnbind, setConfirmUnbind] = useState<Equipment | null>(null);
+  const [isUnbinding, setIsUnbinding] = useState(false);
+
+  const handleUnbind = async () => {
+    if (!confirmUnbind) return;
+    setIsUnbinding(true);
+    try {
+      const targetLoc = confirmUnbind.locationId ?? (confirmUnbind.pillarId ? pillarLocationMap.get(confirmUnbind.pillarId) : undefined);
+      await equipmentApi.updateEquipment(confirmUnbind.id, {
+        ...confirmUnbind,
+        pillarId: null as any,
+        locationId: targetLoc,
+        status: 'AVAILABLE',
+      });
+      showToast('success', 'Đã tháo thiết bị về kho', `Thiết bị "${confirmUnbind.equipmentName}" đã được gỡ khỏi trụ và hoàn về kho sẵn sàng sử dụng.`);
+      setConfirmUnbind(null);
+      fetchData();
+    } catch (err: any) {
+      showToast('error', 'Thao tác thất bại', err?.response?.data?.message || 'Không thể tháo thiết bị về kho.');
+    } finally {
+      setIsUnbinding(false);
+    }
+  };
+
   // State quản lý loading khi upload ảnh lên Backend API
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -238,7 +263,7 @@ export default function EquipmentManagement() {
     setError('');
     setEditingItem(item);
     setFormData(emptyForm);
-    const itemLoc = item.locationId ?? pillarLocationMap.get(item.pillarId);
+    const itemLoc = item.locationId ?? (item.pillarId ? pillarLocationMap.get(item.pillarId) : undefined);
     setFormLocationId(itemLoc != null ? String(itemLoc) : (user?.locationId ? String(user.locationId) : ''));
     setIsModalOpen(true);
     setLoadingDetail(true);
@@ -246,7 +271,7 @@ export default function EquipmentManagement() {
     try {
       const freshData = await equipmentApi.getEquipment(item.id);
       setEditingItem(freshData);
-      const freshLoc = freshData.locationId ?? pillarLocationMap.get(freshData.pillarId);
+      const freshLoc = freshData.locationId ?? (freshData.pillarId ? pillarLocationMap.get(freshData.pillarId) : undefined);
       setFormLocationId(freshLoc != null ? String(freshLoc) : (user?.locationId ? String(user.locationId) : ''));
       // Backend trả về LocalDateTime đầy đủ (VD "2026-01-27T13:36:08.34"), nhưng input type="date"
       // chỉ hiểu đúng "YYYY-MM-DD" — cắt bớt phần giờ để hiển thị đúng trên form
@@ -277,9 +302,9 @@ export default function EquipmentManagement() {
     setIsUpdatingStock(true);
     try {
       const updated = await equipmentApi.updateStock(stockModalItem.id, Number(stockAddQty));
-      setEquipments(prev => prev.map(e => e.id === updated.id ? { ...e, quantity: updated.quantity, status: updated.status } : e));
-      showToast('success', 'Nhập kho thành công', `Đã cộng thêm ${stockAddQty} cái vào thiết bị "${updated.equipmentName}". Tồn kho mới: ${updated.quantity} cái.`);
+      showToast('success', 'Nhập kho thành công', `Đã cộng thêm ${stockAddQty} cái vào kho thiết bị "${updated.equipmentName}".`);
       setStockModalItem(null);
+      fetchData();
     } catch (err: any) {
       showToast('error', 'Lỗi nhập kho', err.response?.data?.message || 'Không thể cập nhật số lượng tồn kho.');
     } finally {
@@ -301,10 +326,6 @@ export default function EquipmentManagement() {
       showToast('warning', 'Thiếu thông tin', 'Vui lòng nhập Mã thiết bị (Serial Number) để liên kết cảm biến.');
       return;
     }
-    if (formData.status === 'IN_USE' && !formData.pillarId) {
-      showToast('warning', 'Thiếu thông tin', 'Thiết bị đang sử dụng cần được gắn vào một Trụ vườn.');
-      return;
-    }
 
     const targetLocationId = formLocationId
       ? Number(formLocationId)
@@ -320,6 +341,7 @@ export default function EquipmentManagement() {
     const toLocalDateTime = (date?: string) => (date ? `${date}T00:00:00` : undefined);
     const payload = {
       ...formData,
+      pillarId: formData.pillarId ? Number(formData.pillarId) : null,
       locationId: targetLocationId,
       purchaseDate: toLocalDateTime(formData.purchaseDate),
       lastMaintenanceDate: toLocalDateTime(formData.lastMaintenanceDate),
@@ -365,7 +387,7 @@ export default function EquipmentManagement() {
       const matchSearch = item.equipmentName?.toLowerCase().includes(search.toLowerCase()) ||
                           item.serialNumber?.toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === '' ? true : item.status === statusFilter;
-      const itemLoc = item.locationId ?? pillarLocationMap.get(item.pillarId);
+      const itemLoc = item.locationId ?? (item.pillarId ? pillarLocationMap.get(item.pillarId) : undefined);
       const matchLocation = selectedLocationId === ''
         ? true
         : String(itemLoc) === selectedLocationId;
@@ -412,10 +434,10 @@ export default function EquipmentManagement() {
               }}
               options={[
                 { value: "", label: "Tất cả trạng thái" },
-                { value: "AVAILABLE", label: "Sẵn sàng" },
-                { value: "IN_USE", label: "Đang sử dụng" },
-                { value: "MAINTENANCE", label: "Đang bảo trì" },
-                { value: "BROKEN", label: "Hỏng" },
+                { value: "AVAILABLE", label: "Sẵn sàng trong kho" },
+                { value: "IN_USE", label: "Đang sử dụng trên trụ" },
+                { value: "MAINTENANCE", label: "Tạm ngưng / Bảo trì" },
+                { value: "BROKEN", label: "Hỏng / Thanh lý" },
               ]}
             />
 
@@ -540,7 +562,7 @@ export default function EquipmentManagement() {
                       </div>
                       <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3 text-emerald-600" />
-                        {item.locationName || locationNameMap.get(item.locationId ?? -1) || locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1) || 'Chưa xác định cơ sở'}
+                        {item.locationName || locationNameMap.get(item.locationId ?? -1) || (item.pillarId ? locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1) : undefined) || 'Chưa xác định cơ sở'}
                       </div>
                     </td>
                     <td className="p-4">
@@ -562,16 +584,16 @@ export default function EquipmentManagement() {
                         'bg-amber-100 text-amber-700': item.status === 'MAINTENANCE',
                         'bg-red-100 text-red-700': item.status === 'BROKEN',
                       })}>
-                        {item.status === 'AVAILABLE' && 'Sẵn sàng'}
-                        {item.status === 'IN_USE' && 'Đang sử dụng'}
-                        {item.status === 'MAINTENANCE' && 'Đang bảo trì'}
-                        {item.status === 'BROKEN' && 'Hỏng'}
+                        {item.status === 'AVAILABLE' && 'Sẵn sàng trong kho'}
+                        {item.status === 'IN_USE' && 'Đang sử dụng trên trụ'}
+                        {item.status === 'MAINTENANCE' && 'Tạm ngưng / Bảo trì'}
+                        {item.status === 'BROKEN' && 'Hỏng / Thanh lý'}
                         {!['AVAILABLE', 'IN_USE', 'MAINTENANCE', 'BROKEN'].includes(item.status) && item.status}
                       </span>
                     </td>
                     <td className="p-4 text-right">
                       {(() => {
-                        const itemLoc = item.locationId ?? pillarLocationMap.get(item.pillarId);
+                        const itemLoc = item.locationId ?? (item.pillarId ? pillarLocationMap.get(item.pillarId) : undefined);
                         const canManage = user?.role !== 'location_manager' || !user.locationId || itemLoc === user.locationId;
                         if (!canManage) {
                           return (
@@ -580,6 +602,15 @@ export default function EquipmentManagement() {
                         }
                         return (
                           <div className="flex items-center justify-end gap-1">
+                            {item.pillarId && (
+                              <button
+                                onClick={() => setConfirmUnbind(item)}
+                                className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                                title="Tháo thiết bị về kho (Gỡ khỏi trụ)"
+                              >
+                                <PackageMinus className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleOpenEdit(item)}
                               className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-gray-100 rounded-lg transition"
@@ -638,6 +669,27 @@ export default function EquipmentManagement() {
                   {isDeleting ? 'Đang xóa...' : 'Xóa ngay'}
                 </button>
                 <button onClick={() => setConfirmDelete(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-xl transition">Hủy</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Unbind Confirmation Modal */}
+        {confirmUnbind && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl scale-100">
+              <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <PackageMinus className="w-6 h-6 text-amber-600" />
+              </div>
+              <h3 className="text-lg font-bold text-center mb-2">Tháo thiết bị về kho?</h3>
+              <p className="text-sm text-gray-500 text-center mb-6">
+                Bạn có chắc muốn tháo <span className="font-semibold text-gray-900">"{confirmUnbind.equipmentName}"</span> (S/N: {confirmUnbind.serialNumber}) khỏi trụ và hoàn về kho sẵn sàng cấp phát?
+              </p>
+              <div className="flex gap-3">
+                <button onClick={handleUnbind} disabled={isUnbinding} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 rounded-xl transition shadow-sm shadow-amber-600/20">
+                  {isUnbinding ? 'Đang tháo...' : 'Xác nhận tháo'}
+                </button>
+                <button onClick={() => setConfirmUnbind(null)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2.5 rounded-xl transition">Hủy</button>
               </div>
             </div>
           </div>
@@ -727,7 +779,18 @@ export default function EquipmentManagement() {
 
     {/* Ô 4: Trụ Vườn */}
     <div>
-      <label className="block font-medium text-gray-700 mb-1">Gắn vào Trụ vườn</label>
+      <div className="flex items-center justify-between mb-1">
+        <label className="font-medium text-gray-700">Gắn vào Trụ vườn</label>
+        {formData.pillarId && (
+          <button
+            type="button"
+            onClick={() => setFormData(prev => ({ ...prev, pillarId: undefined, status: 'AVAILABLE' }))}
+            className="text-[11px] text-amber-700 hover:text-amber-800 font-semibold underline flex items-center gap-1"
+          >
+            <PackageMinus className="w-3.5 h-3.5" /> Tháo về kho
+          </button>
+        )}
+      </div>
       <CustomDropdown
         icon={<Layers className="w-4 h-4 text-green-600 shrink-0" />}
         value={formData.pillarId ?? ''}
@@ -849,10 +912,10 @@ export default function EquipmentManagement() {
                         value={formData.status || 'AVAILABLE'}
                         onChange={e => setFormData({...formData, status: e.target.value})}
                       >
-                        <option value="AVAILABLE">Sẵn sàng (Available)</option>
-                        <option value="IN_USE">Đang sử dụng (In use)</option>
-                        <option value="MAINTENANCE">Đang bảo trì (Maintenance)</option>
-                        <option value="BROKEN">Hỏng (Broken)</option>
+                        <option value="AVAILABLE">Sẵn sàng trong kho (Available)</option>
+                        <option value="MAINTENANCE">Tạm ngưng / Bảo trì (Maintenance)</option>
+                        <option value="IN_USE">Đang sử dụng trên trụ (In use)</option>
+                        <option value="BROKEN">Hỏng / Thanh lý (Broken)</option>
                       </select>
                     </div>
 

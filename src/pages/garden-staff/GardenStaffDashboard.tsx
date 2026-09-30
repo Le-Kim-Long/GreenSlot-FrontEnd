@@ -4,7 +4,7 @@ import {
   Loader2, ShieldAlert, Upload, Calendar, Bell, Eye,
   X, ExternalLink, Sprout, Zap, History, Wrench, Camera,
   MapPin, Layers, Filter, Play, Search, AlertCircle, Sparkles,
-  Cpu, Image as ImageIcon, FileText
+  Cpu, Image as ImageIcon, FileText, Plus, Trash2
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -925,15 +925,33 @@ function CompleteTaskModal({
   }, [task.pillarCodes, task.equipments, task.targetSlotNumber]);
 
   const isPillarSetupTask = useMemo(() => {
+    if (task.isEarlyHarvest) return false;
     const name = (task.taskName || '').toLowerCase();
     const desc = (task.description || '').toLowerCase();
-    return (
-      name.includes('lắp đặt bổ sung') ||
-      name.includes('bổ sung trụ') ||
-      name.includes('lắp thêm trụ') ||
-      desc.includes('lắp đặt bổ sung trụ')
-    );
-  }, [task.taskName, task.description]);
+    if (name.includes('thu hoạch') || desc.includes('thu hoạch')) return false;
+
+    const hasPillarSetupKeyword =
+      name.includes('lắp') ||
+      name.includes('lap') ||
+      name.includes('bổ sung') ||
+      name.includes('bo sung') ||
+      name.includes('thiết bị') ||
+      name.includes('thiet bi') ||
+      name.includes('iot') ||
+      name.includes('cảm biến') ||
+      name.includes('cam bien') ||
+      name.includes('gắn') ||
+      name.includes('gán') ||
+      desc.includes('lắp') ||
+      desc.includes('lap') ||
+      desc.includes('thiết bị') ||
+      desc.includes('thiet bi') ||
+      desc.includes('iot') ||
+      desc.includes('cảm biến') ||
+      desc.includes('cam bien');
+
+    return hasPillarSetupKeyword;
+  }, [task.taskName, task.description, task.isEarlyHarvest]);
 
   const [submissionMode, setSubmissionMode] = useState<'pillar' | 'single'>(
     isPillarSetupTask ? 'pillar' : 'single'
@@ -951,16 +969,21 @@ function CompleteTaskModal({
   const [singlePreview, setSinglePreview] = useState<string | null>(null);
   const [singleNotes, setSingleNotes] = useState('');
 
-  // State cho task lắp đặt bổ sung (theo từng trụ)
+  // State cho task lắp đặt bổ sung (theo từng trụ, hỗ trợ chọn nhiều thiết bị mỗi trụ)
   const [availableEquipments, setAvailableEquipments] = useState<Equipment[]>([]);
   const [loadingEquipments, setLoadingEquipments] = useState(false);
 
-  interface PillarBindingForm {
+  interface PillarEquipmentItem {
+    id: string;
     mode: 'existing' | 'new';
     equipmentId?: number;
     newEquipmentName?: string;
     newSerialNumber?: string;
     quantity: number;
+  }
+
+  interface PillarBindingForm {
+    items: PillarEquipmentItem[];
     file: File | null;
     preview: string | null;
     notes: string;
@@ -968,12 +991,12 @@ function CompleteTaskModal({
   const [pillarForms, setPillarForms] = useState<Record<string, PillarBindingForm>>({});
 
   useEffect(() => {
-    if (submissionMode === 'pillar' && pillarCodes.length > 0) {
+    if (isPillarSetupTask && pillarCodes.length > 0) {
       setLoadingEquipments(true);
       equipmentApi.getEquipments()
         .then(eqs => {
           const available = (eqs || []).filter(e => 
-            (e.status || '').toUpperCase() === 'AVAILABLE' && 
+            (!e.status || (e.status || '').toUpperCase() === 'AVAILABLE') && 
             (e.quantity == null || e.quantity > 0) &&
             !e.pillarId
           );
@@ -984,11 +1007,16 @@ function CompleteTaskModal({
             pillarCodes.forEach(code => {
               if (!initialForms[code]) {
                 initialForms[code] = {
-                  mode: available.length > 0 ? 'existing' : 'new',
-                  equipmentId: undefined,
-                  newEquipmentName: `Bộ IoT Trụ ${code}`,
-                  newSerialNumber: '',
-                  quantity: 1,
+                  items: [
+                    {
+                      id: `item_${code}_${Date.now()}_0`,
+                      mode: available.length > 0 ? 'existing' : 'new',
+                      equipmentId: undefined,
+                      newEquipmentName: `Bộ IoT Trụ ${code}`,
+                      newSerialNumber: '',
+                      quantity: 1,
+                    }
+                  ],
                   file: null,
                   preview: null,
                   notes: '',
@@ -1005,11 +1033,16 @@ function CompleteTaskModal({
             pillarCodes.forEach(code => {
               if (!initialForms[code]) {
                 initialForms[code] = {
-                  mode: 'new',
-                  equipmentId: undefined,
-                  newEquipmentName: `Bộ IoT Trụ ${code}`,
-                  newSerialNumber: '',
-                  quantity: 1,
+                  items: [
+                    {
+                      id: `item_${code}_${Date.now()}_0`,
+                      mode: 'new',
+                      equipmentId: undefined,
+                      newEquipmentName: `Bộ IoT Trụ ${code}`,
+                      newSerialNumber: '',
+                      quantity: 1,
+                    }
+                  ],
                   file: null,
                   preview: null,
                   notes: '',
@@ -1023,7 +1056,7 @@ function CompleteTaskModal({
     }
   }, [submissionMode, pillarCodes]);
 
-  const handlePillarFormChange = (pCode: string, field: keyof PillarBindingForm, value: any) => {
+  const handlePillarFormChange = (pCode: string, field: 'notes', value: string) => {
     setPillarForms(prev => ({
       ...prev,
       [pCode]: {
@@ -1031,6 +1064,62 @@ function CompleteTaskModal({
         [field]: value
       }
     }));
+  };
+
+  const handleEquipmentItemChange = (pCode: string, itemId: string, field: keyof PillarEquipmentItem, value: any) => {
+    setPillarForms(prev => {
+      const current = prev[pCode];
+      if (!current) return prev;
+      const updatedItems = current.items.map(item => {
+        if (item.id === itemId) {
+          return { ...item, [field]: value };
+        }
+        return item;
+      });
+      return {
+        ...prev,
+        [pCode]: {
+          ...current,
+          items: updatedItems,
+        }
+      };
+    });
+  };
+
+  const handleAddEquipmentItem = (pCode: string) => {
+    setPillarForms(prev => {
+      const current = prev[pCode];
+      if (!current) return prev;
+      const newItem: PillarEquipmentItem = {
+        id: `item_${pCode}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        mode: availableEquipments.length > 0 ? 'existing' : 'new',
+        equipmentId: undefined,
+        newEquipmentName: `Thiết bị Trụ ${pCode}`,
+        newSerialNumber: '',
+        quantity: 1,
+      };
+      return {
+        ...prev,
+        [pCode]: {
+          ...current,
+          items: [...current.items, newItem],
+        }
+      };
+    });
+  };
+
+  const handleRemoveEquipmentItem = (pCode: string, itemId: string) => {
+    setPillarForms(prev => {
+      const current = prev[pCode];
+      if (!current || current.items.length <= 1) return prev;
+      return {
+        ...prev,
+        [pCode]: {
+          ...current,
+          items: current.items.filter(item => item.id !== itemId),
+        }
+      };
+    });
   };
 
   const handlePillarFileChange = (pCode: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1071,30 +1160,37 @@ function CompleteTaskModal({
           setError(`Vui lòng nhập thông tin cho trụ ${code}.`);
           return;
         }
-        if (pf.mode === 'existing') {
-          if (!pf.equipmentId) {
-            setError(`Vui lòng chọn thiết bị từ kho cho trụ ${code} (hoặc chọn 'Lắp mới (Serial)').`);
-            return;
-          }
-          const chosenEq = availableEquipments.find(e => e.id === Number(pf.equipmentId));
-          const availableStock = chosenEq?.quantity ?? 1;
-          if (!pf.quantity || pf.quantity < 1) {
-            setError(`Số lượng thiết bị lấy cho trụ ${code} phải từ 1 trở lên.`);
-            return;
-          }
-          if (pf.quantity > availableStock) {
-            setError(`Số lượng thiết bị lấy cho trụ ${code} (${pf.quantity}) vượt quá tồn kho (Còn ${availableStock} cái/bộ).`);
-            return;
-          }
+        if (!pf.items || pf.items.length === 0) {
+          setError(`Trụ ${code} chưa có thiết bị nào được chọn. Vui lòng thêm ít nhất 1 thiết bị.`);
+          return;
         }
-        if (pf.mode === 'new') {
-          if (!pf.newSerialNumber || !pf.newSerialNumber.trim()) {
-            setError(`Vui lòng nhập Số Serial Number cho thiết bị tại trụ ${code}.`);
-            return;
+        for (let i = 0; i < pf.items.length; i++) {
+          const item = pf.items[i];
+          if (item.mode === 'existing') {
+            if (!item.equipmentId) {
+              setError(`Vui lòng chọn thiết bị từ kho cho thiết bị #${i + 1} tại trụ ${code}.`);
+              return;
+            }
+            const chosenEq = availableEquipments.find(e => e.id === Number(item.equipmentId));
+            const availableStock = chosenEq?.quantity ?? 1;
+            if (!item.quantity || item.quantity < 1) {
+              setError(`Số lượng thiết bị #${i + 1} cho trụ ${code} phải từ 1 trở lên.`);
+              return;
+            }
+            if (item.quantity > availableStock) {
+              setError(`Số lượng thiết bị '${chosenEq?.equipmentName || `#${item.equipmentId}`}' cho trụ ${code} (${item.quantity}) vượt quá tồn kho (${availableStock} cái/bộ).`);
+              return;
+            }
           }
-          if (!pf.quantity || pf.quantity < 1) {
-            setError(`Số lượng thiết bị mới cho trụ ${code} phải từ 1 trở lên.`);
-            return;
+          if (item.mode === 'new') {
+            if (!item.newSerialNumber || !item.newSerialNumber.trim()) {
+              setError(`Vui lòng nhập Số Serial Number cho thiết bị #${i + 1} tại trụ ${code}.`);
+              return;
+            }
+            if (!item.quantity || item.quantity < 1) {
+              setError(`Số lượng thiết bị mới #${i + 1} cho trụ ${code} phải từ 1 trở lên.`);
+              return;
+            }
           }
         }
         if (!pf.file) {
@@ -1120,15 +1216,17 @@ function CompleteTaskModal({
           imageUrlList.push(imgUrl);
           notesList.push(`[${code}]: ${pf.notes.trim()}`);
 
-          uploadedBindings.push({
-            pillarCode: code,
-            equipmentId: pf.mode === 'existing' ? Number(pf.equipmentId) : undefined,
-            newEquipmentName: pf.mode === 'new' ? (pf.newEquipmentName?.trim() || `Bộ IoT Trụ ${code}`) : undefined,
-            newSerialNumber: pf.mode === 'new' ? pf.newSerialNumber?.trim() : undefined,
-            quantity: pf.quantity || 1,
-            evidenceImageUrl: imgUrl,
-            notes: pf.notes.trim(),
-          });
+          for (const item of pf.items) {
+            uploadedBindings.push({
+              pillarCode: code,
+              equipmentId: item.mode === 'existing' ? Number(item.equipmentId) : undefined,
+              newEquipmentName: item.mode === 'new' ? (item.newEquipmentName?.trim() || `Bộ IoT Trụ ${code}`) : undefined,
+              newSerialNumber: item.mode === 'new' ? item.newSerialNumber?.trim() : undefined,
+              quantity: item.quantity || 1,
+              evidenceImageUrl: imgUrl,
+              notes: pf.notes.trim(),
+            });
+          }
         }
 
         await taskApi.updateTaskStatus(task.id, {
@@ -1208,11 +1306,11 @@ function CompleteTaskModal({
             ) : (
               <div className="space-y-4">
                 {pillarCodes.map((code, index) => {
-                  const pf = pillarForms[code] || { mode: 'existing', file: null, preview: null, notes: '' };
+                  const pf = pillarForms[code] || { items: [], file: null, preview: null, notes: '' };
                   return (
-                    <div key={code} className="bg-gray-50/80 p-4 rounded-xl border border-gray-200 shadow-2xs space-y-3">
+                    <div key={code} className="bg-gray-50/80 p-4 rounded-xl border border-gray-200 shadow-2xs space-y-3.5">
                       {/* Header Trụ */}
-                      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+                      <div className="flex items-center justify-between border-b border-gray-200 pb-2.5">
                         <div className="flex items-center gap-2">
                           <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
                             {index + 1}
@@ -1220,122 +1318,201 @@ function CompleteTaskModal({
                           <span className="text-xs font-bold text-gray-900 bg-white border border-gray-300 px-2.5 py-0.5 rounded-md shadow-2xs">
                             Trụ: {code}
                           </span>
+                          <span className="text-[11px] text-gray-500 font-medium bg-gray-100 px-2 py-0.5 rounded">
+                            {pf.items.length} thiết bị
+                          </span>
                         </div>
-                        <div className="flex items-center gap-1 text-[11px]">
-                          <button
-                            type="button"
-                            onClick={() => handlePillarFormChange(code, 'mode', 'existing')}
-                            className={`px-2.5 py-1 rounded-lg transition ${pf.mode === 'existing' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'}`}
-                          >
-                            Kho có sẵn ({availableEquipments.length})
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handlePillarFormChange(code, 'mode', 'new')}
-                            className={`px-2.5 py-1 rounded-lg transition ${pf.mode === 'new' ? 'bg-amber-600 text-white font-semibold shadow-xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'}`}
-                          >
-                            Lắp mới (Serial)
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleAddEquipmentItem(code)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition cursor-pointer"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Thêm thiết bị
+                        </button>
                       </div>
 
-                      {/* Thiết bị IoT */}
-                      {pf.mode === 'existing' ? (
-                        <div>
-                          <label className="block text-[11px] font-semibold text-gray-700 mb-1">
-                            Thiết bị IoT gắn vào trụ: <span className="text-rose-500">*</span>
-                          </label>
-                          {availableEquipments.length === 0 ? (
-                            <div className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200">
-                              Kho hiện không có thiết bị trống. Vui lòng bấm <strong>"Lắp mới (Serial)"</strong> để nhập mã Serial thiết bị bóc hộp.
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              <select
-                                value={pf.equipmentId || ''}
-                                onChange={e => {
-                                  const id = e.target.value ? Number(e.target.value) : undefined;
-                                  handlePillarFormChange(code, 'equipmentId', id);
-                                  handlePillarFormChange(code, 'quantity', 1);
-                                }}
-                                className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white outline-none"
-                              >
-                                <option value="">-- Chọn thiết bị IoT từ kho --</option>
-                                {availableEquipments.map(eq => (
-                                  <option key={eq.id} value={eq.id}>
-                                    {eq.equipmentName} (Tồn kho: {eq.quantity ?? 1} cái/bộ) (SN: {eq.serialNumber || 'N/A'}) {eq.locationName ? `- ${eq.locationName}` : ''}
-                                  </option>
-                                ))}
-                              </select>
+                      {/* Danh sách thiết bị gắn vào trụ này */}
+                      <div className="space-y-2.5">
+                        {pf.items.map((item, itemIdx) => {
+                          const chosenEq = availableEquipments.find(e => e.id === Number(item.equipmentId));
+                          const stock = chosenEq?.quantity ?? 1;
 
-                              {pf.equipmentId && (() => {
-                                const chosen = availableEquipments.find(e => e.id === Number(pf.equipmentId));
-                                const stock = chosen?.quantity ?? 1;
-                                return (
-                                  <div className="p-2 bg-amber-50/70 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <label className="text-[11px] font-bold text-gray-700 whitespace-nowrap">
-                                        Số lượng lấy: <span className="text-rose-500">*</span>
-                                      </label>
+                          return (
+                            <div key={item.id} className="bg-white p-3 rounded-xl border border-gray-200 shadow-2xs space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                                  <Cpu className="w-3.5 h-3.5 text-indigo-600" />
+                                  Thiết bị #{itemIdx + 1}
+                                </span>
+
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-1 text-[11px]">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEquipmentItemChange(code, item.id, 'mode', 'existing')}
+                                      className={`px-2 py-0.5 rounded-md transition text-[11px] ${item.mode === 'existing' ? 'bg-amber-600 text-white font-semibold' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                      Kho ({availableEquipments.length})
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEquipmentItemChange(code, item.id, 'mode', 'new')}
+                                      className={`px-2 py-0.5 rounded-md transition text-[11px] ${item.mode === 'new' ? 'bg-amber-600 text-white font-semibold' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                      Lắp mới (Serial)
+                                    </button>
+                                  </div>
+
+                                  {pf.items.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveEquipmentItem(code, item.id)}
+                                      className="p-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
+                                      title="Xóa thiết bị này khỏi trụ"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {item.mode === 'existing' ? (
+                                <div className="space-y-2">
+                                  {availableEquipments.length === 0 ? (
+                                    <div className="text-[11px] text-amber-800 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                                      Kho hiện không có thiết bị trống. Vui lòng bấm <strong>"Lắp mới (Serial)"</strong> để nhập mã Serial thiết bị bóc hộp.
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      <select
+                                        value={item.equipmentId || ''}
+                                        onChange={e => {
+                                          const id = e.target.value ? Number(e.target.value) : undefined;
+                                          handleEquipmentItemChange(code, item.id, 'equipmentId', id);
+                                          handleEquipmentItemChange(code, item.id, 'quantity', 1);
+                                        }}
+                                        className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white outline-none"
+                                      >
+                                        <option value="">-- Chọn thiết bị IoT từ kho --</option>
+                                        {availableEquipments.map(eq => (
+                                          <option key={eq.id} value={eq.id}>
+                                            {eq.equipmentName} (Tồn kho: {eq.quantity ?? 1} cái/bộ) (SN: {eq.serialNumber || 'N/A'}) {eq.locationName ? `- ${eq.locationName}` : ''}
+                                          </option>
+                                        ))}
+                                      </select>
+
+                                      {item.equipmentId && (
+                                        <div className="p-2 bg-amber-50/70 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
+                                          <div className="flex items-center gap-2">
+                                            <label className="text-[11px] font-bold text-gray-700 whitespace-nowrap">
+                                              Số lượng lấy: <span className="text-rose-500">*</span>
+                                            </label>
+                                            <div className="flex items-center gap-1">
+                                              <button
+                                                type="button"
+                                                onClick={() => handleEquipmentItemChange(code, item.id, 'quantity', Math.max(1, (item.quantity || 1) - 1))}
+                                                disabled={(item.quantity || 1) <= 1}
+                                                className="w-7 h-7 bg-white hover:bg-gray-100 disabled:opacity-40 border border-gray-300 rounded-md font-bold text-sm flex items-center justify-center cursor-pointer shadow-2xs"
+                                              >
+                                                -
+                                              </button>
+                                              <input
+                                                type="number"
+                                                min={1}
+                                                max={stock}
+                                                value={item.quantity || 1}
+                                                onChange={e => handleEquipmentItemChange(code, item.id, 'quantity', Math.min(stock, Math.max(1, parseInt(e.target.value) || 1)))}
+                                                className="w-14 text-xs font-bold text-center border border-gray-300 rounded-md p-1.5 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
+                                              />
+                                              <button
+                                                type="button"
+                                                onClick={() => handleEquipmentItemChange(code, item.id, 'quantity', Math.min(stock, (item.quantity || 1) + 1))}
+                                                disabled={(item.quantity || 1) >= stock}
+                                                className="w-7 h-7 bg-white hover:bg-gray-100 disabled:opacity-40 border border-gray-300 rounded-md font-bold text-sm flex items-center justify-center cursor-pointer shadow-2xs"
+                                              >
+                                                +
+                                              </button>
+                                            </div>
+                                            <span className="text-[11px] text-gray-600 font-medium">
+                                              (Tối đa trong kho: <strong className="text-amber-800">{stock}</strong> cái/bộ)
+                                            </span>
+                                          </div>
+                                          {item.quantity > stock && (
+                                            <span className="text-[10px] text-rose-600 font-bold">Vượt tồn kho!</span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">Tên thiết bị:</label>
+                                    <input
+                                      type="text"
+                                      value={item.newEquipmentName || ''}
+                                      onChange={e => handleEquipmentItemChange(code, item.id, 'newEquipmentName', e.target.value)}
+                                      placeholder={`Bộ IoT Trụ ${code}`}
+                                      className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">
+                                      Mã Serial: <span className="text-rose-500">*</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={item.newSerialNumber || ''}
+                                      onChange={e => handleEquipmentItemChange(code, item.id, 'newSerialNumber', e.target.value)}
+                                      placeholder="VD: ESP32-PL01"
+                                      className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white font-mono"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">
+                                      Số lượng: <span className="text-rose-500">*</span>
+                                    </label>
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEquipmentItemChange(code, item.id, 'quantity', Math.max(1, (item.quantity || 1) - 1))}
+                                        disabled={(item.quantity || 1) <= 1}
+                                        className="w-7 h-7 bg-white hover:bg-gray-100 disabled:opacity-40 border border-gray-300 rounded-md font-bold text-sm flex items-center justify-center cursor-pointer shadow-2xs"
+                                      >
+                                        -
+                                      </button>
                                       <input
                                         type="number"
                                         min={1}
-                                        max={stock}
-                                        value={pf.quantity || 1}
-                                        onChange={e => handlePillarFormChange(code, 'quantity', Math.min(stock, Math.max(1, parseInt(e.target.value) || 1)))}
-                                        className="w-20 text-xs font-bold text-center border border-gray-300 rounded-md p-1.5 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
+                                        value={item.quantity || 1}
+                                        onChange={e => handleEquipmentItemChange(code, item.id, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="w-14 text-xs font-bold text-center border border-gray-300 rounded-md p-1.5 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white font-medium"
                                       />
-                                      <span className="text-[11px] text-gray-600 font-medium">
-                                        (Tối đa trong kho: <strong className="text-amber-800">{stock}</strong> cái/bộ)
-                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEquipmentItemChange(code, item.id, 'quantity', (item.quantity || 1) + 1)}
+                                        className="w-7 h-7 bg-white hover:bg-gray-100 border border-gray-300 rounded-md font-bold text-sm flex items-center justify-center cursor-pointer shadow-2xs"
+                                      >
+                                        +
+                                      </button>
                                     </div>
-                                    {pf.quantity > stock && (
-                                      <span className="text-[10px] text-rose-600 font-bold">Vượt tồn kho!</span>
-                                    )}
                                   </div>
-                                );
-                              })()}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          <div>
-                            <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">Tên thiết bị:</label>
-                            <input
-                              type="text"
-                              value={pf.newEquipmentName || ''}
-                              onChange={e => handlePillarFormChange(code, 'newEquipmentName', e.target.value)}
-                              placeholder={`Bộ IoT Trụ ${code}`}
-                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">
-                              Mã Serial: <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={pf.newSerialNumber || ''}
-                              onChange={e => handlePillarFormChange(code, 'newSerialNumber', e.target.value)}
-                              placeholder="VD: ESP32-PL01"
-                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white font-mono"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">
-                              Số lượng: <span className="text-rose-500">*</span>
-                            </label>
-                            <input
-                              type="number"
-                              min={1}
-                              value={pf.quantity || 1}
-                              onChange={e => handlePillarFormChange(code, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white font-medium"
-                            />
-                          </div>
-                        </div>
-                      )}
+                          );
+                        })}
+                      </div>
+
+                      {/* Nút thêm thiết bị vào trụ */}
+                      <button
+                        type="button"
+                        onClick={() => handleAddEquipmentItem(code)}
+                        className="w-full py-1.5 border-2 border-dashed border-gray-300 hover:border-emerald-500 hover:bg-emerald-50/50 rounded-xl text-xs font-semibold text-gray-600 hover:text-emerald-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Thêm thiết bị khác cho trụ {code} (Cảm biến, Mạch, v.v.)
+                      </button>
 
                       {/* Ảnh bằng chứng riêng của trụ này */}
                       <div>
