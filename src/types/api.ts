@@ -141,6 +141,9 @@ export interface RentalHistoryDTO {
   treeName?: string;
   harvestNotifiedAt?: string;
   harvestDecision?: string;
+  harvestPillarCode?: string;
+  harvestEvidenceImageUrl?: string;
+  harvestStaffNotes?: string;
   plantedAt?: string;
   expectedHarvestAt?: string;
   monthlyPrice?: number;
@@ -173,6 +176,9 @@ export interface BookingHistory {
   treeName?: string;
   harvestNotifiedAt?: string;
   harvestDecision?: string;
+  harvestPillarCode?: string;
+  harvestEvidenceImageUrl?: string;
+  harvestStaffNotes?: string;
   plantedAt?: string;
   expectedHarvestAt?: string;
 }

@@ -8,6 +8,7 @@ export interface NotificationItem {
   type: string;
   referenceId?: number | null;
   actionUrl?: string | null;
+  imageUrl?: string | null;
   isRead: boolean;
   createdAt: string;
 }

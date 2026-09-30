@@ -62,6 +62,9 @@ export function mapRentalHistory(dto: RentalHistoryDTO): BookingHistory {
     treeName: dto.treeName,
     harvestNotifiedAt: dto.harvestNotifiedAt,
     harvestDecision: dto.harvestDecision,
+    harvestPillarCode: dto.harvestPillarCode,
+    harvestEvidenceImageUrl: dto.harvestEvidenceImageUrl,
+    harvestStaffNotes: dto.harvestStaffNotes,
     plantedAt: dto.plantedAt,
     expectedHarvestAt: dto.expectedHarvestAt,
   };

@@ -82,7 +82,7 @@ export default function CustomerHarvestHistoryPage() {
                 <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500">
                   {item.pillarCodes && (
                     <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      🏷️ Trụ: {item.pillarCodes}
+                      🏷️ Trụ: {item.pillarCodes} {item.pillarHarvestCount ? `(Thu hoạch lần ${item.pillarHarvestCount})` : ''}
                     </span>
                   )}
                   {item.plantedAt && (
