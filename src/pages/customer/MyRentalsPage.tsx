@@ -187,10 +187,10 @@ export default function MyRentalsPage() {
     }
   };
 
-  const handleHarvestDecision = async (rentalId: number, decision: 'SELF' | 'STAFF') => {
+  const handleHarvestDecision = async (rentalId: number, decision: 'SELF' | 'STAFF', pillarCode?: string) => {
     setDecidingId(rentalId);
     try {
-      await bookingApi.recordHarvestDecision(rentalId, decision);
+      await bookingApi.recordHarvestDecision(rentalId, decision, pillarCode);
       fetchHistory();
       if (decision === 'SELF') {
         alert('Đã ghi nhận bạn tự thu hoạch thành công! Dữ liệu đã được lưu vào Lịch sử thu hoạch.');
@@ -488,14 +488,14 @@ export default function MyRentalsPage() {
                               <div className="flex gap-2">
                                 <button
                                   disabled={decidingId === rental.id}
-                                  onClick={() => handleHarvestDecision(rental.id, 'SELF')}
+                                  onClick={() => handleHarvestDecision(rental.id, 'SELF', rental.harvestPillarCode)}
                                   className="btn-outline-green text-xs flex-1 py-2 font-medium"
                                 >
                                   Tôi tự thu hoạch
                                 </button>
                                 <button
                                   disabled={decidingId === rental.id}
-                                  onClick={() => handleHarvestDecision(rental.id, 'STAFF')}
+                                  onClick={() => handleHarvestDecision(rental.id, 'STAFF', rental.harvestPillarCode)}
                                   className="btn-primary text-xs flex-1 py-2 font-medium"
                                 >
                                   {decidingId === rental.id ? <Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> : null}

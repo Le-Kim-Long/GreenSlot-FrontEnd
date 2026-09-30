@@ -136,10 +136,12 @@ export default function HarvestHistoryManagement() {
                         <Sprout className="w-4 h-4 text-green-600" /> {item.treeName || 'N/A'}
                       </div>
                       {item.pillarCodes && (
-                        <div className="mt-1">
-                          <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-200">
-                            Trụ: {item.pillarCodes}
-                          </span>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {item.pillarCodes.split(',').map(s => s.trim()).filter(Boolean).map((pCode, idx) => (
+                            <span key={idx} className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-200">
+                              Trụ: {pCode} {item.pillarHarvestCount ? `(Lần ${item.pillarHarvestCount})` : ''}
+                            </span>
+                          ))}
                         </div>
                       )}
                     </td>
