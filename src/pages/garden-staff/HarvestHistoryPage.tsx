@@ -89,9 +89,13 @@ export default function HarvestHistoryPage() {
 
                 <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500">
                   {item.pillarCodes && (
-                    <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      🏷️ Trụ: {item.pillarCodes}
-                    </span>
+                    <div className="flex flex-wrap gap-1.5 items-center">
+                      {item.pillarCodes.split(',').map(s => s.trim()).filter(Boolean).map((pCode, idx) => (
+                        <span key={idx} className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          🏷️ Trụ: {pCode} {item.pillarHarvestCount ? `(Thu hoạch lần ${item.pillarHarvestCount})` : ''}
+                        </span>
+                      ))}
+                    </div>
                   )}
                   {item.plantedAt && (
                     <span className="flex items-center gap-1">

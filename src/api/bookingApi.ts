@@ -48,8 +48,8 @@ export const bookingApi = {
     apiClient.patch(`/bookings/${rentalId}/cancel`).then(() => undefined),
 
   // Khách chọn tự thu hoạch (SELF) hay nhờ nhân viên thu hoạch giúp (STAFF)
-  recordHarvestDecision: (rentalId: number, decision: 'SELF' | 'STAFF'): Promise<void> =>
-    apiClient.post(`/bookings/${rentalId}/harvest-decision`, { decision }).then(() => undefined),
+  recordHarvestDecision: (rentalId: number, decision: 'SELF' | 'STAFF', pillarCode?: string): Promise<void> =>
+    apiClient.post(`/bookings/${rentalId}/harvest-decision`, { decision, pillarCode }).then(() => undefined),
 
   downloadPaymentInvoice: async (paymentId: number): Promise<Blob> => {
     const res = await apiClient.get(`/invoices/payment/${paymentId}`, { responseType: 'blob' });
