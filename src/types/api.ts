@@ -213,6 +213,7 @@ export interface GardeningTask {
     serialNumber?: string;
     description?: string;
     status?: string;
+    quantity?: number;
     pillarId?: number;
     pillarCode?: string;
     locationId?: number;
@@ -244,6 +245,7 @@ export interface PillarEquipmentBinding {
   equipmentId?: number;
   newEquipmentName?: string;
   newSerialNumber?: string;
+  quantity?: number;
   evidenceImageUrl?: string;
   notes?: string;
 }
@@ -264,6 +266,7 @@ export interface PillarIoTStatus {
     id: number;
     equipmentName: string;
     serialNumber: string;
+    quantity?: number;
     status: string;
     locationName?: string;
   }>;

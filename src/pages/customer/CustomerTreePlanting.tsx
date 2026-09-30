@@ -113,13 +113,23 @@ function TreeSelectDropdown({ trees, value, onChange, loading }: { trees: Tree[]
           ) : (
             trees.map(tree => {
               const isSelected = String(tree.id) === String(value);
+              const isOutOfStock = (tree.quantity != null && tree.quantity <= 0);
+              const isLowStock = (tree.quantity != null && tree.quantity > 0 && tree.quantity <= 10);
               return (
                 <div
                   key={tree.id}
-                  onClick={() => { onChange(tree.id); setIsOpen(false); }}
+                  onClick={() => {
+                    if (isOutOfStock) return;
+                    onChange(tree.id);
+                    setIsOpen(false);
+                  }}
                   className={clsx(
-                    "px-3 py-2 flex items-center gap-2.5 cursor-pointer transition-colors",
-                    isSelected ? "bg-green-50" : "hover:bg-gray-50"
+                    "px-3 py-2 flex items-center gap-2.5 transition-colors",
+                    isOutOfStock
+                      ? "opacity-50 bg-gray-50 cursor-not-allowed select-none"
+                      : isSelected
+                      ? "bg-green-50 cursor-pointer"
+                      : "hover:bg-gray-50 cursor-pointer"
                   )}
                 >
                   <div className="w-9 h-9 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center text-green-600 shrink-0 overflow-hidden">
@@ -130,7 +140,24 @@ function TreeSelectDropdown({ trees, value, onChange, loading }: { trees: Tree[]
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className={clsx("text-sm font-semibold truncate", isSelected ? "text-green-700" : "text-gray-700")}>{tree.treeName}</div>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={clsx("text-sm font-semibold truncate", isSelected ? "text-green-700" : "text-gray-700")}>
+                        {tree.treeName}
+                      </span>
+                      {isOutOfStock ? (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
+                          Hết hàng
+                        </span>
+                      ) : isLowStock ? (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                          Còn {tree.quantity} cây
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-500 font-medium shrink-0">
+                          Còn: {tree.quantity ?? 100} cây
+                        </span>
+                      )}
+                    </div>
                     <div className="text-[11px] text-gray-400">{tree.harvestDays} ngày sinh trưởng</div>
                   </div>
                   {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-green-600 shrink-0" />}
@@ -344,6 +371,19 @@ export default function CustomerTreePlanting() {
         `Không thể gửi yêu cầu: Thời gian sinh trưởng của giống cây (${growthDays} ngày) vượt quá thời hạn thuê còn lại của ô đất (${remainingDays} ngày, hết hạn ngày ${expiryText}). Vui lòng gia hạn hợp đồng trước!`
       );
       return;
+    }
+
+    if (selectedTree) {
+      const stock = selectedTree.quantity != null ? selectedTree.quantity : 100;
+      if (stock <= 0) {
+        toast.error(`Giống cây "${selectedTree.treeName}" hiện đã hết hàng trong kho. Vui lòng chọn giống khác.`);
+        return;
+      }
+      const neededQuantity = selectedPillar ? 1 : pillarCount;
+      if (neededQuantity > stock) {
+        toast.error(`Giống cây "${selectedTree.treeName}" chỉ còn ${stock} cây trong kho, không đủ cho ${neededQuantity} trụ đã chọn.`);
+        return;
+      }
     }
 
     const targetDesc = selectedPillar 
@@ -888,7 +928,7 @@ export default function CustomerTreePlanting() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || isGrowthExceeded || isPillarSelectionRequired || !formData.rentalId || !formData.newTreeId || !formData.reason.trim()}
+                  disabled={isSubmitting || isGrowthExceeded || isPillarSelectionRequired || !formData.rentalId || !formData.newTreeId || !formData.reason.trim() || (selectedTree?.quantity != null && selectedTree.quantity <= 0)}
                   className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition shadow-md shadow-green-600/20 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sprout className="w-4 h-4" />}

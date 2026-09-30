@@ -14,6 +14,7 @@ export interface Equipment {
   purchaseDate?: string;
   lastMaintenanceDate?: string;
   imageUrl?: string;
+  quantity?: number;
 }
 
 // Interface cho response trả về từ API Upload ảnh theo Swagger
@@ -39,6 +40,9 @@ export const equipmentApi = {
   
   updateEquipment: (id: number, data: Partial<Equipment>): Promise<Equipment> => 
     apiClient.put(`/equipment/${id}`, data).then(r => r.data),
+
+  updateStock: (id: number, additionalQuantity: number): Promise<Equipment> =>
+    apiClient.patch(`/equipment/${id}/stock?additionalQuantity=${additionalQuantity}`).then(r => r.data),
   
   deleteEquipment: (id: number): Promise<any> => 
     apiClient.delete(`/equipment/${id}`).then(r => r.data),
