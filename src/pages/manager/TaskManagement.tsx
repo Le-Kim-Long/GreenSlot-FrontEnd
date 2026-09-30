@@ -251,39 +251,7 @@ export default function TaskManagement() {
     }
   };
 
-  // Upload/cập nhật ảnh bằng chứng trực tiếp trong Detail Modal
-  const [detailFile, setDetailFile] = useState<File | null>(null);
-  const [detailFilePreview, setDetailFilePreview] = useState<string | null>(null);
-  const [isUpdatingDetailImage, setIsUpdatingDetailImage] = useState(false);
 
-  const handleDetailFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const file = e.target.files[0];
-      setDetailFile(file);
-      // Giải phóng Blob URL cũ trước khi tạo mới để tránh rò rỉ bộ nhớ
-      if (detailFilePreview) URL.revokeObjectURL(detailFilePreview);
-      setDetailFilePreview(URL.createObjectURL(file));
-    }
-  };
-
-  const handleSaveDetailImage = async () => {
-    if (!selectedTask || !detailFile) return;
-    setIsUpdatingDetailImage(true);
-    try {
-      const publicUrl = await taskApi.uploadEvidenceImage(detailFile);
-      await taskApi.updateTaskEvidence(selectedTask.id, publicUrl);
-      setSelectedTask({ ...selectedTask, evidenceImageUrl: publicUrl });
-      setTasks(prev => prev.map(t => t.id === selectedTask.id ? { ...t, evidenceImageUrl: publicUrl } : t));
-      setDetailFile(null);
-      setDetailFilePreview(null);
-      toast.success('Đã cập nhật ảnh thực tế thành công!');
-    } catch (e: any) {
-      console.error(e);
-      toast.error('Lỗi cập nhật ảnh: ' + (e.response?.data?.message || e.message));
-    } finally {
-      setIsUpdatingDetailImage(false);
-    }
-  };
 
   // Submit tạo task
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -1535,41 +1503,7 @@ export default function TaskManagement() {
                     </>
                   )}
 
-                  {/* Khu vực Tải lên / Cập nhật ảnh mới */}
-                  <div className="mt-3 p-3.5 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
-                      <Upload className="w-3.5 h-3.5 text-green-600" />
-                      Tải lên / Thay thế bằng ảnh thực tế:
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <label className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-xl text-xs font-semibold cursor-pointer shadow-xs transition-all">
-                        <Upload className="w-3.5 h-3.5 text-green-600" />
-                        <span>{detailFile ? 'Gửi ảnh khác' : 'Gửi ảnh'}</span>
-                        <input 
-                          type="file" 
-                          accept="image/*"
-                          onChange={handleDetailFileChange}
-                          className="hidden"
-                        />
-                      </label>
-                      {detailFile && (
-                        <button
-                          type="button"
-                          onClick={handleSaveDetailImage}
-                          disabled={isUpdatingDetailImage}
-                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm"
-                        >
-                          {isUpdatingDetailImage ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                          Lưu ảnh này
-                        </button>
-                      )}
-                    </div>
-                    {detailFilePreview && (
-                      <div className="mt-2 text-xs text-green-700 font-medium flex items-center gap-1">
-                        <span>Đã chọn: <strong>{detailFile?.name}</strong> ({( (detailFile?.size || 0) / 1024 / 1024).toFixed(2)} MB)</span>
-                      </div>
-                    )}
-                  </div>
+
 
                   <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                     <button type="button" onClick={handleCloseModal} className="px-5 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium">
