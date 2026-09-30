@@ -972,7 +972,7 @@ function CompleteTaskModal({
       setLoadingEquipments(true);
       equipmentApi.getEquipments()
         .then(eqs => {
-          const available = (eqs || []).filter(e => (e.status || '').toUpperCase() === 'AVAILABLE');
+          const available = (eqs || []).filter(e => (e.status || '').toUpperCase() === 'AVAILABLE' && (e.quantity == null || e.quantity > 0));
           setAvailableEquipments(available);
 
           setPillarForms(prev => {
