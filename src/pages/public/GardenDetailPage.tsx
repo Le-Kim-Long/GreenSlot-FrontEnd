@@ -118,8 +118,11 @@ export default function GardenDetailPage() {
 
           // Check if default tree is set
           const firstDefaultTreeId = availablePillars.find(p => p.defaultTreeId)?.defaultTreeId;
+          const inStockTrees = activeTrees.filter(t => (t.quantity == null || t.quantity > 0));
           if (firstDefaultTreeId) {
             setSelectedTreeId(firstDefaultTreeId);
+          } else if (inStockTrees.length > 0) {
+            setSelectedTreeId(inStockTrees[0].id);
           } else if (activeTrees.length > 0) {
             setSelectedTreeId(activeTrees[0].id);
           }
@@ -184,6 +187,12 @@ export default function GardenDetailPage() {
 
   // Hàm chọn giống cây (áp dụng cho tất cả hoặc riêng từng trụ)
   const handleSelectTree = (treeId: number) => {
+    const targetTree = trees.find(t => t.id === treeId);
+    if (targetTree && targetTree.quantity != null && targetTree.quantity <= 0) {
+      setBookingError(`Giống cây "${targetTree.treeName}" hiện đã hết hàng trong kho. Vui lòng chọn giống khác.`);
+      return;
+    }
+    setBookingError('');
     if (activePillarTab === 'ALL') {
       setSelectedTreeId(treeId);
       const newMap: Record<string, number> = {};
@@ -313,6 +322,29 @@ export default function GardenDetailPage() {
       );
       return;
     }
+
+    // Kiểm tra số lượng tồn kho của từng giống rau đã chọn
+    const treeDemandMap: Record<number, number> = {};
+    chosenPillars.forEach(p => {
+      const tid = pillarTreeSelections[p.id] || selectedTreeId || (trees[0]?.id || 1);
+      treeDemandMap[tid] = (treeDemandMap[tid] || 0) + 1;
+    });
+
+    for (const [tidStr, count] of Object.entries(treeDemandMap)) {
+      const targetTree = trees.find(t => t.id === Number(tidStr));
+      if (targetTree) {
+        const stock = targetTree.quantity != null ? targetTree.quantity : 100;
+        if (stock <= 0) {
+          setBookingError(`Giống rau "${targetTree.treeName}" hiện đã hết hàng trong kho. Vui lòng chọn giống khác.`);
+          return;
+        }
+        if (count > stock) {
+          setBookingError(`Giống rau "${targetTree.treeName}" chỉ còn ${stock} cây trong kho, không đủ cho ${count} trụ đã chọn.`);
+          return;
+        }
+      }
+    }
+
     setBookingError('');
     setShowBookingModal(true);
   };
@@ -730,12 +762,13 @@ export default function GardenDetailPage() {
                 {trees.map(t => {
                   const isExceededForRental = Boolean(t.harvestDays && t.harvestDays > maxRentalDays);
                   const treeMinMonths = t.harvestDays ? Math.ceil(t.harvestDays / 30) : 1;
+                  const isOutOfStock = (t.quantity != null && t.quantity <= 0);
+                  const isLowStock = (t.quantity != null && t.quantity > 0 && t.quantity <= 10);
 
                   // Kiểm tra xem cây này có đang được chọn cho tab hiện tại không
                   const isSelectedInActiveTab = activePillarTab === 'ALL'
                     ? chosenPillars.every(p => (pillarTreeSelections[p.id] || selectedTreeId) === t.id)
                     : (pillarTreeSelections[activePillarTab] || selectedTreeId) === t.id;
-
 
                   // Các trụ đang gán giống cây này
                   const assignedPillarLabels = chosenPillars
@@ -746,6 +779,10 @@ export default function GardenDetailPage() {
                     <div
                       key={t.id}
                       onClick={() => {
+                        if (isOutOfStock) {
+                          setBookingError(`Giống rau "${t.treeName}" hiện đã hết hàng trong kho. Vui lòng chọn giống khác.`);
+                          return;
+                        }
                         handleSelectTree(t.id);
                         if (isExceededForRental) {
                           setBookingError(`⚠️ Lưu ý: Giống rau "${t.treeName}" cần ~${t.harvestDays} ngày sinh trưởng. Bạn nên chọn thời gian thuê từ ${treeMinMonths} tháng trở lên.`);
@@ -754,26 +791,47 @@ export default function GardenDetailPage() {
                         }
                       }}
                       className={clsx(
-                        'p-3.5 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 relative',
-                        isSelectedInActiveTab
-                          ? isExceededForRental
-                            ? 'bg-amber-50/80 border-amber-500 shadow-sm ring-1 ring-amber-500/20'
-                            : 'bg-emerald-50/80 border-emerald-500 shadow-sm ring-1 ring-emerald-500/20'
-                          : assignedPillarLabels.length > 0
-                          ? 'bg-emerald-50/30 border-emerald-200'
-                          : isExceededForRental
-                          ? 'bg-amber-50/30 border-amber-200 hover:bg-amber-50/60'
-                          : 'bg-gray-50/50 border-gray-200 hover:border-emerald-200 hover:bg-white'
+                        'p-3.5 rounded-2xl border transition-all flex items-start gap-3 relative',
+                        isOutOfStock
+                          ? 'opacity-60 bg-gray-100/70 border-gray-300 cursor-not-allowed select-none'
+                          : 'cursor-pointer',
+                        !isOutOfStock && (
+                          isSelectedInActiveTab
+                            ? isExceededForRental
+                              ? 'bg-amber-50/80 border-amber-500 shadow-sm ring-1 ring-amber-500/20'
+                              : 'bg-emerald-50/80 border-emerald-500 shadow-sm ring-1 ring-emerald-500/20'
+                            : assignedPillarLabels.length > 0
+                            ? 'bg-emerald-50/30 border-emerald-200'
+                            : isExceededForRental
+                            ? 'bg-amber-50/30 border-amber-200 hover:bg-amber-50/60'
+                            : 'bg-gray-50/50 border-gray-200 hover:border-emerald-200 hover:bg-white'
+                        )
                       )}
                     >
                       <div className={clsx(
                         "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5",
+                        isOutOfStock ? "bg-gray-200 text-gray-400" :
                         isExceededForRental ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
                       )}>
                         <Sprout className="w-5 h-5" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-xs text-gray-900 truncate">{t.treeName}</div>
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="font-bold text-xs text-gray-900 truncate">{t.treeName}</div>
+                          {isOutOfStock ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 border border-rose-200 shrink-0">
+                              Hết hàng
+                            </span>
+                          ) : isLowStock ? (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 shrink-0">
+                              Còn {t.quantity} cây
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                              Còn {t.quantity ?? 100} cây
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-gray-500 mt-0.5">Thu hoạch: ~{t.harvestDays} ngày</div>
                         
                         {/* Nhãn các trụ đang gán giống cây này */}

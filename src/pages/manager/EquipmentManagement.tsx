@@ -4,7 +4,7 @@ import { managerApi } from '../../api/managerApi';
 import {
   Wrench, Plus, Edit2, Trash2, X, Search, Filter,
   Loader2, Calendar, ShieldCheck, ChevronDown,
-  Upload, Image as ImageIcon, Hash, Layers, MapPin
+  Upload, Image as ImageIcon, Hash, Layers, MapPin, Package
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -79,6 +79,7 @@ const emptyForm: Partial<Equipment> = {
   purchaseDate: '',
   lastMaintenanceDate: '',
   imageUrl: '',
+  quantity: 1,
 };
 
 export default function EquipmentManagement() {
@@ -96,6 +97,11 @@ export default function EquipmentManagement() {
   const [selectedPillarId, setSelectedPillarId] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  // Modal Nhập thêm kho (+N)
+  const [stockModalItem, setStockModalItem] = useState<Equipment | null>(null);
+  const [stockAddQty, setStockAddQty] = useState<number>(5);
+  const [isUpdatingStock, setIsUpdatingStock] = useState(false);
 
   // Cơ sở (location) của từng pillar — dùng để suy ra cơ sở của từng thiết bị và lọc theo cơ sở
   const pillarLocationMap = React.useMemo(() => {
@@ -262,10 +268,33 @@ export default function EquipmentManagement() {
     setEditingItem(null);
   };
 
+  const handleUpdateStock = async () => {
+    if (!stockModalItem) return;
+    if (!stockAddQty || stockAddQty <= 0 || !Number.isInteger(Number(stockAddQty))) {
+      showToast('warning', 'Số lượng không hợp lệ', 'Số lượng nhập thêm phải là số nguyên lớn hơn 0.');
+      return;
+    }
+    setIsUpdatingStock(true);
+    try {
+      const updated = await equipmentApi.updateStock(stockModalItem.id, Number(stockAddQty));
+      setEquipments(prev => prev.map(e => e.id === updated.id ? { ...e, quantity: updated.quantity, status: updated.status } : e));
+      showToast('success', 'Nhập kho thành công', `Đã cộng thêm ${stockAddQty} cái vào thiết bị "${updated.equipmentName}". Tồn kho mới: ${updated.quantity} cái.`);
+      setStockModalItem(null);
+    } catch (err: any) {
+      showToast('error', 'Lỗi nhập kho', err.response?.data?.message || 'Không thể cập nhật số lượng tồn kho.');
+    } finally {
+      setIsUpdatingStock(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.equipmentName?.trim()) {
       showToast('warning', 'Thiếu thông tin', 'Vui lòng nhập Tên thiết bị.');
+      return;
+    }
+    if (formData.quantity == null || formData.quantity < 0 || !Number.isInteger(Number(formData.quantity))) {
+      showToast('warning', 'Số lượng không hợp lệ', 'Số lượng thiết bị trong kho phải là số nguyên không âm (≥ 0).');
       return;
     }
     if (!formData.serialNumber?.trim()) {
@@ -438,6 +467,7 @@ export default function EquipmentManagement() {
             <thead className="bg-gray-50/75 border-b border-gray-100">
               <tr>
                 <th className="p-4 font-semibold text-gray-600">Thiết bị & Serial</th>
+                <th className="p-4 font-semibold text-gray-600">Số lượng tồn</th>
                 <th className="p-4 font-semibold text-gray-600">Khu vực (Pillar)</th>
                 <th className="p-4 font-semibold text-gray-600">Ngày mua / Bảo trì gần nhất</th>
                 <th className="p-4 font-semibold text-gray-600">Trạng thái</th>
@@ -446,10 +476,10 @@ export default function EquipmentManagement() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={5} className="p-8 text-center text-gray-500">Đang tải danh sách thiết bị...</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-gray-500">Đang tải danh sách thiết bị...</td></tr>
               ) : filteredEquipments.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-gray-400">
+                  <td colSpan={6} className="p-12 text-center text-gray-400">
                     <Wrench className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p>Không tìm thấy thiết bị nào phù hợp.</p>
                   </td>
@@ -473,6 +503,34 @@ export default function EquipmentManagement() {
                             {item.serialNumber}
                           </div>
                         </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-1 min-w-[100px]">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-900 text-sm">
+                          <Package className="w-4 h-4 text-emerald-600" />
+                          <span>{Number(item.quantity ?? 1).toLocaleString('vi-VN')} cái</span>
+                        </div>
+                        <div>
+                          {(item.quantity ?? 1) <= 0 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                              Hết kho
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              Còn kho
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setStockModalItem(item);
+                            setStockAddQty(5);
+                          }}
+                          className="text-[11px] text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 hover:underline mt-0.5"
+                        >
+                          <Plus className="w-3 h-3" /> Nhập thêm
+                        </button>
                       </div>
                     </td>
                     <td className="p-4">
@@ -685,6 +743,25 @@ export default function EquipmentManagement() {
         className="w-full"
       />
     </div>
+
+    {/* Ô 5: Số lượng thiết bị */}
+    <div>
+      <label className="block font-medium text-gray-700 mb-1">Số lượng trong kho (cái/bộ) <span className="text-red-500">*</span></label>
+      <input
+        type="number"
+        min={0}
+        step={1}
+        required
+        className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
+        value={formData.quantity ?? 1}
+        onChange={e => setFormData({...formData, quantity: Math.floor(Math.max(0, Number(e.target.value) || 0))})}
+        placeholder="VD: 10"
+      />
+      <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
+        <Package className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+        Số lượng tồn kho (tự động giảm khi nhân viên lấy lắp vào trụ).
+      </p>
+    </div>
   </div>
                     
                     {/* KHU VỰC UPLOAD ẢNH QUA API BACKEND */}
@@ -806,6 +883,86 @@ export default function EquipmentManagement() {
                   </div>
                 </form>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal Nhập thêm số lượng thiết bị vào kho */}
+        {stockModalItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
+              <button
+                onClick={() => setStockModalItem(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <h2 className="text-lg font-bold mb-3 text-gray-900 flex items-center gap-2">
+                <Package className="w-5 h-5 text-emerald-600" />
+                Nhập thêm thiết bị vào kho
+              </h2>
+
+              <p className="text-xs text-gray-600 mb-4">
+                Thiết bị: <strong className="text-gray-900">{stockModalItem.equipmentName}</strong> (SN: {stockModalItem.serialNumber || 'N/A'}) • Tồn kho hiện tại: <span className="font-bold text-emerald-700">{stockModalItem.quantity ?? 1} cái/bộ</span>
+              </p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Số lượng nhập thêm (+N): <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-base font-bold text-gray-900"
+                    value={stockAddQty}
+                    onChange={e => setStockAddQty(Math.floor(Math.max(1, Number(e.target.value) || 0)))}
+                    placeholder="VD: 5"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  {[2, 5, 10, 20].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setStockAddQty(n)}
+                      className={clsx(
+                        "flex-1 py-1.5 rounded-lg border text-xs font-semibold transition",
+                        stockAddQty === n ? "bg-emerald-600 text-white border-emerald-600" : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+                      )}
+                    >
+                      +{n}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-[11px] text-gray-500 bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
+                  Sau khi nhập, tồn kho mới sẽ là: <strong>{(stockModalItem.quantity ?? 1) + (stockAddQty || 0)} cái/bộ</strong>.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2.5 mt-5 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setStockModalItem(null)}
+                  disabled={isUpdatingStock}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium text-xs transition"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUpdateStock}
+                  disabled={isUpdatingStock || !stockAddQty || stockAddQty <= 0}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-xs transition shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isUpdatingStock ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  Xác nhận nhập kho
+                </button>
+              </div>
             </div>
           </div>
         )}

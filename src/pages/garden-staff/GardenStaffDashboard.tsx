@@ -960,6 +960,7 @@ function CompleteTaskModal({
     equipmentId?: number;
     newEquipmentName?: string;
     newSerialNumber?: string;
+    quantity: number;
     file: File | null;
     preview: string | null;
     notes: string;
@@ -983,6 +984,7 @@ function CompleteTaskModal({
                   equipmentId: undefined,
                   newEquipmentName: `Bộ IoT Trụ ${code}`,
                   newSerialNumber: '',
+                  quantity: 1,
                   file: null,
                   preview: null,
                   notes: '',
@@ -1003,6 +1005,7 @@ function CompleteTaskModal({
                   equipmentId: undefined,
                   newEquipmentName: `Bộ IoT Trụ ${code}`,
                   newSerialNumber: '',
+                  quantity: 1,
                   file: null,
                   preview: null,
                   notes: '',
@@ -1064,13 +1067,31 @@ function CompleteTaskModal({
           setError(`Vui lòng nhập thông tin cho trụ ${code}.`);
           return;
         }
-        if (pf.mode === 'existing' && !pf.equipmentId) {
-          setError(`Vui lòng chọn thiết bị từ kho cho trụ ${code} (hoặc chọn 'Lắp mới (Serial)').`);
-          return;
+        if (pf.mode === 'existing') {
+          if (!pf.equipmentId) {
+            setError(`Vui lòng chọn thiết bị từ kho cho trụ ${code} (hoặc chọn 'Lắp mới (Serial)').`);
+            return;
+          }
+          const chosenEq = availableEquipments.find(e => e.id === Number(pf.equipmentId));
+          const availableStock = chosenEq?.quantity ?? 1;
+          if (!pf.quantity || pf.quantity < 1) {
+            setError(`Số lượng thiết bị lấy cho trụ ${code} phải từ 1 trở lên.`);
+            return;
+          }
+          if (pf.quantity > availableStock) {
+            setError(`Số lượng thiết bị lấy cho trụ ${code} (${pf.quantity}) vượt quá tồn kho (Còn ${availableStock} cái/bộ).`);
+            return;
+          }
         }
-        if (pf.mode === 'new' && (!pf.newSerialNumber || !pf.newSerialNumber.trim())) {
-          setError(`Vui lòng nhập Số Serial Number cho thiết bị tại trụ ${code}.`);
-          return;
+        if (pf.mode === 'new') {
+          if (!pf.newSerialNumber || !pf.newSerialNumber.trim()) {
+            setError(`Vui lòng nhập Số Serial Number cho thiết bị tại trụ ${code}.`);
+            return;
+          }
+          if (!pf.quantity || pf.quantity < 1) {
+            setError(`Số lượng thiết bị mới cho trụ ${code} phải từ 1 trở lên.`);
+            return;
+          }
         }
         if (!pf.file) {
           setError(`Vui lòng tải lên ảnh bằng chứng thực tế cho trụ ${code}.`);
@@ -1100,6 +1121,7 @@ function CompleteTaskModal({
             equipmentId: pf.mode === 'existing' ? Number(pf.equipmentId) : undefined,
             newEquipmentName: pf.mode === 'new' ? (pf.newEquipmentName?.trim() || `Bộ IoT Trụ ${code}`) : undefined,
             newSerialNumber: pf.mode === 'new' ? pf.newSerialNumber?.trim() : undefined,
+            quantity: pf.quantity || 1,
             evidenceImageUrl: imgUrl,
             notes: pf.notes.trim(),
           });
@@ -1254,22 +1276,56 @@ function CompleteTaskModal({
                               Kho hiện không có thiết bị trống. Vui lòng bấm <strong>"Lắp mới (Serial)"</strong> để nhập mã Serial thiết bị bóc hộp.
                             </div>
                           ) : (
-                            <select
-                              value={pf.equipmentId || ''}
-                              onChange={e => handlePillarFormChange(code, 'equipmentId', e.target.value ? Number(e.target.value) : undefined)}
-                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white outline-none"
-                            >
-                              <option value="">-- Chọn thiết bị IoT từ kho --</option>
-                              {availableEquipments.map(eq => (
-                                <option key={eq.id} value={eq.id}>
-                                  {eq.equipmentName} (SN: {eq.serialNumber || 'N/A'}) {eq.locationName ? `- ${eq.locationName}` : ''}
-                                </option>
-                              ))}
-                            </select>
+                            <div className="space-y-2">
+                              <select
+                                value={pf.equipmentId || ''}
+                                onChange={e => {
+                                  const id = e.target.value ? Number(e.target.value) : undefined;
+                                  handlePillarFormChange(code, 'equipmentId', id);
+                                  handlePillarFormChange(code, 'quantity', 1);
+                                }}
+                                className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white outline-none"
+                              >
+                                <option value="">-- Chọn thiết bị IoT từ kho --</option>
+                                {availableEquipments.map(eq => (
+                                  <option key={eq.id} value={eq.id}>
+                                    {eq.equipmentName} (Tồn kho: {eq.quantity ?? 1} cái/bộ) (SN: {eq.serialNumber || 'N/A'}) {eq.locationName ? `- ${eq.locationName}` : ''}
+                                  </option>
+                                ))}
+                              </select>
+
+                              {pf.equipmentId && (() => {
+                                const chosen = availableEquipments.find(e => e.id === Number(pf.equipmentId));
+                                const stock = chosen?.quantity ?? 1;
+                                return (
+                                  <div className="p-2 bg-amber-50/70 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                      <label className="text-[11px] font-bold text-gray-700 whitespace-nowrap">
+                                        Số lượng lấy: <span className="text-rose-500">*</span>
+                                      </label>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        max={stock}
+                                        value={pf.quantity || 1}
+                                        onChange={e => handlePillarFormChange(code, 'quantity', Math.min(stock, Math.max(1, parseInt(e.target.value) || 1)))}
+                                        className="w-20 text-xs font-bold text-center border border-gray-300 rounded-md p-1.5 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
+                                      />
+                                      <span className="text-[11px] text-gray-600 font-medium">
+                                        (Tối đa trong kho: <strong className="text-amber-800">{stock}</strong> cái/bộ)
+                                      </span>
+                                    </div>
+                                    {pf.quantity > stock && (
+                                      <span className="text-[10px] text-rose-600 font-bold">Vượt tồn kho!</span>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
                           )}
                         </div>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <div>
                             <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">Tên thiết bị:</label>
                             <input
@@ -1282,7 +1338,7 @@ function CompleteTaskModal({
                           </div>
                           <div>
                             <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">
-                              Mã Serial Number: <span className="text-rose-500">*</span>
+                              Mã Serial: <span className="text-rose-500">*</span>
                             </label>
                             <input
                               type="text"
@@ -1290,6 +1346,18 @@ function CompleteTaskModal({
                               onChange={e => handlePillarFormChange(code, 'newSerialNumber', e.target.value)}
                               placeholder="VD: ESP32-PL01"
                               className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-gray-700 mb-0.5">
+                              Số lượng: <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={pf.quantity || 1}
+                              onChange={e => handlePillarFormChange(code, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                              className="w-full text-xs border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white font-medium"
                             />
                           </div>
                         </div>
@@ -1609,8 +1677,10 @@ function IoTDeviceDetailModal({
                 <div key={eq.id || idx} className="p-3 flex items-center justify-between hover:bg-gray-50/80 transition-colors">
                   <div className="space-y-0.5">
                     <div className="font-bold text-gray-800">{eq.equipmentName}</div>
-                    <div className="text-[11px] text-gray-500 font-mono">
-                      Serial: {eq.serialNumber || 'N/A'}
+                    <div className="text-[11px] text-gray-500 font-mono flex items-center gap-2">
+                      <span>Serial: {eq.serialNumber || 'N/A'}</span>
+                      <span>•</span>
+                      <span className="text-emerald-700 font-bold">SL: {eq.quantity ?? 1} cái/bộ</span>
                     </div>
                   </div>
                   <span className={clsx(

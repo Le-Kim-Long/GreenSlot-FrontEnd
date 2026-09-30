@@ -4,7 +4,7 @@ import {
   Trees, Plus, Edit2, Trash2, X, Search, Filter, 
   Loader2, Clock, ChevronDown, Sparkles,
   Droplets, Sun, Beaker, Upload, Image as ImageIcon,
-  AlertCircle, Info
+  AlertCircle, Info, Package
 } from 'lucide-react';
 
 import DashboardLayout from '../../components/common/DashboardLayout';
@@ -93,6 +93,7 @@ const emptyForm: Partial<Tree> = {
   phMax: 7.0,
   compensationPercentage: 50,
   careInstructions: '',
+  quantity: 100,
   isActive: true,
 };
 
@@ -114,6 +115,11 @@ export default function TreeManagement() {
   const [formData, setFormData] = useState<Partial<Tree>>(emptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // Modal Nhập thêm kho (+N)
+  const [stockModalTree, setStockModalTree] = useState<Tree | null>(null);
+  const [stockAddQty, setStockAddQty] = useState<number>(50);
+  const [isUpdatingStock, setIsUpdatingStock] = useState(false);
 
   // Delete State
   const [confirmDelete, setConfirmDelete] = useState<Tree | null>(null);
@@ -273,10 +279,33 @@ export default function TreeManagement() {
   const isLightInvalid = formData.lightMin != null && formData.lightMax != null && formData.lightMax <= formData.lightMin;
   const isPhInvalid = formData.phMin != null && formData.phMax != null && formData.phMax <= formData.phMin;
 
+  const handleUpdateStock = async () => {
+    if (!stockModalTree) return;
+    if (!stockAddQty || stockAddQty <= 0 || !Number.isInteger(Number(stockAddQty))) {
+      showToast('warning', 'Số lượng không hợp lệ', 'Số lượng nhập thêm phải là số nguyên lớn hơn 0.');
+      return;
+    }
+    setIsUpdatingStock(true);
+    try {
+      const updated = await treeApi.updateStock(stockModalTree.id, Number(stockAddQty));
+      setTrees(prev => prev.map(t => t.id === updated.id ? { ...t, quantity: updated.quantity } : t));
+      showToast('success', 'Nhập kho thành công', `Đã cộng thêm ${stockAddQty} cây vào giống "${updated.treeName}". Tồn kho mới: ${updated.quantity} cây.`);
+      setStockModalTree(null);
+    } catch (err: any) {
+      showToast('error', 'Lỗi nhập kho', err.response?.data?.message || 'Không thể cập nhật số lượng tồn kho.');
+    } finally {
+      setIsUpdatingStock(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.treeName?.trim()) {
       showToast('warning', 'Thiếu thông tin bắt buộc', 'Vui lòng nhập Tên giống cây trồng.');
+      return;
+    }
+    if (formData.quantity == null || formData.quantity < 0 || !Number.isInteger(Number(formData.quantity))) {
+      showToast('warning', 'Số lượng tồn kho không hợp lệ', 'Số lượng giống cây trồng trong kho phải là số nguyên không âm (≥ 0).');
       return;
     }
     if (!formData.harvestDays || formData.harvestDays <= 0) {
@@ -465,6 +494,7 @@ export default function TreeManagement() {
             <thead className="bg-gray-50/75 border-b border-gray-100">
               <tr>
                 <th className="p-4 font-semibold text-gray-600">Cây trồng</th>
+                <th className="p-4 font-semibold text-gray-600">Tồn kho</th>
                 <th className="p-4 font-semibold text-gray-600">Bảng giá theo trụ</th>
                 <th className="p-4 font-semibold text-gray-600">Thu hoạch</th>
                 <th className="p-4 font-semibold text-gray-600">Định mức sinh thái (IoT)</th>
@@ -474,10 +504,10 @@ export default function TreeManagement() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {isLoading ? (
-                <tr><td colSpan={6} className="p-8 text-center text-gray-500">Đang tải danh mục cây trồng...</td></tr>
+                <tr><td colSpan={7} className="p-8 text-center text-gray-500">Đang tải danh mục cây trồng...</td></tr>
               ) : filteredTrees.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-gray-400">
+                  <td colSpan={7} className="p-12 text-center text-gray-400">
                     <Trees className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p>Không tìm thấy giống cây trồng nào phù hợp.</p>
                   </td>
@@ -495,6 +525,38 @@ export default function TreeManagement() {
                           )}
                         </div>
                         <div className="font-semibold text-gray-900">{tree.treeName}</div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex flex-col gap-1 min-w-[110px]">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-900 text-sm">
+                          <Package className="w-4 h-4 text-emerald-600" />
+                          <span>{Number(tree.quantity ?? 0).toLocaleString('vi-VN')} cây</span>
+                        </div>
+                        <div>
+                          {(tree.quantity ?? 0) === 0 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+                              Hết hàng
+                            </span>
+                          ) : (tree.quantity ?? 0) <= 10 ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
+                              Sắp hết (≤ 10)
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              Còn hàng
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setStockModalTree(tree);
+                            setStockAddQty(50);
+                          }}
+                          className="text-[11px] text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 hover:underline mt-0.5"
+                        >
+                          <Plus className="w-3 h-3" /> Nhập thêm
+                        </button>
                       </div>
                     </td>
                     <td className="p-4">
@@ -633,6 +695,23 @@ export default function TreeManagement() {
                           onChange={e => setFormData({...formData, treeName: e.target.value})}
                           placeholder="VD: Cây Tràm, Xà lách xoăn, Cải Kale..."
                         />
+                      </div>
+                      <div>
+                        <label className="block font-medium text-gray-700 mb-1">Số lượng trong kho (cây) <span className="text-red-500">*</span></label>
+                        <input
+                          type="number"
+                          step={1}
+                          min={0}
+                          onKeyDown={blockDecimalAndNegative}
+                          className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition"
+                          value={formData.quantity ?? ''}
+                          onChange={e => setFormData({...formData, quantity: Math.floor(Math.max(0, Number(e.target.value) || 0))})}
+                          placeholder="VD: 100"
+                        />
+                        <p className="text-[11px] text-gray-400 mt-1 flex items-center gap-1">
+                          <Package className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          Số lượng hạt/cây giống sẵn có (tự trừ khi khách thuê/đổi giống).
+                        </p>
                       </div>
                       <div>
                         <label className="block font-medium text-gray-700 mb-1">Thời gian thu hoạch (Ngày) <span className="text-red-500">*</span></label>
@@ -1034,6 +1113,87 @@ export default function TreeManagement() {
                   </div>
                 </form>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal Nhập thêm số lượng cây vào kho */}
+        {stockModalTree && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
+              <button
+                onClick={() => setStockModalTree(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
+              <h2 className="text-lg font-bold mb-3 text-gray-900 flex items-center gap-2">
+                <Package className="w-5 h-5 text-emerald-600" />
+                Nhập thêm giống cây vào kho
+              </h2>
+
+              <p className="text-xs text-gray-600 mb-4">
+                Giống cây: <strong className="text-gray-900">{stockModalTree.treeName}</strong> • Tồn kho hiện tại: <span className="font-bold text-emerald-700">{stockModalTree.quantity ?? 0} cây</span>
+              </p>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Số lượng cây muốn nhập thêm (+N): <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    onKeyDown={blockDecimalAndNegative}
+                    className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none text-base font-bold text-gray-900"
+                    value={stockAddQty}
+                    onChange={e => setStockAddQty(Math.floor(Math.max(1, Number(e.target.value) || 0)))}
+                    placeholder="VD: 50"
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  {[20, 50, 100, 200].map(n => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setStockAddQty(n)}
+                      className={clsx(
+                        "flex-1 py-1.5 rounded-lg border text-xs font-semibold transition",
+                        stockAddQty === n ? "bg-emerald-600 text-white border-emerald-600" : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+                      )}
+                    >
+                      +{n}
+                    </button>
+                  ))}
+                </div>
+
+                <p className="text-[11px] text-gray-500 bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
+                  Sau khi nhập, tồn kho mới sẽ là: <strong>{(stockModalTree.quantity ?? 0) + (stockAddQty || 0)} cây</strong>.
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2.5 mt-5 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setStockModalTree(null)}
+                  disabled={isUpdatingStock}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium text-xs transition"
+                >
+                  Đóng
+                </button>
+                <button
+                  type="button"
+                  onClick={handleUpdateStock}
+                  disabled={isUpdatingStock || !stockAddQty || stockAddQty <= 0}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-xs transition shadow-sm disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isUpdatingStock ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  Xác nhận nhập kho
+                </button>
+              </div>
             </div>
           </div>
         )}

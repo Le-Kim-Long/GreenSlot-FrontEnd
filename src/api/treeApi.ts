@@ -21,6 +21,7 @@ export interface Tree {
   phMax: number;
   compensationPercentage: number;
   careInstructions: string;
+  quantity?: number;
   isActive: boolean;
 }
 
@@ -36,6 +37,9 @@ export const treeApi = {
   
   updateTree: (id: number, data: Partial<Tree>): Promise<Tree> => 
     apiClient.put(`/trees/${id}`, data).then(r => r.data),
+
+  updateStock: (id: number, additionalQuantity: number): Promise<Tree> =>
+    apiClient.patch(`/trees/${id}/stock?additionalQuantity=${additionalQuantity}`).then(r => r.data),
   
   deleteTree: (id: number): Promise<any> =>
     apiClient.delete(`/trees/${id}`).then(r => r.data),
