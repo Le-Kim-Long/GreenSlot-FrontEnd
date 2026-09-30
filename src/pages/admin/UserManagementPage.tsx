@@ -230,6 +230,9 @@ export default function UserManagementPage() {
                         <span><span className="font-medium text-gray-600">Tài khoản:</span> {u.username}</span>
                       )}
                       <span><span className="font-medium text-gray-600">Email:</span> {u.email}</span>
+                      {u.phone && (
+                        <span><span className="font-medium text-gray-600">Số điện thoại:</span> {u.phone}</span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3">
