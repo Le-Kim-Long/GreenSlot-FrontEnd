@@ -928,19 +928,10 @@ function CompleteTaskModal({
     const name = (task.taskName || '').toLowerCase();
     const desc = (task.description || '').toLowerCase();
     return (
-      name.includes('lắp đặt') ||
-      name.includes('thiết bị') ||
+      name.includes('lắp đặt bổ sung') ||
       name.includes('bổ sung trụ') ||
-      name.includes('chuẩn bị trụ') ||
-      name.includes('gắn thiết bị') ||
-      name.includes('gán thiết bị') ||
-      name.includes('iot') ||
-      name.includes('cảm biến') ||
-      name.includes('camera') ||
-      desc.includes('lắp đặt') ||
-      desc.includes('thiết bị iot') ||
-      desc.includes('gắn thiết bị') ||
-      desc.includes('bổ sung trụ')
+      name.includes('lắp thêm trụ') ||
+      desc.includes('lắp đặt bổ sung trụ')
     );
   }, [task.taskName, task.description]);
 
@@ -1064,8 +1055,8 @@ function CompleteTaskModal({
   const handleSubmit = async () => {
     setError('');
 
-    // TRƯỜNG HỢP 1: Chế độ nộp theo từng trụ (gắn thiết bị từ kho)
-    if (submissionMode === 'pillar' && pillarCodes.length > 0) {
+    // TRƯỜNG HỢP 1: Chế độ nộp theo từng trụ (gắn thiết bị từ kho) - CHỈ CHO TASK LẮP ĐẶT BỔ SUNG TRỤ
+    if (isPillarSetupTask && submissionMode === 'pillar' && pillarCodes.length > 0) {
       // Validate từng trụ
       for (const code of pillarCodes) {
         const pf = pillarForms[code];
@@ -1171,36 +1162,38 @@ function CompleteTaskModal({
 
         {error && <div className="bg-rose-50 text-rose-700 p-3 rounded-xl text-xs font-medium border border-rose-200">{error}</div>}
 
-        {/* Thanh chuyển đổi chế độ nộp bằng chứng */}
-        <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl border border-gray-200">
-          <button
-            type="button"
-            onClick={() => setSubmissionMode('pillar')}
-            className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
-              submissionMode === 'pillar'
-                ? 'bg-white text-emerald-700 shadow-xs border border-gray-200'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <Cpu className="w-3.5 h-3.5 text-amber-600" />
-            <span>Gắn thiết bị từ kho ({pillarCodes.length} trụ)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubmissionMode('single')}
-            className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
-              submissionMode === 'single'
-                ? 'bg-white text-emerald-700 shadow-xs border border-gray-200'
-                : 'text-gray-500 hover:text-gray-900'
-            }`}
-          >
-            <Camera className="w-3.5 h-3.5 text-blue-600" />
-            <span>Nộp 1 ảnh báo cáo chung</span>
-          </button>
-        </div>
+        {/* Thanh chuyển đổi chế độ nộp bằng chứng: CHỈ HIỂN THỊ KHI LÀ TASK LẮP ĐẶT BỔ SUNG TRỤ */}
+        {isPillarSetupTask && (
+          <div className="flex items-center gap-1.5 p-1 bg-gray-100 rounded-xl border border-gray-200">
+            <button
+              type="button"
+              onClick={() => setSubmissionMode('pillar')}
+              className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                submissionMode === 'pillar'
+                  ? 'bg-white text-emerald-700 shadow-xs border border-gray-200'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <Cpu className="w-3.5 h-3.5 text-amber-600" />
+              <span>Gắn thiết bị từ kho ({pillarCodes.length} trụ)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubmissionMode('single')}
+              className={`flex-1 py-1.5 px-3 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                submissionMode === 'single'
+                  ? 'bg-white text-emerald-700 shadow-xs border border-gray-200'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <Camera className="w-3.5 h-3.5 text-blue-600" />
+              <span>Nộp 1 ảnh báo cáo chung</span>
+            </button>
+          </div>
+        )}
 
-        {/* 1. NẾU LÀ CHẾ ĐỘ GẮN THIẾT BỊ TỪ KHO THEO TỪNG TRỤ */}
-        {submissionMode === 'pillar' && pillarCodes.length > 0 ? (
+        {/* 1. NẾU LÀ CHẾ ĐỘ GẮN THIẾT BỊ TỪ KHO THEO TỪNG TRỤ (CHỈ ÁP DỤNG CHO TASK LẮP ĐẶT BỔ SUNG TRỤ) */}
+        {isPillarSetupTask && submissionMode === 'pillar' && pillarCodes.length > 0 ? (
           <div className="space-y-4">
             <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5 space-y-1">
               <div className="flex items-center gap-2 text-amber-900 font-bold text-xs">

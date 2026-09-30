@@ -41,13 +41,14 @@ interface Slot {
 }
 
 const TASK_TYPE_MAP: Record<string, string> = {
-  MAINTENANCE: 'Bảo trì / Kỹ thuật',
-  CLEANING: 'Vệ sinh',
+  MAINTENANCE: 'Bảo trì & Kỹ thuật',
   PLANTING: 'Gieo trồng & Chăm sóc',
+  CLEANING: 'Vệ sinh & Dọn dẹp',
+  INSPECTION: 'Kiểm tra định kỳ',
   HARVEST: 'Thu hoạch',
-  INSPECTION: 'Kiểm tra',
-  INCIDENT: 'Sự cố',
-  REQUEST: 'Yêu cầu dịch vụ',
+  INCIDENT: 'Báo cáo sự cố',
+  SERVICE_REQUEST: 'Dịch vụ yêu cầu',
+  REQUEST: 'Dịch vụ yêu cầu',
 };
 
 const TASK_STATUS_MAP: Record<string, string> = {
@@ -67,6 +68,7 @@ export default function TaskManagement() {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [typeFilter, setTypeFilter] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -353,7 +355,8 @@ export default function TaskManagement() {
         (t.slotNumber && t.slotNumber.toLowerCase().includes(search.toLowerCase())) ||
         (t.assigneeName && t.assigneeName.toLowerCase().includes(search.toLowerCase()));
       const matchStatus = statusFilter === 'ALL' || t.status === statusFilter;
-      return matchSearch && matchStatus;
+      const matchType = typeFilter === 'ALL' || t.type === typeFilter;
+      return matchSearch && matchStatus && matchType;
     })
     .sort((a, b) => b.id - a.id);
 
@@ -366,8 +369,8 @@ export default function TaskManagement() {
         
         {/* Header Control */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-2xl">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1 max-w-3xl flex-wrap">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input 
                 type="text" 
@@ -381,12 +384,29 @@ export default function TaskManagement() {
               />
             </div>
             <select
+              value={typeFilter}
+              onChange={e => {
+                setTypeFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 font-medium"
+            >
+              <option value="ALL">Tất cả loại công việc</option>
+              <option value="MAINTENANCE">🔧 Bảo trì & Kỹ thuật</option>
+              <option value="PLANTING">🌱 Gieo trồng & Chăm sóc</option>
+              <option value="CLEANING">🧹 Vệ sinh & Dọn dẹp</option>
+              <option value="INSPECTION">🔍 Kiểm tra định kỳ</option>
+              <option value="HARVEST">🌾 Thu hoạch</option>
+              <option value="INCIDENT">⚠️ Báo cáo sự cố</option>
+              <option value="SERVICE_REQUEST">🛠️ Dịch vụ yêu cầu</option>
+            </select>
+            <select
               value={statusFilter}
               onChange={e => {
                 setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
-              className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+              className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 font-medium"
             >
               <option value="ALL">Tất cả trạng thái</option>
               <option value="PENDING">Chờ gán / Chờ xử lý</option>
@@ -599,10 +619,12 @@ export default function TaskManagement() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-medium text-gray-700 mb-1.5">Loại công việc</label>
-                    <select className="w-full border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 p-2.5 bg-white outline-none"
+                    <select className="w-full border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 p-2.5 bg-white outline-none font-medium"
                       value={createForm.taskType} onChange={e => setCreateForm({...createForm, taskType: e.target.value})}>
-                      <option value="MAINTENANCE">Bảo trì / Chăm sóc</option>
-                      <option value="CLEANING">Dọn dẹp</option>
+                      <option value="MAINTENANCE">🔧 Bảo trì & Kỹ thuật</option>
+                      <option value="PLANTING">🌱 Gieo trồng & Chăm sóc</option>
+                      <option value="CLEANING">🧹 Vệ sinh & Dọn dẹp</option>
+                      <option value="INSPECTION">🔍 Kiểm tra định kỳ</option>
                     </select>
                   </div>
                   <div>
@@ -1353,103 +1375,8 @@ export default function TaskManagement() {
                       )}
                     </div>
                   ) : (
-                    /* Task thông thường: Giữ nguyên giao diện thiết bị nếu có & khung ảnh đơn lẻ */
+                    /* Task thông thường: Hiển thị minh chứng công việc thực tế */
                     <>
-                      {/* Kiểm tra Thiết bị IoT & Tín hiệu Cảm biến các trụ nếu có */}
-                      {selectedTask.pillarCodes && selectedTask.pillarCodes.trim() !== '' && (
-                        <div className="p-4 rounded-xl border border-indigo-200 bg-indigo-50/40 space-y-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm">
-                              <Cpu className="w-4 h-4 text-indigo-600" />
-                              <span>Thiết bị IoT & Cảm biến Trụ</span>
-                            </div>
-                            <span className="text-xs text-indigo-600 font-medium">
-                              Trụ: {selectedTask.pillarCodes}
-                            </span>
-                          </div>
-
-                          {isLoadingPillarIoT ? (
-                            <div className="flex items-center justify-center py-4 text-xs text-gray-500 gap-2">
-                              <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
-                              Đang lấy thông tin cảm biến...
-                            </div>
-                          ) : (
-                            <div className="space-y-2.5">
-                              {selectedTask.pillarCodes.split(',').map(s => s.trim()).filter(Boolean).map(code => {
-                                const status = pillarIoTStatuses[code];
-                                return (
-                                  <div key={code} className="bg-white rounded-lg p-3 border border-indigo-100 shadow-xs space-y-2">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs font-bold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">
-                                        Mã trụ: {code}
-                                      </span>
-                                      {status?.hasSignal ? (
-                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                                          <Wifi className="w-3 h-3 text-emerald-600" /> Đã có tín hiệu
-                                        </span>
-                                      ) : (
-                                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                                          <AlertTriangle className="w-3 h-3 text-amber-600" /> Chưa nhận tín hiệu
-                                        </span>
-                                      )}
-                                    </div>
-
-                                    {/* Thiết bị gắn trên trụ */}
-                                    <div className="text-xs text-gray-600 space-y-1">
-                                      <div className="font-semibold text-gray-700">Thiết bị IoT:</div>
-                                      {status?.equipments && status.equipments.length > 0 ? (
-                                        <div className="space-y-1 pl-2">
-                                          {status.equipments.map(eq => (
-                                            <div key={eq.id} className="flex items-center justify-between text-[11px] bg-gray-50 p-1.5 rounded">
-                                              <span className="font-medium text-gray-800">{eq.equipmentName}</span>
-                                              <span className="font-mono text-gray-500 text-[10px]">SN: {eq.serialNumber || 'N/A'}</span>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <div className="text-[11px] text-rose-600 pl-2">
-                                          ⚠️ Chưa gắn thiết bị IoT vào trụ này!
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* Chỉ số cảm biến */}
-                                    {status?.latestSensorReading ? (
-                                      <div className="bg-emerald-50/60 p-2 rounded text-[11px] border border-emerald-100 text-emerald-900 grid grid-cols-3 gap-1">
-                                        {status.latestSensorReading.temperature != null && (
-                                          <div>Nhiệt độ: <strong>{status.latestSensorReading.temperature}°C</strong></div>
-                                        )}
-                                        {status.latestSensorReading.humidity != null && (
-                                          <div>Độ ẩm KK: <strong>{status.latestSensorReading.humidity}%</strong></div>
-                                        )}
-                                        {status.latestSensorReading.ph != null && (
-                                          <div>pH: <strong>{status.latestSensorReading.ph}</strong></div>
-                                        )}
-                                        {status.latestSensorReading.soilMoisture != null && (
-                                          <div>Độ ẩm đất: <strong>{status.latestSensorReading.soilMoisture}%</strong></div>
-                                        )}
-                                        {status.latestSensorReading.waterLevel != null && (
-                                          <div>Mực nước: <strong>{status.latestSensorReading.waterLevel}cm</strong></div>
-                                        )}
-                                        {status.latestSensorReading.recordedAt && (
-                                          <div className="col-span-3 text-[10px] text-gray-500 pt-0.5">
-                                            Ghi nhận: {new Date(status.latestSensorReading.recordedAt).toLocaleString('vi-VN')}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <div className="text-[11px] text-amber-700 bg-amber-50/70 p-2 rounded border border-amber-200">
-                                        Chưa có dữ liệu cảm biến gần đây (ESP32 chưa gửi dữ liệu telemetry).
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
                       {/* Phần Hình ảnh Minh chứng */}
                       <div>
                         <div className="flex justify-between items-center mb-2">
