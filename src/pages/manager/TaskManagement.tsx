@@ -762,12 +762,27 @@ export default function TaskManagement() {
             selectedTask.name.toLowerCase().includes('thu hoạch sớm') ||
             selectedTask.name.toLowerCase().includes('đề xuất thu hoạch')
           );
+          const tNameRev = (selectedTask.name || '').toLowerCase();
+          const tDescRev = (selectedTask.description || '').toLowerCase();
+          const hasPillarSetupKeywordRev =
+            tNameRev.includes('lắp') ||
+            tNameRev.includes('lap') ||
+            tNameRev.includes('bổ sung') ||
+            tNameRev.includes('bo sung') ||
+            tNameRev.includes('thiết bị') ||
+            tNameRev.includes('thiet bi') ||
+            tNameRev.includes('iot') ||
+            tNameRev.includes('cảm biến') ||
+            tNameRev.includes('cam bien') ||
+            tNameRev.includes('gắn') ||
+            tNameRev.includes('gán') ||
+            tDescRev.includes('lắp') ||
+            tDescRev.includes('thiết bị') ||
+            tDescRev.includes('iot');
+
           const isPillarSetupTask = !isEarlyHarvestTask && Boolean(
-            selectedTask.pillarCodes &&
-            selectedTask.pillarCodes.trim() !== '' &&
-            (selectedTask.name.toLowerCase().includes('lắp đặt bổ sung') ||
-             selectedTask.name.toLowerCase().includes('lắp đặt trụ') ||
-             selectedTask.name.toLowerCase().includes('bổ sung trụ'))
+            (selectedTask.pillarCodes && selectedTask.pillarCodes.trim() !== '' && hasPillarSetupKeywordRev) ||
+            (selectedTask.equipmentBindings && selectedTask.equipmentBindings.length > 0)
           );
 
           return (
@@ -826,10 +841,10 @@ export default function TaskManagement() {
                       <div className="space-y-4">
                         {selectedTask.pillarCodes?.split(',').map(s => s.trim()).filter(Boolean).map((code, idx) => {
                           const status = pillarIoTStatuses[code];
-                          const binding = selectedTask.equipmentBindings?.find(b => b.pillarCode?.trim() === code);
+                          const bindings = selectedTask.equipmentBindings?.filter(b => b.pillarCode?.trim() === code) || [];
 
                           // Phân giải ảnh của trụ
-                          let pillarImg = binding?.evidenceImageUrl;
+                          let pillarImg = bindings.find(b => b.evidenceImageUrl)?.evidenceImageUrl;
                           if (!pillarImg && selectedTask.evidenceImageUrl) {
                             const images = selectedTask.evidenceImageUrl.split(',').map(s => s.trim()).filter(Boolean);
                             if (idx < images.length) pillarImg = images[idx];
@@ -837,7 +852,7 @@ export default function TaskManagement() {
                           }
 
                           // Phân giải ghi chú của trụ
-                          let pillarNote = binding?.notes;
+                          let pillarNote = bindings.map(b => b.notes).filter(Boolean).join('; ');
                           if (!pillarNote && selectedTask.staffNotes) {
                             const lines = selectedTask.staffNotes.split('\n');
                             for (const line of lines) {
@@ -876,7 +891,7 @@ export default function TaskManagement() {
                                     <div className="font-semibold text-gray-700 mb-1 flex items-center gap-1">
                                       <Cpu className="w-3.5 h-3.5 text-indigo-600" /> Thiết bị IoT đã gắn:
                                     </div>
-                                    {(status?.equipments && status.equipments.length > 0) || binding?.newEquipmentName ? (
+                                    {(status?.equipments && status.equipments.length > 0) || bindings.length > 0 ? (
                                       <div className="space-y-1">
                                         {status?.equipments && status.equipments.length > 0 ? (
                                           status.equipments.map(eq => (
@@ -886,10 +901,14 @@ export default function TaskManagement() {
                                             </div>
                                           ))
                                         ) : (
-                                          <div className="flex items-center justify-between bg-white p-1.5 rounded border border-gray-200">
-                                            <span className="font-medium text-gray-800">{binding?.newEquipmentName}</span>
-                                            <span className="font-mono text-gray-500 text-[10px]">SN: {binding?.newSerialNumber || 'N/A'}</span>
-                                          </div>
+                                          bindings.map((b, bIdx) => (
+                                            <div key={bIdx} className="flex items-center justify-between bg-white p-1.5 rounded border border-gray-200">
+                                              <span className="font-medium text-gray-800">{b.newEquipmentName || 'Thiết bị'}</span>
+                                              <span className="font-mono text-gray-500 text-[10px]">
+                                                SN: {b.newSerialNumber || 'N/A'} {b.quantity && b.quantity > 1 ? `(x${b.quantity})` : ''}
+                                              </span>
+                                            </div>
+                                          ))
                                         )}
                                       </div>
                                     ) : (
@@ -1121,12 +1140,27 @@ export default function TaskManagement() {
             MODAL 4: XEM CHI TIẾT TASK (DETAIL)
         ========================================= */}
         {modalType === 'DETAIL' && selectedTask && (() => {
+          const tNameDet = (selectedTask.name || '').toLowerCase();
+          const tDescDet = (selectedTask.description || '').toLowerCase();
+          const hasPillarSetupKeywordDet =
+            tNameDet.includes('lắp') ||
+            tNameDet.includes('lap') ||
+            tNameDet.includes('bổ sung') ||
+            tNameDet.includes('bo sung') ||
+            tNameDet.includes('thiết bị') ||
+            tNameDet.includes('thiet bi') ||
+            tNameDet.includes('iot') ||
+            tNameDet.includes('cảm biến') ||
+            tNameDet.includes('cam bien') ||
+            tNameDet.includes('gắn') ||
+            tNameDet.includes('gán') ||
+            tDescDet.includes('lắp') ||
+            tDescDet.includes('thiết bị') ||
+            tDescDet.includes('iot');
+
           const isPillarSetupTask = Boolean(
-            selectedTask.pillarCodes &&
-            selectedTask.pillarCodes.trim() !== '' &&
-            (selectedTask.name.toLowerCase().includes('lắp đặt bổ sung') ||
-             selectedTask.name.toLowerCase().includes('lắp đặt trụ') ||
-             selectedTask.name.toLowerCase().includes('bổ sung trụ'))
+            (selectedTask.pillarCodes && selectedTask.pillarCodes.trim() !== '' && hasPillarSetupKeywordDet) ||
+            (selectedTask.equipmentBindings && selectedTask.equipmentBindings.length > 0)
           );
 
           return (
@@ -1215,16 +1249,16 @@ export default function TaskManagement() {
                         <div className="space-y-3">
                           {selectedTask.pillarCodes?.split(',').map(s => s.trim()).filter(Boolean).map((code, idx) => {
                             const status = pillarIoTStatuses[code];
-                            const binding = selectedTask.equipmentBindings?.find(b => b.pillarCode?.trim() === code);
+                            const bindings = selectedTask.equipmentBindings?.filter(b => b.pillarCode?.trim() === code) || [];
 
-                            let pillarImg = binding?.evidenceImageUrl;
+                            let pillarImg = bindings.find(b => b.evidenceImageUrl)?.evidenceImageUrl;
                             if (!pillarImg && selectedTask.evidenceImageUrl) {
                               const images = selectedTask.evidenceImageUrl.split(',').map(s => s.trim()).filter(Boolean);
                               if (idx < images.length) pillarImg = images[idx];
                               else if (images.length === 1) pillarImg = images[0];
                             }
 
-                            let pillarNote = binding?.notes;
+                            let pillarNote = bindings.map(b => b.notes).filter(Boolean).join('; ');
                             if (!pillarNote && selectedTask.staffNotes) {
                               const lines = selectedTask.staffNotes.split('\n');
                               for (const line of lines) {
@@ -1256,7 +1290,7 @@ export default function TaskManagement() {
                                   <div className="space-y-2 text-xs">
                                     <div className="bg-gray-50/80 p-2.5 rounded-lg border border-gray-100">
                                       <div className="font-semibold text-gray-700 mb-1">Thiết bị IoT:</div>
-                                      {(status?.equipments && status.equipments.length > 0) || binding?.newEquipmentName ? (
+                                      {(status?.equipments && status.equipments.length > 0) || bindings.length > 0 ? (
                                         <div className="space-y-1">
                                           {status?.equipments && status.equipments.length > 0 ? (
                                             status.equipments.map(eq => (
@@ -1266,10 +1300,14 @@ export default function TaskManagement() {
                                               </div>
                                             ))
                                           ) : (
-                                            <div className="flex items-center justify-between bg-white p-1.5 rounded border border-gray-200">
-                                              <span className="font-medium text-gray-800">{binding?.newEquipmentName}</span>
-                                              <span className="font-mono text-gray-500 text-[10px]">SN: {binding?.newSerialNumber || 'N/A'}</span>
-                                            </div>
+                                            bindings.map((b, bIdx) => (
+                                              <div key={bIdx} className="flex items-center justify-between bg-white p-1.5 rounded border border-gray-200">
+                                                <span className="font-medium text-gray-800">{b.newEquipmentName || 'Thiết bị'}</span>
+                                                <span className="font-mono text-gray-500 text-[10px]">
+                                                  SN: {b.newSerialNumber || 'N/A'} {b.quantity && b.quantity > 1 ? `(x${b.quantity})` : ''}
+                                                </span>
+                                              </div>
+                                            ))
                                           )}
                                         </div>
                                       ) : (

@@ -7,7 +7,7 @@ export interface Equipment {
   serialNumber: string;
   description: string;
   status: string;
-  pillarId: number;
+  pillarId?: number | null;
   pillarCode?: string;
   locationId?: number;
   locationName?: string;
