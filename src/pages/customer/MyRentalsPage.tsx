@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout, PlusCircle, Plus, Minus, Info, Layers, Wifi } from 'lucide-react';
+import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout, PlusCircle, Plus, Minus, Info, Layers, Wifi, Camera, Maximize2, ExternalLink } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
@@ -42,6 +42,7 @@ export default function MyRentalsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState('');
   const [decidingId, setDecidingId] = useState<number | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const handleExtendMonthsChange = (rawVal: string) => {
     // Chỉ giữ chữ số, loại bỏ âm (-), thập phân (., ,), chữ cái
@@ -439,11 +440,50 @@ export default function MyRentalsPage() {
                                   </span>
                                 )}
                               </div>
-                              {((rental.pillarCodes && rental.pillarCodes.length > 0) || rental.pillarCode) && (
-                                <div className="text-xs text-amber-800 font-semibold mb-2 flex items-center gap-1">
-                                  🏷️ Vị trí: Trụ {rental.pillarCodes && rental.pillarCodes.length > 0 ? rental.pillarCodes.join(', ') : rental.pillarCode}
+                              <div className="text-xs text-amber-800 font-semibold mb-2 flex items-center gap-1">
+                                🏷️ Vị trí: Trụ {rental.harvestPillarCode || (rental.pillarCodes && rental.pillarCodes.length > 0 ? rental.pillarCodes.join(', ') : rental.pillarCode || 'Tất cả trụ')}
+                              </div>
+
+                              {/* Hình ảnh thực tế do nhân viên gửi lên kèm đề xuất thu hoạch sớm */}
+                              {rental.harvestEvidenceImageUrl && (
+                                <div className="my-3 bg-white p-3 rounded-xl border border-amber-200 space-y-2">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-semibold text-gray-800 flex items-center gap-1">
+                                      <Camera className="w-3.5 h-3.5 text-amber-600" />
+                                      Ảnh cây rau thực tế (Nhân viên gửi):
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewImage(rental.harvestEvidenceImageUrl!)}
+                                      className="text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-0.5 text-[11px]"
+                                    >
+                                      <Maximize2 className="w-3 h-3" /> Phóng to
+                                    </button>
+                                  </div>
+                                  <div 
+                                    className="relative rounded-lg overflow-hidden border border-gray-200 bg-gray-900 aspect-video max-h-48 flex items-center justify-center cursor-pointer group"
+                                    onClick={() => setPreviewImage(rental.harvestEvidenceImageUrl!)}
+                                  >
+                                    <img
+                                      src={rental.harvestEvidenceImageUrl}
+                                      alt="Cây rau thực tế"
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = 'https://placehold.co/600x400?text=Lỗi+tải+ảnh';
+                                      }}
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold gap-1">
+                                      <Maximize2 className="w-4 h-4" /> Bấm để phóng to
+                                    </div>
+                                  </div>
+                                  {rental.harvestStaffNotes && (
+                                    <div className="text-xs text-amber-900 bg-amber-50/80 p-2 rounded-lg border border-amber-200/60">
+                                      <span className="font-semibold text-amber-800">Ghi chú của nhân viên:</span> {rental.harvestStaffNotes}
+                                    </div>
+                                  )}
                                 </div>
                               )}
+
                               <p className="text-xs text-amber-700 mb-3">Bạn muốn tự thu hoạch hay nhờ nhân viên hỗ trợ thu hoạch và bàn giao?</p>
                               <div className="flex gap-2">
                                 <button
@@ -1028,6 +1068,41 @@ export default function MyRentalsPage() {
                   `Xác nhận & Thanh toán (${(previewData?.totalAmount ?? 0).toLocaleString('vi-VN')} đ)`
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Phóng to Ảnh bằng chứng / Cây thực tế */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in duration-150 backdrop-blur-sm"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-transparent p-2" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setPreviewImage(null)} 
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 p-1.5 bg-white/20 hover:bg-white/30 rounded-full transition"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img 
+              src={previewImage} 
+              alt="Phóng to ảnh cây rau" 
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/20 bg-gray-900"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://placehold.co/800x600?text=Lỗi+tải+ảnh';
+              }}
+            />
+            <div className="text-center mt-3">
+              <a 
+                href={previewImage} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="inline-flex items-center gap-1.5 text-xs text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition"
+              >
+                <ExternalLink className="w-3.5 h-3.5" /> Mở trong tab mới
+              </a>
             </div>
           </div>
         </div>

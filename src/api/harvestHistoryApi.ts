@@ -20,6 +20,7 @@ export interface HarvestHistoryItem {
   harvestDays?: number;
   daysGrown?: number;
   isEarlyHarvest?: boolean;
+  pillarHarvestCount?: number;
 }
 
 export const harvestHistoryApi = {

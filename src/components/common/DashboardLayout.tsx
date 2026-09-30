@@ -349,6 +349,13 @@ export default function DashboardLayout({ children, navItems, title }: Dashboard
                               </span>
                             </div>
 
+                            {/* Thumbnail nếu có ảnh đính kèm */}
+                            {item.imageUrl && (
+                              <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 shrink-0 bg-gray-100 self-center">
+                                <img src={item.imageUrl} alt="Đính kèm" className="w-full h-full object-cover" />
+                              </div>
+                            )}
+
                             {/* Unread dot */}
                             {!item.isRead && (
                               <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0 mt-2" />
