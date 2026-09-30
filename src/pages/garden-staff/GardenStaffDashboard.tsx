@@ -528,49 +528,71 @@ export default function GardenStaffDashboard() {
                                 </div>
                               )}
 
-                              {/* Hiển thị badge / nút Kiểm tra thiết bị IoT: HIỂN THỊ TRÊN TASK LẮP ĐẶT HOẶC CÓ THIẾT BỊ */}
-                              {Boolean(
-                                (task.taskName || '').toLowerCase().includes('lắp đặt') ||
-                                (task.taskName || '').toLowerCase().includes('thiết bị') ||
-                                (task.taskName || '').toLowerCase().includes('bổ sung trụ') ||
-                                (task.taskName || '').toLowerCase().includes('chuẩn bị trụ') ||
-                                (task.taskName || '').toLowerCase().includes('iot') ||
-                                (task.equipments && task.equipments.length > 0) ||
-                                (task.pillarCodes && task.pillarCodes.trim())
-                              ) && (
-                                <div className="pt-1 flex items-center gap-2 flex-wrap">
-                                  {task.iotStatus === 'NEEDS_SETUP' || (!task.equipments || task.equipments.length === 0) ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => setIotModalTask(task)}
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors shadow-2xs cursor-pointer"
-                                      title="Bấm để xem hướng dẫn lắp đặt thiết bị IoT cho trụ này"
-                                    >
-                                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                      <span>Cần lắp thiết bị IoT</span>
-                                      <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">Xem hướng dẫn</span>
-                                    </button>
-                                  ) : (
-                                    <button
-                                      type="button"
-                                      onClick={() => setIotModalTask(task)}
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
-                                      title="Bấm để xem chi tiết thiết bị IoT gắn trên trụ này"
-                                    >
-                                      <Cpu className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                      <span>Thiết bị IoT: {task.equipments?.length || 0} thiết bị</span>
-                                      {task.cameraStatus && (
-                                        <span className={clsx(
-                                          "text-[10px] px-1.5 py-0.5 rounded font-bold",
-                                          task.cameraStatus === 'ONLINE' ? "bg-emerald-200 text-emerald-900" : "bg-gray-200 text-gray-700"
-                                        )}>
-                                          Cam: {task.cameraStatus}
-                                        </span>
+                              {/* Hiển thị badge / nút Kiểm tra thiết bị IoT: CHỈ HIỂN THỊ CẢNH BÁO LẮP ĐẶT TRÊN TASK LẮP ĐẶT */}
+                              {(() => {
+                                const isSetup = (task.taskName || '').toLowerCase().includes('lắp đặt') ||
+                                                (task.taskName || '').toLowerCase().includes('thiết bị') ||
+                                                (task.taskName || '').toLowerCase().includes('bổ sung trụ') ||
+                                                (task.taskName || '').toLowerCase().includes('chuẩn bị trụ') ||
+                                                (task.taskName || '').toLowerCase().includes('gắn thiết bị') ||
+                                                (task.taskName || '').toLowerCase().includes('gán thiết bị') ||
+                                                (task.taskName || '').toLowerCase().includes('iot');
+
+                                if (isSetup) {
+                                  return (
+                                    <div className="pt-1 flex items-center gap-2 flex-wrap">
+                                      {task.iotStatus === 'NEEDS_SETUP' || (!task.equipments || task.equipments.length === 0) ? (
+                                        <button
+                                          type="button"
+                                          onClick={() => setIotModalTask(task)}
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors shadow-2xs cursor-pointer"
+                                          title="Bấm để xem hướng dẫn lắp đặt thiết bị IoT cho trụ này"
+                                        >
+                                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                          <span>Cần lắp thiết bị IoT</span>
+                                          <span className="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">Xem hướng dẫn</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => setIotModalTask(task)}
+                                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
+                                          title="Bấm để xem chi tiết thiết bị IoT gắn trên trụ này"
+                                        >
+                                          <Cpu className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                          <span>Thiết bị IoT: {task.equipments?.length || 0} thiết bị</span>
+                                          {task.cameraStatus && (
+                                            <span className={clsx(
+                                              "text-[10px] px-1.5 py-0.5 rounded font-bold",
+                                              task.cameraStatus === 'ONLINE' ? "bg-emerald-200 text-emerald-900" : "bg-gray-200 text-gray-700"
+                                            )}>
+                                              Cam: {task.cameraStatus}
+                                            </span>
+                                          )}
+                                        </button>
                                       )}
-                                    </button>
-                                  )}
-                                </div>
-                              )}
+                                    </div>
+                                  );
+                                }
+
+                                if (task.equipments && task.equipments.length > 0) {
+                                  return (
+                                    <div className="pt-1 flex items-center gap-2 flex-wrap">
+                                      <button
+                                        type="button"
+                                        onClick={() => setIotModalTask(task)}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
+                                        title="Bấm để xem chi tiết thiết bị IoT gắn trên trụ này"
+                                      >
+                                        <Cpu className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                        <span>Thiết bị IoT: {task.equipments.length} thiết bị</span>
+                                      </button>
+                                    </div>
+                                  );
+                                }
+
+                                return null;
+                              })()}
 
                               {/* Thumbnail Ảnh Bằng Chứng Đã Nộp */}
                               {task.evidenceImageUrl && (
@@ -826,7 +848,6 @@ function CompleteTaskModal({
     const name = (task.taskName || '').toLowerCase();
     const desc = (task.description || '').toLowerCase();
     return (
-      (task.pillarCodes && task.pillarCodes.trim().length > 0) ||
       name.includes('lắp đặt') ||
       name.includes('thiết bị') ||
       name.includes('bổ sung trụ') ||
@@ -841,7 +862,7 @@ function CompleteTaskModal({
       desc.includes('gắn thiết bị') ||
       desc.includes('bổ sung trụ')
     );
-  }, [task.pillarCodes, task.taskName, task.description]);
+  }, [task.taskName, task.description]);
 
   const [submissionMode, setSubmissionMode] = useState<'pillar' | 'single'>(
     isPillarSetupTask ? 'pillar' : 'single'
