@@ -158,7 +158,12 @@ export default function GardenStaffDashboard() {
         evidenceImageUrl,
         staffNotes: earlyNotes.trim() || undefined,
       });
-      setEarlySuccess(`Đã gửi đề xuất thu hoạch sớm cho Ô ${selectedItem.slotNumber}${selectedItem.pillarCode ? ` (Trụ ${selectedItem.pillarCode})` : ''} lên Location Manager phê duyệt thành công!`);
+      const isAll = selectedItem.pillarCode === 'ALL' || (selectedItem.pillarCode && selectedItem.pillarCode.includes('Tất cả'));
+      if (isAll) {
+        setEarlySuccess(`Đã gửi đề xuất thu hoạch sớm cho TẤT CẢ CÁC TRỤ tại Ô ${selectedItem.slotNumber}! Hệ thống đã tự động tách thành từng Task riêng biệt cho mỗi trụ để duyệt độc lập.`);
+      } else {
+        setEarlySuccess(`Đã gửi đề xuất thu hoạch sớm cho Ô ${selectedItem.slotNumber}${selectedItem.pillarCode ? ` (Trụ ${selectedItem.pillarCode})` : ''} lên Location Manager phê duyệt thành công!`);
+      }
       setSelectedEarlyItemKey('');
       setEarlyImageFile(null);
       setEarlyImagePreview(null);
@@ -425,11 +430,14 @@ export default function GardenStaffDashboard() {
                     <option value="">-- Chọn trụ / cây trồng cần báo thu hoạch sớm --</option>
                     {eligibleRentals.map((r, idx) => {
                       const key = `${r.rentalId}_${r.pillarId || r.pillarCode || idx}`;
-                      const pillarText = r.pillarCode ? ` · Trụ ${r.pillarCode}` : (r.pillarCodes ? ` · Trụ ${r.pillarCodes}` : '');
+                      const isAll = r.pillarCode === 'ALL' || (r.pillarCode && r.pillarCode.includes('Tất cả'));
+                      const pillarText = isAll 
+                        ? ` · 🌿 TẤT CẢ CÁC TRỤ (${r.pillarCodes || 'Tách thành từng Task riêng'})` 
+                        : (r.pillarCode ? ` · Trụ ${r.pillarCode}` : (r.pillarCodes ? ` · Trụ ${r.pillarCodes}` : ''));
                       const growthText = r.daysGrown != null ? ` · Đã trồng ${r.daysGrown} ngày` : '';
                       const harvestDaysText = r.harvestDays ? ` (Chu kỳ ${r.harvestDays} ngày)` : '';
                       return (
-                        <option key={key} value={key}>
+                        <option key={key} value={key} className={isAll ? "font-bold text-emerald-800 bg-emerald-50" : ""}>
                           Ô {r.slotNumber}{pillarText} · 🌱 {r.treeName}{growthText}{harvestDaysText}
                         </option>
                       );
