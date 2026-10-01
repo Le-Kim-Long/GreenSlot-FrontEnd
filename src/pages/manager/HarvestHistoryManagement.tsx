@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Sprout, Calendar, MapPin, User, History, Search } from 'lucide-react';
+import { Sprout, Calendar, MapPin, User, History, Search, Eye } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { staffNavItems } from './staffNav';
 import { harvestHistoryApi, HarvestHistoryItem } from '../../api/harvestHistoryApi';
+import HarvestHistoryDetailModal from '../../components/harvest/HarvestHistoryDetailModal';
 
 export default function HarvestHistoryManagement() {
   const [items, setItems] = useState<HarvestHistoryItem[]>([]);
@@ -13,6 +14,7 @@ export default function HarvestHistoryManagement() {
   const [filterType, setFilterType] = useState<'ALL' | 'EARLY' | 'NORMAL'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [selectedItem, setSelectedItem] = useState<HarvestHistoryItem | null>(null);
 
   useEffect(() => {
     harvestHistoryApi.getManagerHistory()
@@ -116,73 +118,113 @@ export default function HarvestHistoryManagement() {
                 <th className="p-4 font-semibold text-gray-600">Khách hàng</th>
                 <th className="p-4 font-semibold text-gray-600">Thời gian & Sinh trưởng</th>
                 <th className="p-4 font-semibold text-gray-600">Hình thức thu hoạch</th>
+                <th className="p-4 font-semibold text-gray-600">Ảnh nghiệm thu</th>
+                <th className="p-4 font-semibold text-gray-600 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs">
               {loading ? (
-                <tr><td colSpan={5} className="p-8 text-center text-gray-500">Đang tải lịch sử thu hoạch...</td></tr>
+                <tr><td colSpan={7} className="p-8 text-center text-gray-500">Đang tải lịch sử thu hoạch...</td></tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-gray-400">
+                  <td colSpan={7} className="p-12 text-center text-gray-400">
                     <History className="w-10 h-10 mx-auto mb-2 opacity-30" />
                     <p>Chưa có lượt thu hoạch nào khớp với bộ lọc.</p>
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map(item => (
-                  <tr key={item.id} className="hover:bg-gray-50/80 transition">
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5 font-bold text-gray-900 text-sm">
-                        <Sprout className="w-4 h-4 text-green-600" /> {item.treeName || 'N/A'}
-                      </div>
-                      {item.pillarCodes && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {item.pillarCodes.split(',').map(s => s.trim()).filter(Boolean).map((pCode, idx) => (
-                            <span key={idx} className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-200">
-                              Trụ: {pCode} {item.pillarHarvestCount ? `(Lần ${item.pillarHarvestCount})` : ''}
-                            </span>
-                          ))}
+                paginatedItems.map(item => {
+                  const images = item.evidenceImageUrl
+                    ? item.evidenceImageUrl.split(',').map(s => s.trim()).filter(Boolean)
+                    : [];
+
+                  return (
+                    <tr key={item.id} className="hover:bg-gray-50/80 transition cursor-pointer" onClick={() => setSelectedItem(item)}>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-900 text-sm">
+                          <Sprout className="w-4 h-4 text-green-600" /> {item.treeName || 'N/A'}
                         </div>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5 font-semibold text-gray-800">
-                        <MapPin className="w-4 h-4 text-amber-500" /> Ô {item.slotNumber || 'N/A'}
-                      </div>
-                      {item.locationName && <div className="text-xs text-gray-400 mt-0.5">{item.locationName}</div>}
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center gap-1.5 text-gray-800 font-medium">
-                        <User className="w-4 h-4 text-blue-500" /> {item.customerName || 'N/A'}
-                      </div>
-                    </td>
-                    <td className="p-4 text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        {item.plantedAt ? new Date(item.plantedAt).toLocaleDateString('vi-VN') : '—'}
-                        {' → '}
-                        {new Date(item.harvestedAt).toLocaleDateString('vi-VN')}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        {item.daysGrown != null && (
-                          <span className="text-[11px] text-gray-500">
-                            ⏱️ {item.daysGrown} ngày {item.harvestDays ? `(chu kỳ ${item.harvestDays} ngày)` : ''}
-                          </span>
+                        {item.pillarCodes && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {item.pillarCodes.split(',').map(s => s.trim()).filter(Boolean).map((pCode, idx) => (
+                              <span key={idx} className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[11px] border border-emerald-200">
+                                Trụ: {pCode} {item.pillarHarvestCount ? `(Lần ${item.pillarHarvestCount})` : ''}
+                              </span>
+                            ))}
+                          </div>
                         )}
-                        {item.isEarlyHarvest && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                            Thu hoạch sớm
-                          </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1.5 font-semibold text-gray-800">
+                          <MapPin className="w-4 h-4 text-amber-500" /> Ô {item.slotNumber || 'N/A'}
+                        </div>
+                        {item.locationName && <div className="text-xs text-gray-400 mt-0.5">{item.locationName}</div>}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center gap-1.5 text-gray-800 font-medium">
+                          <User className="w-4 h-4 text-blue-500" /> {item.customerName || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="p-4 text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                          {item.plantedAt ? new Date(item.plantedAt).toLocaleDateString('vi-VN') : '—'}
+                          {' → '}
+                          {new Date(item.harvestedAt).toLocaleDateString('vi-VN')}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          {item.daysGrown != null && (
+                            <span className="text-[11px] text-gray-500">
+                              ⏱️ {item.daysGrown} ngày {item.harvestDays ? `(chu kỳ ${item.harvestDays} ngày)` : ''}
+                            </span>
+                          )}
+                          {item.isEarlyHarvest && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
+                              Thu hoạch sớm
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <span className={item.harvestMethod === 'SELF' ? 'badge-green' : 'badge-blue'}>
+                          {item.harvestMethod === 'SELF' ? 'Khách tự thu hoạch' : `Nhân viên${item.staffName ? ': ' + item.staffName : ''}`}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        {images.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-10 h-10 rounded-lg overflow-hidden border border-gray-200 bg-gray-100 shrink-0">
+                              <img
+                                src={images[0]}
+                                alt="Nghiệm thu"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Ảnh';
+                                }}
+                              />
+                            </div>
+                            {images.length > 1 && (
+                              <span className="text-[11px] font-semibold text-gray-500">+{images.length - 1}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 text-xs italic">Không có ảnh</span>
                         )}
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <span className={item.harvestMethod === 'SELF' ? 'badge-green' : 'badge-blue'}>
-                        {item.harvestMethod === 'SELF' ? 'Khách tự thu hoạch' : `Nhân viên${item.staffName ? ': ' + item.staffName : ''}`}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="p-4 text-right">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedItem(item);
+                          }}
+                          className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg inline-flex items-center gap-1 transition"
+                        >
+                          <Eye className="w-3.5 h-3.5" /> Chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -205,6 +247,12 @@ export default function HarvestHistoryManagement() {
           )}
         </div>
       </div>
+
+      {/* Modal chi tiết đợt thu hoạch */}
+      <HarvestHistoryDetailModal
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+      />
     </DashboardLayout>
   );
 }

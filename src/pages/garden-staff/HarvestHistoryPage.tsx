@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   ClipboardList, Wifi, ShieldAlert, Calendar,
-  Sprout, MapPin, User, Loader2, History, Camera,
+  Sprout, MapPin, User, Loader2, History, Camera, Eye, Image as ImageIcon,
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { harvestHistoryApi, HarvestHistoryItem } from '../../api/harvestHistoryApi';
+import HarvestHistoryDetailModal from '../../components/harvest/HarvestHistoryDetailModal';
 
 const navItems = [
   { label: 'Công việc', path: '/dashboard/garden-staff', icon: <ClipboardList className="w-full h-full" /> },
@@ -23,6 +24,7 @@ export default function HarvestHistoryPage() {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [selectedItem, setSelectedItem] = useState<HarvestHistoryItem | null>(null);
 
   useEffect(() => {
     harvestHistoryApi.getManagerHistory()
@@ -84,6 +86,12 @@ export default function HarvestHistoryPage() {
                     <span className={item.harvestMethod === 'SELF' ? 'badge-green' : 'badge-blue'}>
                       {item.harvestMethod === 'SELF' ? 'Khách tự thu hoạch' : `Nhân viên${item.staffName ? ': ' + item.staffName : ''}`}
                     </span>
+                    <button
+                      onClick={() => setSelectedItem(item)}
+                      className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition inline-flex items-center gap-1"
+                    >
+                      <Eye className="w-3.5 h-3.5" /> Chi tiết
+                    </button>
                   </div>
                 </div>
 
@@ -116,6 +124,34 @@ export default function HarvestHistoryPage() {
                     </span>
                   )}
                 </div>
+
+                {/* ẢNH NGHIỆM THU */}
+                {item.evidenceImageUrl && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-600 flex items-center gap-1">
+                      <ImageIcon className="w-3.5 h-3.5 text-emerald-600" /> Ảnh nghiệm thu:
+                    </span>
+                    <div className="flex items-center gap-2">
+                      {item.evidenceImageUrl.split(',').map(s => s.trim()).filter(Boolean).map((imgUrl, imgIdx) => (
+                        <div
+                          key={imgIdx}
+                          onClick={() => setSelectedItem(item)}
+                          className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 bg-gray-50 cursor-pointer hover:border-emerald-500 transition shadow-2xs"
+                          title="Bấm để xem chi tiết"
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`Nghiệm thu ${imgIdx + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Ảnh';
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -134,6 +170,12 @@ export default function HarvestHistoryPage() {
           />
         </div>
       )}
+
+      {/* Modal chi tiết đợt thu hoạch */}
+      <HarvestHistoryDetailModal
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+      />
     </DashboardLayout>
   );
 }
