@@ -129,15 +129,21 @@ export default function GardenStaffDashboard() {
 
   const fetchTasks = () => {
     setLoading(true);
+    // 1. Tải công việc chính trước để hiển thị ngay lập tức
     Promise.all([
       taskApi.getMyTasks(),
-      taskApi.getEligibleEarlyHarvestRentals(),
-      harvestHistoryApi.getManagerHistory().catch(() => [])
+      taskApi.getEligibleEarlyHarvestRentals()
     ])
-      .then(([mine, eligible, historyData]) => {
+      .then(([mine, eligible]) => {
         setTasks((mine || []).sort((a, b) => b.id - a.id));
         setEligibleRentals(eligible || []);
+      })
+      .catch(() => setError('Không thể tải danh sách công việc'))
+      .finally(() => setLoading(false));
 
+    // 2. Tải riêng thông tin khách tự thu hoạch hôm nay (chạy ngầm, không chặn UI)
+    harvestHistoryApi.getManagerHistory()
+      .then(historyData => {
         const todayStr = new Date().toDateString();
         const selfToday = (historyData || []).filter((h: HarvestHistoryItem) => {
           if (h.harvestMethod !== 'SELF') return false;
@@ -146,8 +152,7 @@ export default function GardenStaffDashboard() {
         });
         setTodaySelfHarvests(selfToday);
       })
-      .catch(() => setError('Không thể tải danh sách công việc'))
-      .finally(() => setLoading(false));
+      .catch(() => {});
   };
 
   useEffect(() => { fetchTasks(); }, []);
