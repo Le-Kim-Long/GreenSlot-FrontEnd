@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   ClipboardList, Wifi, ShieldAlert, Calendar,
   Sprout, MapPin, User, Loader2, History, Camera, Eye, Image as ImageIcon,
+  Search,
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -25,6 +26,8 @@ export default function HarvestHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedItem, setSelectedItem] = useState<HarvestHistoryItem | null>(null);
+  const [search, setSearch] = useState('');
+  const [filterMethod, setFilterMethod] = useState<'ALL' | 'SELF' | 'STAFF' | 'EARLY'>('ALL');
 
   useEffect(() => {
     harvestHistoryApi.getManagerHistory()
@@ -41,17 +44,78 @@ export default function HarvestHistoryPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const totalPages = Math.ceil(items.length / pageSize) || 1;
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      const q = search.trim().toLowerCase();
+      const matchSearch = !q ||
+        item.treeName?.toLowerCase().includes(q) ||
+        item.slotNumber?.toLowerCase().includes(q) ||
+        item.customerName?.toLowerCase().includes(q) ||
+        item.staffName?.toLowerCase().includes(q) ||
+        item.pillarCodes?.toLowerCase().includes(q);
+
+      if (!matchSearch) return false;
+      if (filterMethod === 'SELF') return item.harvestMethod === 'SELF';
+      if (filterMethod === 'STAFF') return item.harvestMethod === 'STAFF';
+      if (filterMethod === 'EARLY') return Boolean(item.isEarlyHarvest);
+      return true;
+    });
+  }, [items, search, filterMethod]);
+
+  const totalPages = Math.ceil(filteredItems.length / pageSize) || 1;
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return items.slice(start, start + pageSize);
-  }, [items, currentPage, pageSize]);
+    return filteredItems.slice(start, start + pageSize);
+  }, [filteredItems, currentPage, pageSize]);
 
   return (
     <DashboardLayout navItems={navItems} title="Lịch sử thu hoạch">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-900">Lịch sử thu hoạch</h2>
-        <p className="text-gray-500 text-sm mt-1">Các lần thu hoạch đã hoàn tất tại cơ sở của bạn.</p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Lịch sử thu hoạch</h2>
+          <p className="text-gray-500 text-sm mt-1">Các lần thu hoạch đã hoàn tất tại cơ sở của bạn.</p>
+        </div>
+
+        {/* Bộ lọc phương thức thu hoạch */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-2xs text-xs font-semibold">
+            <button
+              onClick={() => { setFilterMethod('ALL'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-lg transition ${filterMethod === 'ALL' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              Tất cả ({items.length})
+            </button>
+            <button
+              onClick={() => { setFilterMethod('SELF'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-lg transition ${filterMethod === 'SELF' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              🌾 Khách tự hái ({items.filter(i => i.harvestMethod === 'SELF').length})
+            </button>
+            <button
+              onClick={() => { setFilterMethod('STAFF'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-lg transition ${filterMethod === 'STAFF' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              👨‍🌾 Nhân viên hái ({items.filter(i => i.harvestMethod === 'STAFF').length})
+            </button>
+            <button
+              onClick={() => { setFilterMethod('EARLY'); setCurrentPage(1); }}
+              className={`px-3 py-1.5 rounded-lg transition ${filterMethod === 'EARLY' ? 'bg-amber-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              ⚡ Thu hoạch sớm ({items.filter(i => i.isEarlyHarvest).length})
+            </button>
+          </div>
+
+          <div className="relative min-w-[200px] flex-1 sm:flex-initial">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Tìm cây, ô, trụ, khách..."
+              className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs shadow-2xs outline-none bg-white"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
+            />
+          </div>
+        </div>
       </div>
 
       {error && <div className="bg-red-50 text-red-600 rounded-lg px-4 py-3 mb-4 text-sm">{error}</div>}

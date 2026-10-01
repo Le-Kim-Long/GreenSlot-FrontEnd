@@ -9,8 +9,10 @@ import {
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { taskApi, EligibleHarvestRental } from '../../api/taskApi';
+import { harvestHistoryApi, HarvestHistoryItem } from '../../api/harvestHistoryApi';
 import { equipmentApi, Equipment } from '../../api/equipmentApi';
 import type { GardeningTask, PillarEquipmentBinding } from '../../types/api';
+import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 
 const navItems = [
@@ -123,13 +125,26 @@ export default function GardenStaffDashboard() {
   const [earlyNotifying, setEarlyNotifying] = useState(false);
   const [earlyError, setEarlyError] = useState('');
   const [earlySuccess, setEarlySuccess] = useState('');
+  const [todaySelfHarvests, setTodaySelfHarvests] = useState<HarvestHistoryItem[]>([]);
 
   const fetchTasks = () => {
     setLoading(true);
-    Promise.all([taskApi.getMyTasks(), taskApi.getEligibleEarlyHarvestRentals()])
-      .then(([mine, eligible]) => {
+    Promise.all([
+      taskApi.getMyTasks(),
+      taskApi.getEligibleEarlyHarvestRentals(),
+      harvestHistoryApi.getManagerHistory().catch(() => [])
+    ])
+      .then(([mine, eligible, historyData]) => {
         setTasks((mine || []).sort((a, b) => b.id - a.id));
         setEligibleRentals(eligible || []);
+
+        const todayStr = new Date().toDateString();
+        const selfToday = (historyData || []).filter((h: HarvestHistoryItem) => {
+          if (h.harvestMethod !== 'SELF') return false;
+          const hDate = new Date(h.harvestedAt);
+          return !isNaN(hDate.getTime()) && hDate.toDateString() === todayStr;
+        });
+        setTodaySelfHarvests(selfToday);
       })
       .catch(() => setError('Không thể tải danh sách công việc'))
       .finally(() => setLoading(false));
@@ -251,6 +266,52 @@ export default function GardenStaffDashboard() {
   return (
     <DashboardLayout navItems={navItems} title="Bảng điều khiển Nhân viên vườn">
       <div className="space-y-6">
+
+        {/* Banner thông báo khách tự thu hoạch hôm nay */}
+        {todaySelfHarvests.length > 0 && (
+          <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border border-emerald-200 rounded-2xl p-5 shadow-xs">
+            <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
+              <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm sm:text-base">
+                <span className="p-1.5 bg-emerald-100 text-emerald-700 rounded-xl text-lg leading-none">🌾</span>
+                <span>Khách hàng tự thu hoạch hôm nay ({todaySelfHarvests.length} lượt)</span>
+              </div>
+              <Link 
+                to="/dashboard/garden-staff/harvest-history" 
+                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-white/80 hover:bg-white px-3 py-1.5 rounded-lg border border-emerald-200 transition shadow-2xs inline-flex items-center gap-1"
+              >
+                Xem lịch sử thu hoạch →
+              </Link>
+            </div>
+            <p className="text-xs text-emerald-700/90 mb-3">
+              Khách hàng đã đăng ký tự thu hoạch tại vườn hôm nay. Bạn vui lòng chú ý đón tiếp, chuẩn bị dụng cụ (kéo cắt, giỏ đựng, bao bì) và hỗ trợ khách khi đến ô vườn nhé:
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {todaySelfHarvests.map(item => (
+                <div key={item.id} className="bg-white/90 backdrop-blur-xs border border-emerald-100 rounded-xl p-3.5 shadow-2xs hover:shadow-xs transition flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-extrabold text-gray-900 text-sm">Ô {item.slotNumber}</span>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        {item.pillarCodes || 'Tất cả trụ'}
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1.5 font-medium">
+                      🌱 <span className="font-semibold text-gray-800">{item.treeName || 'Cây trồng'}</span>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      👤 Khách: <span className="text-gray-900 font-semibold">{item.customerName || 'Khách hàng'}</span>
+                    </div>
+                  </div>
+                  {item.staffNotes && item.staffNotes.includes('Khách ghi chú:') && (
+                    <div className="text-[11px] text-amber-800 mt-2 italic bg-amber-50/90 rounded-lg px-2.5 py-1 border border-amber-200/60">
+                      💬 {item.staffNotes.split('Khách ghi chú:')[1]?.trim()}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 1. Thẻ thống kê tổng quan */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
