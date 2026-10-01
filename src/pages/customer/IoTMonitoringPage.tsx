@@ -33,8 +33,8 @@ interface PillarOption {
   treeName?: string;
 }
 
-// Hàm kiểm tra an toàn xem dữ liệu có phải là mới (trong 5 phút) hay không
-const checkIsActive = (latestReadings: any[], historyReadings: any[]) => {
+// Hàm kiểm tra an toàn xem thiết bị có đang kết nối và có dữ liệu đo đạc mới (trong 5 phút) hay không
+const checkIsActive = (latestReadings: any[], historyReadings: any[] = []) => {
   const now = Date.now();
   let maxTime = 0;
   const allRecords = [...(latestReadings || []), ...(historyReadings || [])];
@@ -50,10 +50,11 @@ const checkIsActive = (latestReadings: any[], historyReadings: any[]) => {
     }
   }
 
-  if (maxTime === 0) return true; 
+  // Nếu không có bất kỳ bản ghi đo đạc nào -> Thiết bị chưa kết nối
+  if (maxTime === 0) return false; 
   
-  // Kiểm tra: Nếu quá 5 phút (300,000 ms) không có dữ liệu mới -> Trụ đã bị tháo thiết bị hoặc mất mạng
-  return Math.abs(now - maxTime) < 90 * 1000;
+  // Kiểm tra: Nếu trong vòng 5 phút (300,000 ms) có dữ liệu mới -> Thiết bị đang kết nối (Trực tuyến)
+  return Math.abs(now - maxTime) <= 5 * 60 * 1000;
 };
 
 export default function IoTMonitoringPage() {
@@ -324,14 +325,14 @@ export default function IoTMonitoringPage() {
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6 bg-green-50/60 border border-green-200/60 px-4 py-3 rounded-2xl text-xs">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 font-bold text-green-900">
-            <span className={`w-2.5 h-2.5 rounded-full ${(!isAllView && !isCurrentDeviceOnline) ? 'bg-amber-500' : 'bg-green-500 animate-pulse'}`} />
+            <span className={`w-2.5 h-2.5 rounded-full ${(!isAllView && !isCurrentDeviceOnline) ? 'bg-gray-400' : 'bg-green-500 animate-pulse'}`} />
             <span>Đang theo dõi:</span>
             <span className="bg-green-200/80 text-green-900 px-2.5 py-0.5 rounded-md font-mono font-bold">
               {currentPillarInfo ? `Trụ ${currentPillarInfo.pillarCode} (Ô ${currentPillarInfo.slotNumber})` : `Tất cả các trụ (${availablePillars.length} trụ)`}
             </span>
             {!isAllView && (
-              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${isCurrentDeviceOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                {isCurrentDeviceOnline ? '● Trực tuyến' : '● Chờ đồng bộ'}
+              <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${isCurrentDeviceOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700 border border-gray-200'}`}>
+                {isCurrentDeviceOnline ? '● Trực tuyến' : '● Chưa kết nối'}
               </span>
             )}
           </div>
@@ -425,21 +426,28 @@ export default function IoTMonitoringPage() {
                       </td>
                       
                       <td className="p-3.5 font-bold text-gray-800">
-                        {soilMoisture != null ? (
+                        {isActive && soilMoisture != null ? (
                           <span className={soilMoisture < 40 ? 'text-amber-600' : 'text-green-600'}>
                             {soilMoisture} %
                           </span>
-                        ) : '--'}
+                        ) : (
+                          <span className="text-gray-400 font-normal">--</span>
+                        )}
                       </td>
                       <td className="p-3.5 font-bold text-gray-800">
-                        {ph != null ? `${ph} pH` : '--'}
+                        {isActive && ph != null ? `${ph} pH` : (
+                          <span className="text-gray-400 font-normal">--</span>
+                        )}
                       </td>
                       <td className="p-3.5 font-bold text-gray-800">
-                        {light != null ? `${light} Lux` : '--'}
+                        {isActive && light != null ? `${light} Lux` : (
+                          <span className="text-gray-400 font-normal">--</span>
+                        )}
                       </td>
                       <td className="p-3.5">
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${isActive ? 'text-green-700 bg-green-100/70' : 'text-amber-700 bg-amber-100/70'}`}>
-                          <CheckCircle className={`w-3 h-3 ${isActive ? 'text-green-600' : 'text-amber-500'}`} /> {isActive ? 'Trực tuyến' : 'Chờ đồng bộ'}
+                        <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${isActive ? 'text-green-700 bg-green-100/70 border border-green-200' : 'text-gray-600 bg-gray-100 border border-gray-200'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+                          {isActive ? 'Trực tuyến' : 'Chưa kết nối'}
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
@@ -484,19 +492,19 @@ export default function IoTMonitoringPage() {
         ) : (
           <>
             {!isCurrentDeviceOnline && (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3.5 mb-5 text-xs text-amber-900 flex items-center justify-between gap-2 shadow-xs">
+              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3.5 mb-5 text-xs text-gray-700 flex items-center justify-between gap-2 shadow-2xs">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-gray-400 shrink-0" />
                   <span>
-                    Cảm biến đang chờ đồng bộ dữ liệu mới. Đang hiển thị số liệu đo đạc gần nhất
-                    {lastRecordedTime ? ` (Ghi nhận lúc: ${lastRecordedTime})` : ''}.
+                    <strong>Thiết bị ngoại tuyến:</strong> Trụ hiện chưa kết nối hoặc chưa có tín hiệu cảm biến trong 5 phút qua. Các thẻ chỉ số tức thời đang tạm ẩn số liệu.
+                    {lastRecordedTime ? ` (Lần đo gần nhất: ${lastRecordedTime})` : ''}
                   </span>
                 </div>
               </div>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
               {sensorTypes.map(st => {
-                const val = latestData[st.name];
+                const val = isCurrentDeviceOnline ? latestData[st.name] : null;
                 return (
                   <div key={st.name} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition">
                     <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center mb-3 text-green-600">
