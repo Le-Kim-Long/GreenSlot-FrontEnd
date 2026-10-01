@@ -764,23 +764,39 @@ export default function TaskManagement() {
           );
           const tNameRev = (selectedTask.name || '').toLowerCase();
           const tDescRev = (selectedTask.description || '').toLowerCase();
-          const hasPillarSetupKeywordRev =
-            tNameRev.includes('lắp') ||
-            tNameRev.includes('lap') ||
-            tNameRev.includes('bổ sung') ||
-            tNameRev.includes('bo sung') ||
-            tNameRev.includes('thiết bị') ||
-            tNameRev.includes('thiet bi') ||
-            tNameRev.includes('iot') ||
-            tNameRev.includes('cảm biến') ||
-            tNameRev.includes('cam bien') ||
-            tNameRev.includes('gắn') ||
-            tNameRev.includes('gán') ||
-            tDescRev.includes('lắp') ||
-            tDescRev.includes('thiết bị') ||
-            tDescRev.includes('iot');
+          const tTypeRev = (selectedTask.type || '').toUpperCase();
 
-          const isPillarSetupTask = !isEarlyHarvestTask && Boolean(
+          const isAgriculturalTaskRev =
+            tTypeRev === 'PLANTING' ||
+            tTypeRev === 'HARVEST' ||
+            tTypeRev === 'CARE' ||
+            tNameRev.includes('gieo') ||
+            tNameRev.includes('trồng') ||
+            tNameRev.includes('trong') ||
+            tNameRev.includes('chăm sóc') ||
+            tNameRev.includes('cham soc') ||
+            tNameRev.includes('thu hoạch') ||
+            tNameRev.includes('thu hoach') ||
+            tNameRev.includes('tưới') ||
+            tNameRev.includes('tuoi') ||
+            tNameRev.includes('bón') ||
+            tNameRev.includes('bon') ||
+            tDescRev.includes('thu hoạch') ||
+            tDescRev.includes('gieo') ||
+            tDescRev.includes('cây giống');
+
+          const hasPillarSetupKeywordRev =
+            tNameRev.includes('lắp đặt') ||
+            tNameRev.includes('lap dat') ||
+            tNameRev.includes('lắp trụ') ||
+            tNameRev.includes('bổ sung trụ') ||
+            tNameRev.includes('gắn thiết bị') ||
+            tNameRev.includes('lắp thiết bị') ||
+            (tNameRev.includes('lắp') && (tNameRev.includes('thiết bị') || tNameRev.includes('iot') || tNameRev.includes('trụ') || tNameRev.includes('cảm biến'))) ||
+            tDescRev.includes('lắp đặt thiết bị') ||
+            tDescRev.includes('lắp đặt trụ');
+
+          const isPillarSetupTask = !isEarlyHarvestTask && !isAgriculturalTaskRev && Boolean(
             (selectedTask.pillarCodes && selectedTask.pillarCodes.trim() !== '' && hasPillarSetupKeywordRev) ||
             (selectedTask.equipmentBindings && selectedTask.equipmentBindings.length > 0)
           );
@@ -1154,23 +1170,39 @@ export default function TaskManagement() {
         {modalType === 'DETAIL' && selectedTask && (() => {
           const tNameDet = (selectedTask.name || '').toLowerCase();
           const tDescDet = (selectedTask.description || '').toLowerCase();
-          const hasPillarSetupKeywordDet =
-            tNameDet.includes('lắp') ||
-            tNameDet.includes('lap') ||
-            tNameDet.includes('bổ sung') ||
-            tNameDet.includes('bo sung') ||
-            tNameDet.includes('thiết bị') ||
-            tNameDet.includes('thiet bi') ||
-            tNameDet.includes('iot') ||
-            tNameDet.includes('cảm biến') ||
-            tNameDet.includes('cam bien') ||
-            tNameDet.includes('gắn') ||
-            tNameDet.includes('gán') ||
-            tDescDet.includes('lắp') ||
-            tDescDet.includes('thiết bị') ||
-            tDescDet.includes('iot');
+          const tTypeDet = (selectedTask.type || '').toUpperCase();
 
-          const isPillarSetupTask = Boolean(
+          const isAgriculturalTaskDet =
+            tTypeDet === 'PLANTING' ||
+            tTypeDet === 'HARVEST' ||
+            tTypeDet === 'CARE' ||
+            tNameDet.includes('gieo') ||
+            tNameDet.includes('trồng') ||
+            tNameDet.includes('trong') ||
+            tNameDet.includes('chăm sóc') ||
+            tNameDet.includes('cham soc') ||
+            tNameDet.includes('thu hoạch') ||
+            tNameDet.includes('thu hoach') ||
+            tNameDet.includes('tưới') ||
+            tNameDet.includes('tuoi') ||
+            tNameDet.includes('bón') ||
+            tNameDet.includes('bon') ||
+            tDescDet.includes('thu hoạch') ||
+            tDescDet.includes('gieo') ||
+            tDescDet.includes('cây giống');
+
+          const hasPillarSetupKeywordDet =
+            tNameDet.includes('lắp đặt') ||
+            tNameDet.includes('lap dat') ||
+            tNameDet.includes('lắp trụ') ||
+            tNameDet.includes('bổ sung trụ') ||
+            tNameDet.includes('gắn thiết bị') ||
+            tNameDet.includes('lắp thiết bị') ||
+            (tNameDet.includes('lắp') && (tNameDet.includes('thiết bị') || tNameDet.includes('iot') || tNameDet.includes('trụ') || tNameDet.includes('cảm biến'))) ||
+            tDescDet.includes('lắp đặt thiết bị') ||
+            tDescDet.includes('lắp đặt trụ');
+
+          const isPillarSetupTask = !isAgriculturalTaskDet && Boolean(
             (selectedTask.pillarCodes && selectedTask.pillarCodes.trim() !== '' && hasPillarSetupKeywordDet) ||
             (selectedTask.equipmentBindings && selectedTask.equipmentBindings.length > 0)
           );
