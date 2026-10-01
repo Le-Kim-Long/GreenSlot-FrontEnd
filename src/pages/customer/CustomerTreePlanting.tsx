@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { treePlantingApi, TreePlantingRequest, CreateTreePlantingPayload } from '../../api/TreePlantingApi';
 import { bookingApi, BookingHistory } from '../../api/bookingApi';
 import { treeApi, Tree } from '../../api/treeApi';
@@ -310,6 +310,7 @@ export default function CustomerTreePlanting() {
   const isGrowthExceeded = Boolean(
     selectedRental && selectedTree && growthDays > 0 && growthDays > remainingDays
   );
+  const hasActiveTree = Boolean(selectedRental?.treeName);
   const isPillarSelectionRequired = Boolean(
     selectedRental?.treeName &&
     !formData.targetPillarId &&
@@ -864,8 +865,28 @@ export default function CustomerTreePlanting() {
                 </div>
               )}
 
-              {/* HƯỚNG DẪN CHỌN TRỤ NẾU Ô ĐÃ CÓ CÂY */}
-              {isPillarSelectionRequired && (
+              {/* CẢNH BÁO ĐỎ NỔI BẬT: BẮT BUỘC THU HOẠCH HẾT TRỤ TRƯỚC KHI TRỒNG MỚI */}
+              {hasActiveTree ? (
+                <div className="bg-rose-50 border-2 border-rose-400 p-4 rounded-2xl text-xs text-rose-950 flex items-start gap-3 shadow-sm animate-in fade-in duration-200">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1.5 flex-1">
+                    <p className="font-bold text-sm text-rose-800 flex items-center gap-1.5">
+                      ⚠️ LƯU Ý BẮT BUỘC: Ô vườn đang có vụ rau/cây trồng ({selectedRental?.treeName})
+                    </p>
+                    <p className="text-rose-700 leading-relaxed text-xs">
+                      Theo quy định của nhà vườn, bạn cần <strong>thu hoạch (hoặc hoàn tất thủ tục thu hoạch sớm)</strong> hết toàn bộ các trụ canh tác trong ô đất này trước khi gửi yêu cầu đăng ký giống cây mới.
+                    </p>
+                    <div className="pt-1">
+                      <Link
+                        to="/dashboard/customer/rentals"
+                        className="inline-flex items-center gap-1.5 font-bold text-rose-700 hover:text-rose-900 bg-rose-100 hover:bg-rose-200 border border-rose-300 px-3 py-1.5 rounded-xl transition text-xs"
+                      >
+                        Đến trang Ô vườn của tôi để thu hoạch / thu hoạch sớm &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ) : isPillarSelectionRequired ? (
                 <div className="bg-blue-50 border border-blue-200 p-3.5 rounded-2xl text-xs text-blue-900 flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                   <div>
@@ -875,7 +896,7 @@ export default function CustomerTreePlanting() {
                     </p>
                   </div>
                 </div>
-              )}
+              ) : null}
 
               <div>
                 <label className="block font-semibold text-gray-700 mb-1.5 text-xs uppercase tracking-wider">
@@ -928,11 +949,12 @@ export default function CustomerTreePlanting() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || isGrowthExceeded || isPillarSelectionRequired || !formData.rentalId || !formData.newTreeId || !formData.reason.trim() || (selectedTree?.quantity != null && selectedTree.quantity <= 0)}
+                  disabled={isSubmitting || hasActiveTree || isGrowthExceeded || isPillarSelectionRequired || !formData.rentalId || !formData.newTreeId || !formData.reason.trim() || (selectedTree?.quantity != null && selectedTree.quantity <= 0)}
+                  title={hasActiveTree ? "Vui lòng thu hoạch toàn bộ trụ trước khi trồng mới" : undefined}
                   className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition shadow-md shadow-green-600/20 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sprout className="w-4 h-4" />}
-                  <span>Gửi yêu cầu ngay</span>
+                  <span>{hasActiveTree ? 'Cần thu hoạch trước khi trồng' : 'Gửi yêu cầu ngay'}</span>
                 </button>
               </div>
             </form>

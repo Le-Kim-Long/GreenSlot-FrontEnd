@@ -21,6 +21,8 @@ export interface HarvestHistoryItem {
   daysGrown?: number;
   isEarlyHarvest?: boolean;
   pillarHarvestCount?: number;
+  evidenceImageUrl?: string;
+  staffNotes?: string;
 }
 
 export const harvestHistoryApi = {
