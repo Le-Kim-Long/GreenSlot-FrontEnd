@@ -928,30 +928,57 @@ function CompleteTaskModal({
     if (task.isEarlyHarvest) return false;
     const name = (task.taskName || '').toLowerCase();
     const desc = (task.description || '').toLowerCase();
-    if (name.includes('thu hoạch') || desc.includes('thu hoạch')) return false;
+    const taskType = (task.taskType || (task as any).type || '').toUpperCase();
 
+    // 1. Tuyệt đối loại trừ các task thu hoạch và nông nghiệp (gieo trồng, chăm sóc cây, tưới, bón phân, tỉa, làm cỏ)
+    if (
+      taskType === 'HARVEST' ||
+      taskType === 'PLANTING' ||
+      taskType === 'CARE' ||
+      name.includes('thu hoạch') ||
+      name.includes('thu hoach') ||
+      desc.includes('thu hoạch') ||
+      desc.includes('thu hoach') ||
+      name.includes('gieo') ||
+      name.includes('trồng') ||
+      name.includes('trong') ||
+      name.includes('chăm sóc') ||
+      name.includes('cham soc') ||
+      name.includes('bón') ||
+      name.includes('bon') ||
+      name.includes('tưới') ||
+      name.includes('tuoi') ||
+      name.includes('cắt tỉa') ||
+      name.includes('làm cỏ') ||
+      desc.includes('gieo') ||
+      desc.includes('cây giống') ||
+      desc.includes('chăm sóc')
+    ) {
+      return false;
+    }
+
+    // 2. Chỉ tính là task lắp đặt trụ / thiết bị IoT khi có từ khóa lắp đặt hạ tầng kỹ thuật rõ ràng
     const hasPillarSetupKeyword =
-      name.includes('lắp') ||
-      name.includes('lap') ||
-      name.includes('bổ sung') ||
-      name.includes('bo sung') ||
-      name.includes('thiết bị') ||
-      name.includes('thiet bi') ||
-      name.includes('iot') ||
-      name.includes('cảm biến') ||
-      name.includes('cam bien') ||
-      name.includes('gắn') ||
-      name.includes('gán') ||
-      desc.includes('lắp') ||
-      desc.includes('lap') ||
-      desc.includes('thiết bị') ||
-      desc.includes('thiet bi') ||
-      desc.includes('iot') ||
-      desc.includes('cảm biến') ||
-      desc.includes('cam bien');
+      name.includes('lắp đặt') ||
+      name.includes('lap dat') ||
+      name.includes('lắp trụ') ||
+      name.includes('lap tru') ||
+      name.includes('bổ sung trụ') ||
+      name.includes('bo sung tru') ||
+      name.includes('lắp thiết bị') ||
+      name.includes('lap thiet bi') ||
+      name.includes('gắn thiết bị') ||
+      name.includes('gan thiet bi') ||
+      name.includes('gắn cảm biến') ||
+      name.includes('gan cam bien') ||
+      (name.includes('lắp') && (name.includes('thiết bị') || name.includes('iot') || name.includes('trụ') || name.includes('cảm biến'))) ||
+      desc.includes('lắp đặt thiết bị') ||
+      desc.includes('lap dat thiet bi') ||
+      desc.includes('lắp đặt trụ') ||
+      desc.includes('lap dat tru');
 
-    return hasPillarSetupKeyword;
-  }, [task.taskName, task.description, task.isEarlyHarvest]);
+    return Boolean(hasPillarSetupKeyword);
+  }, [task.taskName, task.description, task.taskType, task.isEarlyHarvest]);
 
   const [submissionMode, setSubmissionMode] = useState<'pillar' | 'single'>(
     isPillarSetupTask ? 'pillar' : 'single'
