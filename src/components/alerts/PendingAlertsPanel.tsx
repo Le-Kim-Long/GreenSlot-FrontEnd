@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ShieldAlert,
   RefreshCw,
@@ -16,7 +17,9 @@ import {
   Activity,
   Send,
   ChevronDown,
-  Filter,
+  Search,
+  Zap,
+  Droplets,
 } from 'lucide-react';
 import { alertApi, AlertDTO, ProcessAlertPayload } from '../../api/alertApi';
 import { managerApi } from '../../api/managerApi';
@@ -224,10 +227,13 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
  */
 export default function PendingAlertsPanel() {
   const { user } = useAuth();
+  const toast = useToast();
   const [alerts, setAlerts] = useState<AlertDTO[]>([]);
   const [pillars, setPillars] = useState<any[]>([]);
   const [locations, setLocations] = useState<any[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState('');
+  const [sensorFilter, setSensorFilter] = useState('ALL');
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -235,23 +241,33 @@ export default function PendingAlertsPanel() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // Batch process state
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [batchComment, setBatchComment] = useState('Đã kiểm tra hệ thống và xử lý cảnh báo định kỳ.');
+  const [batchLoading, setBatchLoading] = useState(false);
+
   // Lấy danh sách cảnh báo đang ở trạng thái PENDING (GET /alerts/pending)
-  const fetchAlerts = async () => {
-    setLoading(true);
+  const fetchAlerts = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError('');
     try {
       const result = await alertApi.getPendingAlerts();
-      setAlerts(result);
+      setAlerts(Array.isArray(result) ? result : []);
     } catch (err) {
       console.error('Lỗi tải danh sách cảnh báo đang chờ:', err);
-      setError('Không thể tải danh sách cảnh báo đang chờ xử lý.');
+      if (!silent) setError('Không thể tải danh sách cảnh báo đang chờ xử lý.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
+  // Live polling: Tự động cập nhật danh sách cảnh báo mỗi 15 giây
   useEffect(() => {
     fetchAlerts();
+    const timer = setInterval(() => {
+      fetchAlerts(true);
+    }, 15000);
+    return () => clearInterval(timer);
   }, []);
 
   // Chỉ manager/admin mới cần chọn cơ sở (location_manager và garden_staff luôn chỉ có đúng 1 cơ sở, Backend đã tự lọc sẵn)
@@ -281,16 +297,39 @@ export default function PendingAlertsPanel() {
   const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
 
   const visibleAlerts = useMemo(() => {
-    const filtered = selectedLocationId
-      ? alerts.filter((a) => a.pillarId != null && String(pillarLocationMap.get(a.pillarId)) === selectedLocationId)
-      : alerts;
-    return [...filtered].sort((a, b) => {
-      const timeA = new Date(a.createdAt || 0).getTime();
-      const timeB = new Date(b.createdAt || 0).getTime();
-      if (timeA !== timeB) return timeB - timeA;
-      return b.id - a.id;
-    });
-  }, [alerts, selectedLocationId, pillarLocationMap]);
+    return alerts
+      .filter((a) => {
+        // Lọc theo cơ sở (Manager/Admin)
+        if (selectedLocationId && a.pillarId != null) {
+          if (String(pillarLocationMap.get(a.pillarId)) !== selectedLocationId) return false;
+        }
+
+        // Lọc theo loại cảm biến
+        if (sensorFilter !== 'ALL') {
+          const typeStr = `${a.sensorType || ''} ${a.alertType || ''}`.toUpperCase();
+          if (!typeStr.includes(sensorFilter)) return false;
+        }
+
+        // Tìm kiếm theo từ khóa (Trụ, Ô, Cây, Nội dung)
+        if (search.trim()) {
+          const q = search.trim().toLowerCase();
+          const matchPillar = (a.pillarCode || '').toLowerCase().includes(q);
+          const matchSlot = (a.slotNumber || '').toLowerCase().includes(q);
+          const matchTree = (a.treeName || '').toLowerCase().includes(q);
+          const matchDesc = (a.description || '').toLowerCase().includes(q);
+          const matchType = (a.alertType || '').toLowerCase().includes(q);
+          if (!matchPillar && !matchSlot && !matchTree && !matchDesc && !matchType) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        if (timeA !== timeB) return timeB - timeA;
+        return (b.id || 0) - (a.id || 0);
+      });
+  }, [alerts, selectedLocationId, pillarLocationMap, sensorFilter, search]);
 
   const totalPages = Math.ceil(visibleAlerts.length / pageSize) || 1;
   const paginatedAlerts = visibleAlerts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -303,43 +342,141 @@ export default function PendingAlertsPanel() {
     setTimeout(() => setSuccessMsg(''), 4000);
   };
 
+  // Xử lý hàng loạt cảnh báo đang hiển thị
+  const handleBatchProcess = async () => {
+    if (visibleAlerts.length === 0) return;
+    setBatchLoading(true);
+    try {
+      const ids = visibleAlerts.map(a => a.id);
+      const res = await alertApi.batchProcessAlerts({
+        alertIds: ids,
+        status: 'RESOLVED',
+        comment: batchComment.trim() || 'Đã xử lý hàng loạt cảnh báo.',
+      });
+      toast.success(res.message || `Đã giải quyết thành công ${ids.length} cảnh báo!`);
+      setAlerts(prev => prev.filter(a => !ids.includes(a.id)));
+      setBatchModalOpen(false);
+      setSuccessMsg(`🎉 Đã giải quyết thành công ${ids.length} cảnh báo!`);
+      setTimeout(() => setSuccessMsg(''), 4000);
+    } catch (err) {
+      console.error('Lỗi khi xử lý hàng loạt:', err);
+      toast.error('Xử lý hàng loạt thất bại. Vui lòng thử lại!');
+    } finally {
+      setBatchLoading(false);
+    }
+  };
+
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-green-600 shrink-0" />
-          <span className="text-sm font-semibold text-gray-700">
-            Cảnh báo đang chờ xử lý: <span className="font-black text-gray-900">{visibleAlerts.length}</span>
-          </span>
+      {/* 1. Header Toolbar */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm mb-6 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 bg-green-50 text-green-700 rounded-xl">
+              <ShieldAlert className="w-5 h-5 text-green-600 shrink-0" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-gray-800">
+                  Cảnh báo đang chờ xử lý: <span className="font-black text-gray-900 text-base">{visibleAlerts.length}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Trực tiếp (15s)
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">Các cảnh báo cảm biến vượt ngưỡng sinh trưởng cần khắc phục</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Nút Xử lý hàng loạt */}
+            {visibleAlerts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setBatchModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm"
+                title="Đánh dấu tất cả cảnh báo đang lọc là đã xử lý"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Xử lý tất cả ({visibleAlerts.length})</span>
+              </button>
+            )}
+
+            {/* Nút Làm mới */}
+            <button
+              type="button"
+              onClick={() => fetchAlerts(false)}
+              disabled={loading}
+              className="inline-flex items-center gap-2 px-3.5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition disabled:opacity-50"
+            >
+              <RefreshCw className={clsx('w-3.5 h-3.5', loading && 'animate-spin')} />
+              <span>Làm mới</span>
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* 2. Thanh tìm kiếm và bộ lọc */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2 border-t border-gray-100">
+          {/* Ô tìm kiếm */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Tìm mã trụ, ô vườn, loại cây..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full pl-9 pr-7 py-2 text-xs border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-gray-50/50 hover:bg-white"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Lọc theo Loại Cảm Biến */}
+          <div className="flex items-center gap-2">
+            <select
+              value={sensorFilter}
+              onChange={(e) => {
+                setSensorFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white"
+            >
+              <option value="ALL">Tất cả loại cảm biến</option>
+              <option value="SOIL_MOISTURE">💧 Độ ẩm đất (Soil Moisture)</option>
+              <option value="TEMPERATURE">🌡️ Nhiệt độ (Temperature)</option>
+              <option value="HUMIDITY">💨 Độ ẩm không khí (Air Humidity)</option>
+              <option value="LIGHT_INTENSITY">☀️ Cường độ ánh sáng (Light)</option>
+              <option value="PH">🧪 Độ pH đất</option>
+            </select>
+          </div>
+
+          {/* Lọc theo Cơ sở (Chỉ cho Manager / Admin) */}
           {canFilterByLocation && (
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-green-600 shrink-0" />
               <select
                 value={selectedLocationId}
                 onChange={(e) => {
                   setSelectedLocationId(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="border border-gray-300 rounded-xl px-3 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white"
               >
-                <option value="">Tất cả cơ sở</option>
+                <option value="">🏢 Tất cả cơ sở</option>
                 {locations.map((l: any) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
               </select>
             </div>
           )}
-          <button
-            type="button"
-            onClick={fetchAlerts}
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition disabled:opacity-50"
-          >
-            <RefreshCw className={clsx('w-4 h-4', loading && 'animate-spin')} />
-            <span>Làm mới</span>
-          </button>
         </div>
       </div>
 
@@ -363,15 +500,18 @@ export default function PendingAlertsPanel() {
         </div>
       ) : visibleAlerts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
-          <CheckCircle2 className="w-10 h-10 opacity-30" />
-          <p className="text-sm font-medium">Không có cảnh báo nào đang chờ xử lý 🎉</p>
+          <CheckCircle2 className="w-10 h-10 opacity-30 text-emerald-600" />
+          <p className="text-sm font-bold text-gray-700">Không có cảnh báo nào đang chờ xử lý 🎉</p>
+          <p className="text-xs text-gray-400">Tất cả cảm biến và cây trồng đều đang ở trạng thái an toàn.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {paginatedAlerts.map((alert) => {
             const isExpanded = expandedId === alert.id;
+            const isSoilMoisture = (alert.sensorType || alert.alertType || '').toUpperCase().includes('MOISTURE');
+
             return (
-              <div key={alert.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div key={alert.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:border-gray-200 transition">
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="flex items-start gap-3">
@@ -389,17 +529,31 @@ export default function PendingAlertsPanel() {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(isExpanded ? null : alert.id)}
-                      className={clsx(
-                        'inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition shrink-0',
-                        isExpanded ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Phím tắt Điều khiển máy bơm nếu là cảnh báo độ ẩm đất */}
+                      {isSoilMoisture && (
+                        <Link
+                          to={`/dashboard/garden-staff/pump-control?slotId=${alert.gardenSlotId || ''}&pillarCode=${alert.pillarCode || ''}`}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-2xs"
+                          title="Mở màn hình Điều khiển máy bơm cho trụ này"
+                        >
+                          <Droplets className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Kích hoạt Bơm</span>
+                        </Link>
                       )}
-                    >
-                      <span>{isExpanded ? 'Đóng' : 'Xử lý ngay'}</span>
-                      <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform', isExpanded && 'rotate-180')} />
-                    </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(isExpanded ? null : alert.id)}
+                        className={clsx(
+                          'inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition shrink-0',
+                          isExpanded ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
+                        )}
+                      >
+                        <span>{isExpanded ? 'Đóng' : 'Xử lý ngay'}</span>
+                        <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform', isExpanded && 'rotate-180')} />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-xs text-gray-500 font-medium">
@@ -456,6 +610,66 @@ export default function PendingAlertsPanel() {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* 3. Modal Xử lý hàng loạt cảnh báo */}
+      {batchModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <h3 className="font-bold text-gray-900 text-base">Xử lý hàng loạt cảnh báo</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBatchModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-600 leading-relaxed">
+              Bạn có chắc chắn muốn đánh dấu toàn bộ <span className="font-bold text-gray-900">{visibleAlerts.length} cảnh báo</span> đang hiển thị là <span className="font-bold text-emerald-700">ĐÃ HOÀN THÀNH (RESOLVED)</span> không? Hệ thống cũng sẽ tự động hoàn tất các nhiệm vụ khẩn cấp liên quan.
+            </p>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                Ghi chú khắc phục hàng loạt:
+              </label>
+              <textarea
+                rows={3}
+                value={batchComment}
+                onChange={(e) => setBatchComment(e.target.value)}
+                className="w-full text-xs border border-gray-300 rounded-xl p-3 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                placeholder="Nhập ghi chú cách xử lý..."
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                disabled={batchLoading}
+                onClick={() => setBatchModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={batchLoading}
+                onClick={handleBatchProcess}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition disabled:opacity-50"
+              >
+                {batchLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                <span>Xác nhận xử lý ({visibleAlerts.length})</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </>
