@@ -59,6 +59,12 @@ export const alertApi = {
     return response.data;
   },
 
+  // Xử lý hàng loạt cảnh báo (giải quyết 1 danh sách id hoặc toàn bộ cảnh báo pending)
+  batchProcessAlerts: async (data: { alertIds?: number[]; status?: string; comment?: string }): Promise<{ message: string; count: number }> => {
+    const response = await apiClient.post('/alerts/batch-process', data);
+    return response.data;
+  },
+
   // Lấy thống kê cảnh báo theo khoảng thời gian (dùng cho dashboard analytics)
   getAlertAnalytics: async (startDate: string, endDate: string, locationId?: number): Promise<AlertAnalyticsDTO> => {
     const response = await apiClient.get('/analytics/alerts', {

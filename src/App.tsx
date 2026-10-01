@@ -133,6 +133,7 @@ function AppRoutes() {
       <Route path="/dashboard/garden-staff/monitoring" element={<ProtectedRoute allowedRoles={['garden_staff']}><IoTMonitoringPage /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/pump-control" element={<ProtectedRoute allowedRoles={['garden_staff']}><PumpControl /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/harvest-history" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffHarvestHistoryPage /></ProtectedRoute>} />
+      <Route path="/dashboard/garden-staff/tasks" element={<Navigate to="/dashboard/garden-staff" replace />} />
       <Route path="/dashboard/garden-staff/notifications" element={<ProtectedRoute allowedRoles={['garden_staff']}><CustomerNotificationsPage /></ProtectedRoute>} />
 
       {/* Admin */}

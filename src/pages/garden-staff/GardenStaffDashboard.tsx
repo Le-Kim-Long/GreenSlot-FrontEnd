@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   ClipboardList, Wifi, CheckCircle, AlertTriangle,
-  Loader2, ShieldAlert, Upload, Calendar, Bell, Eye,
-  X, ExternalLink, Sprout, Zap, History, Wrench, Camera,
+  Loader2, Upload, Bell, Eye,
+  X, ExternalLink, Sprout, Zap, Wrench, Camera,
   MapPin, Layers, Filter, Play, Search, AlertCircle, Sparkles,
-  Cpu, Image as ImageIcon, FileText, Plus, Trash2
+  Cpu, Image as ImageIcon, FileText, Plus, Trash2, Droplets
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -14,16 +14,9 @@ import { equipmentApi, Equipment } from '../../api/equipmentApi';
 import type { GardeningTask, PillarEquipmentBinding } from '../../types/api';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
+import { gardenStaffNavItems } from './gardenStaffNav';
 
-const navItems = [
-  { label: 'Công việc', path: '/dashboard/garden-staff', icon: <ClipboardList className="w-full h-full" /> },
-  { label: 'Lịch trực', path: '/dashboard/garden-staff/schedules', icon: <Calendar className="w-full h-full" /> },
-  { label: 'Giám sát IoT', path: '/dashboard/garden-staff/monitoring', icon: <Wifi className="w-full h-full" /> },
-  { label: 'Cảnh báo IoT', path: '/dashboard/garden-staff/alerts', icon: <ShieldAlert className="w-full h-full" /> },
-  // { label: 'Điều khiển máy bơm', path: '/dashboard/garden-staff/pump-control', icon: <CheckCircle className="w-full h-full" /> },
-  { label: 'Camera', path: '/dashboard/garden-staff/cameras', icon: <Camera className="w-full h-full" /> },
-  { label: 'Lịch sử thu hoạch', path: '/dashboard/garden-staff/harvest-history', icon: <History className="w-full h-full" /> }
-];
+const navItems = gardenStaffNavItems;
 
 const statusConfig: Record<string, { label: string; cls: string; dotCls: string }> = {
   PENDING: { label: 'Chờ xử lý', cls: 'bg-amber-50 text-amber-700 border-amber-200', dotCls: 'bg-amber-500' },
@@ -647,6 +640,11 @@ export default function GardenStaffDashboard() {
                                         ⚡ Thu hoạch sớm
                                       </span>
                                     )}
+                                    {(task.taskName?.toLowerCase().includes('khẩn cấp') || task.taskName?.toLowerCase().includes('cảnh báo')) && (
+                                      <span className="text-[10px] font-bold text-rose-800 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
+                                        🚨 Khẩn cấp: Cảm biến
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -823,6 +821,21 @@ export default function GardenStaffDashboard() {
                           {/* 6. Thao tác hành động */}
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              {/* Bật bơm tưới nước nếu là việc khẩn cấp / độ ẩm / tưới nước */}
+                              {(task.taskName?.toLowerCase().includes('tưới') ||
+                                task.taskName?.toLowerCase().includes('moisture') ||
+                                task.taskName?.toLowerCase().includes('độ ẩm') ||
+                                task.description?.toLowerCase().includes('độ ẩm') ||
+                                task.description?.toLowerCase().includes('tưới')) && (
+                                <Link
+                                  to={`/dashboard/garden-staff/pump-control?slotId=${task.targetSlotId || ''}&pillarCode=${task.pillarCodes || ''}`}
+                                  className="btn-secondary text-xs py-1.5 px-2.5 inline-flex items-center gap-1 text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100"
+                                  title="Mở màn hình Điều khiển máy bơm tưới nước cho ô/trụ này"
+                                >
+                                  <Droplets className="w-3 h-3 text-blue-600" /> Bơm tưới
+                                </Link>
+                              )}
+
                               {/* Bắt đầu làm (khi PENDING) */}
                               {task.status === 'PENDING' && (
                                 <button
