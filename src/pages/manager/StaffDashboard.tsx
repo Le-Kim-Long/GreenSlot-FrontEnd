@@ -110,11 +110,11 @@ export default function StaffDashboard() {
   // Tính toán dữ liệu Biểu đồ Tỷ lệ Lấp đầy theo cơ sở
   const totalSlots = metrics?.totalSlots ?? ((metrics?.activeRentals || 0) + (metrics?.availableSlots || 0) || 0);
   const activeRentalsCount = metrics?.activeRentals || 0;
-  const availableSlotsCount = metrics?.availableSlots ?? Math.max(0, totalSlots - activeRentalsCount);
+  const availableSlotsCount = Math.max(0, totalSlots - activeRentalsCount);
 
   const occupancyData = [
     { name: 'Đang cho thuê', value: activeRentalsCount },
-    { name: 'Còn trống', value: availableSlotsCount < 0 ? 0 : availableSlotsCount },
+    { name: 'Còn trống', value: availableSlotsCount },
   ];
 
   const statCards = [
