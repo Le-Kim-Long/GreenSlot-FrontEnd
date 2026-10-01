@@ -21,7 +21,7 @@ import {
   Zap,
   Droplets,
 } from 'lucide-react';
-import { alertApi, AlertDTO, ProcessAlertPayload } from '../../api/alertApi';
+import { alertApi, AlertDTO, AlertProcessingLogDTO, ProcessAlertPayload } from '../../api/alertApi';
 import { managerApi } from '../../api/managerApi';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -47,23 +47,48 @@ function formatDateTime(dateString?: string | null) {
   }
 }
 
-// Form xử lý 1 cảnh báo cụ thể: chọn kết quả xử lý, ghi chú, đính kèm ảnh hiện trường (tùy chọn),
-// rồi gửi lên backend qua alertApi.processAlert (POST /alerts/process)
-function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void }) {
-  const [status, setStatus] = useState<'RESOLVED' | 'IN_PROGRESS' | 'FAILED'>('RESOLVED');
+// Form xử lý 1 cảnh báo: Phân quyền theo vai trò (Staff chỉ báo cáo khắc phục/hỏng hóc; Quản lý mới có quyền nghiệm thu)
+function ProcessForm({
+  alert,
+  onDone,
+  isStaff,
+}: {
+  alert: AlertDTO;
+  onDone: (newStatus: string) => void;
+  isStaff: boolean;
+}) {
+  const [status, setStatus] = useState<'RESOLVED' | 'IN_PROGRESS' | 'FAILED'>(
+    isStaff ? 'IN_PROGRESS' : 'RESOLVED'
+  );
   const toast = useToast();
   const [comment, setComment] = useState('');
   const [evidenceImageUrl, setEvidenceImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logs, setLogs] = useState<AlertProcessingLogDTO[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(true);
 
-  // Xóa ảnh cũ trên Firebase Storage khi người dùng chọn ảnh khác hoặc bỏ ảnh, tránh rác ảnh không dùng
+  // Tải danh sách các lần xử lý / báo cáo trước đó để Quản lý kiểm tra bằng chứng từ Staff
+  useEffect(() => {
+    let active = true;
+    alertApi.getAlertProcessingLogs(alert.id)
+      .then((data) => {
+        if (active) setLogs(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => console.error('Lỗi tải lịch sử xử lý:', err))
+      .finally(() => {
+        if (active) setLoadingLogs(false);
+      });
+    return () => { active = false; };
+  }, [alert.id]);
+
+  // Xóa ảnh cũ trên Firebase Storage khi người dùng chọn ảnh khác hoặc bỏ ảnh
   const removeTempImage = async (urlToRemove?: string) => {
     if (!urlToRemove) return;
     await deleteTreeImage(urlToRemove);
   };
 
-  // Tải ảnh bằng chứng lên Firebase Storage, lưu link trả về vào state để gửi kèm báo cáo
+  // Tải ảnh bằng chứng lên Firebase Storage
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -96,13 +121,12 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
     setEvidenceImageUrl('');
   };
 
-  // Gửi báo cáo xử lý lên backend; báo thành công thì gọi onDone() để component cha
-  // (danh sách cảnh báo) gỡ alert này khỏi danh sách đang chờ
+  // Gửi báo cáo xử lý lên backend
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!comment.trim()) {
-      toast.warning('Vui lòng nhập cách xử lý / lời bình!');
+      toast.warning(isStaff ? 'Vui lòng nhập mô tả công việc đã xử lý tại trụ!' : 'Vui lòng nhập nội dung / ghi chú nghiệm thu!');
       return;
     }
 
@@ -115,8 +139,12 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
         evidenceImageUrl: evidenceImageUrl || undefined,
       };
       await alertApi.processAlert(payload);
-      toast.success('Gửi báo cáo xử lý cảnh báo thành công!');
-      onDone();
+      if (isStaff) {
+        toast.success(status === 'FAILED' ? 'Đã gửi báo cáo lỗi thiết bị thành công!' : 'Đã gửi báo cáo xử lý cho Quản lý duyệt!');
+      } else {
+        toast.success(status === 'RESOLVED' ? 'Nghiệm thu và đóng cảnh báo thành công!' : 'Đã cập nhật trạng thái xử lý cảnh báo!');
+      }
+      onDone(status);
     } catch (err) {
       console.error('Lỗi gửi báo cáo xử lý:', err);
       toast.error('Gửi báo cáo thất bại! Vui lòng kiểm tra lại kết nối mạng.');
@@ -125,18 +153,105 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
     }
   };
 
+  // Tùy chọn trạng thái theo quyền hạn
+  const options = isStaff
+    ? [
+        {
+          val: 'IN_PROGRESS',
+          label: 'Đã khắc phục (Chờ duyệt)',
+          desc: 'Đã xử lý tại trụ, gửi Quản lý nghiệm thu',
+          cls: 'border-emerald-500 bg-emerald-50 text-emerald-700',
+        },
+        {
+          val: 'FAILED',
+          label: 'Báo lỗi thiết bị',
+          desc: 'Cảm biến/máy bơm hỏng, cần kỹ thuật hỗ trợ',
+          cls: 'border-red-500 bg-red-50 text-red-700',
+        },
+      ]
+    : [
+        {
+          val: 'RESOLVED',
+          label: 'Nghiệm thu hoàn tất',
+          desc: 'Xác nhận xử lý đạt yêu cầu, chính thức đóng cảnh báo',
+          cls: 'border-green-500 bg-green-50 text-green-700',
+        },
+        {
+          val: 'IN_PROGRESS',
+          label: 'Yêu cầu kiểm tra lại',
+          desc: 'Chưa đạt hoặc yêu cầu nhân viên kiểm tra thêm',
+          cls: 'border-blue-500 bg-blue-50 text-blue-700',
+        },
+        {
+          val: 'FAILED',
+          label: 'Đánh dấu thất bại',
+          desc: 'Sự cố phần cứng nghiêm trọng không thể khắc phục',
+          cls: 'border-red-500 bg-red-50 text-red-700',
+        },
+      ];
+
   return (
     <form onSubmit={handleSubmit} noValidate className="border-t border-gray-100 bg-gray-50/60 p-5 space-y-4 text-sm">
+      {/* 1. Lịch sử báo cáo hiện trường từ nhân viên (nếu có) để Quản lý tiện đối chiếu & nghiệm thu */}
+      {loadingLogs ? (
+        <div className="flex items-center gap-2 text-xs text-gray-500 py-2 px-3 bg-white rounded-xl border border-gray-100">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+          <span>Đang kiểm tra lịch sử báo cáo hiện trường...</span>
+        </div>
+      ) : logs.length > 0 ? (
+        <div className="bg-white border border-gray-200/80 rounded-xl p-4 space-y-3 shadow-2xs">
+          <div className="flex items-center justify-between text-xs font-bold text-gray-800 uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-emerald-700">
+              <Clock className="w-4 h-4 text-emerald-600" /> Báo cáo hiện trường từ nhân viên ({logs.length})
+            </span>
+            <span className="text-[11px] font-normal text-gray-400 lowercase">Xem ảnh minh chứng & lời giải thích</span>
+          </div>
+
+          <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+            {logs.map((log) => (
+              <div key={log.id} className="p-3 bg-gray-50/80 rounded-xl border border-gray-100 text-xs space-y-2">
+                <div className="flex items-center justify-between gap-2 text-gray-500 flex-wrap">
+                  <span className="font-bold text-gray-800 flex items-center gap-1">
+                    👤 {log.processedByName || 'Nhân viên'}
+                  </span>
+                  <span className="text-[11px] text-gray-400">{formatDateTime(log.processedAt)}</span>
+                </div>
+                <p className="text-gray-700 whitespace-pre-wrap font-medium bg-white p-2.5 rounded-lg border border-gray-100">
+                  {log.comment}
+                </p>
+                {log.evidenceImageUrl && (
+                  <div className="pt-1.5 border-t border-gray-200/50">
+                    <span className="text-[11px] font-semibold text-gray-500 flex items-center gap-1 mb-1.5">
+                      <ImageIcon className="w-3.5 h-3.5 text-emerald-600" /> Ảnh chụp bằng chứng hiện trường:
+                    </span>
+                    <a
+                      href={log.evidenceImageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block group relative rounded-xl overflow-hidden border border-gray-200 hover:border-emerald-500 transition shadow-2xs"
+                      title="Bấm để xem ảnh kích thước gốc trong tab mới"
+                    >
+                      <img src={log.evidenceImageUrl} alt="Bằng chứng hiện trường" className="w-28 h-28 object-cover group-hover:scale-105 transition-transform" />
+                      <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-[11px] font-bold transition-opacity">
+                        Xem ảnh lớn ↗
+                      </span>
+                    </a>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* 2. Chọn trạng thái xử lý */}
       <div>
         <label className="block font-bold text-gray-800 mb-2 text-xs uppercase tracking-wider flex items-center gap-1.5">
-          <Activity className="w-4 h-4 text-green-600" /> Trạng thái xử lý
+          <Activity className="w-4 h-4 text-green-600" />
+          <span>{isStaff ? 'Hành động của Nhân viên' : 'Quyết định Nghiệm thu của Quản lý'}</span>
         </label>
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { val: 'RESOLVED', label: 'Đã hoàn thành', cls: 'border-green-500 bg-green-50 text-green-700' },
-            { val: 'IN_PROGRESS', label: 'Đang xử lý', cls: 'border-blue-500 bg-blue-50 text-blue-700' },
-            { val: 'FAILED', label: 'Thất bại', cls: 'border-red-500 bg-red-50 text-red-700' },
-          ].map((opt) => {
+        <div className={clsx('grid gap-2', isStaff ? 'grid-cols-2' : 'grid-cols-3')}>
+          {options.map((opt) => {
             const isSelected = status === opt.val;
             return (
               <button
@@ -144,35 +259,51 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
                 type="button"
                 onClick={() => setStatus(opt.val as any)}
                 className={clsx(
-                  'py-2.5 px-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 select-none',
+                  'py-2.5 px-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 select-none text-center',
                   isSelected ? `${opt.cls} ring-2 ring-offset-1 ring-current shadow-sm` : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50 font-medium'
                 )}
               >
-                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
-                <span>{opt.label}</span>
+                <div className="flex items-center gap-1">
+                  {isSelected && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                  <span>{opt.label}</span>
+                </div>
+                <span className="text-[10px] font-normal opacity-80 line-clamp-1">{opt.desc}</span>
               </button>
             );
           })}
         </div>
       </div>
 
+      {/* 3. Ghi chú khắc phục / Nghiệm thu */}
       <div>
         <label className="block font-bold text-gray-800 mb-1.5 text-xs uppercase tracking-wider flex items-center gap-1.5">
-          <MessageSquare className="w-4 h-4 text-green-600" /> Ghi chú cách khắc phục <span className="text-red-500">*</span>
+          <MessageSquare className="w-4 h-4 text-green-600" />
+          <span>{isStaff ? 'Mô tả công việc đã xử lý tại trụ' : 'Ghi chú nghiệm thu của Quản lý'}</span>
+          <span className="text-red-500">*</span>
         </label>
         <textarea
           rows={3}
           required
-          placeholder="VD: Đã kiểm tra cảm biến, tiến hành tưới bổ sung 15 phút..."
+          placeholder={
+            isStaff
+              ? 'VD: Đã kiểm tra trụ, tiến hành kích hoạt bơm tưới bổ sung 15 phút, độ ẩm đất đã tăng trở lại mức an toàn...'
+              : 'VD: Đã đối chiếu ảnh chụp và các thông số cảm biến, nghiệm thu hoàn tất sự cố...'
+          }
           className="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition text-gray-800 bg-white"
           value={comment}
           onChange={(e) => setComment(e.target.value)}
         />
       </div>
 
+      {/* 4. Ảnh bằng chứng hiện trường */}
       <div>
         <label className="block font-bold text-gray-800 mb-1.5 text-xs uppercase tracking-wider flex items-center gap-1.5">
-          <ImageIcon className="w-4 h-4 text-green-600" /> Ảnh bằng chứng <span className="text-gray-400 font-normal">(Tùy chọn)</span>
+          <ImageIcon className="w-4 h-4 text-green-600" /> Ảnh chụp bằng chứng hiện trường
+          {isStaff ? (
+            <span className="text-emerald-600 font-semibold text-[11px] lowercase">(khuyến khích để Quản lý duyệt nhanh)</span>
+          ) : (
+            <span className="text-gray-400 font-normal text-[11px] lowercase">(tùy chọn)</span>
+          )}
         </label>
         <div className="flex items-center gap-4 mt-2">
           <div className="w-16 h-16 rounded-2xl border-2 border-dashed border-gray-300 bg-white flex items-center justify-center shrink-0 overflow-hidden relative group">
@@ -200,21 +331,27 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
             isUploadingImage && 'opacity-50 pointer-events-none'
           )}>
             <Upload className="w-4 h-4 text-green-600" />
-            <span>{isUploadingImage ? 'Đang gửi ảnh...' : evidenceImageUrl ? 'Gửi ảnh khác' : 'Gửi ảnh'}</span>
+            <span>{isUploadingImage ? 'Đang gửi ảnh...' : evidenceImageUrl ? 'Gửi ảnh khác' : 'Chụp/Tải ảnh hiện trường'}</span>
             <input type="file" accept="image/*" onChange={handleImageChange} disabled={isUploadingImage} className="hidden" />
           </label>
         </div>
       </div>
 
+      {/* 5. Nút gửi báo cáo / Nghiệm thu */}
       <button
         type="submit"
         disabled={isSubmitting || isUploadingImage}
-        className="w-full py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 text-sm"
+        className={clsx(
+          'w-full py-2.5 text-white font-bold rounded-xl transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 text-sm',
+          isStaff ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-green-600 hover:bg-green-700'
+        )}
       >
         {isSubmitting ? (
-          <><Loader2 className="w-4 h-4 animate-spin" /> Đang gửi báo cáo...</>
+          <><Loader2 className="w-4 h-4 animate-spin" /> {isStaff ? 'Đang gửi báo cáo...' : 'Đang xử lý nghiệm thu...'}</>
+        ) : isStaff ? (
+          <><Send className="w-4 h-4" /> Gửi báo cáo cho Quản lý</>
         ) : (
-          <><Send className="w-4 h-4" /> Gửi báo cáo xử lý</>
+          <><CheckCircle2 className="w-4 h-4" /> Xác nhận Nghiệm thu & Đóng cảnh báo</>
         )}
       </button>
     </form>
@@ -227,6 +364,8 @@ function ProcessForm({ alert, onDone }: { alert: AlertDTO; onDone: () => void })
  */
 export default function PendingAlertsPanel() {
   const { user } = useAuth();
+  const isStaff = user?.role?.toLowerCase() === 'garden_staff' || user?.role?.toLowerCase() === 'role_garden_staff';
+  const isManager = user?.role === 'manager' || user?.role === 'location_manager' || user?.role === 'admin';
   const toast = useToast();
   const [alerts, setAlerts] = useState<AlertDTO[]>([]);
   const [pillars, setPillars] = useState<any[]>([]);
@@ -243,10 +382,10 @@ export default function PendingAlertsPanel() {
 
   // Batch process state
   const [batchModalOpen, setBatchModalOpen] = useState(false);
-  const [batchComment, setBatchComment] = useState('Đã kiểm tra hệ thống và xử lý cảnh báo định kỳ.');
+  const [batchComment, setBatchComment] = useState('Đã kiểm tra hệ thống và nghiệm thu toàn bộ cảnh báo.');
   const [batchLoading, setBatchLoading] = useState(false);
 
-  // Lấy danh sách cảnh báo đang ở trạng thái PENDING (GET /alerts/pending)
+  // Lấy danh sách cảnh báo đang ở trạng thái PENDING / IN_PROGRESS (GET /alerts/pending)
   const fetchAlerts = async (silent = false) => {
     if (!silent) setLoading(true);
     setError('');
@@ -272,7 +411,7 @@ export default function PendingAlertsPanel() {
 
   // Chỉ manager/admin mới cần chọn cơ sở (location_manager và garden_staff luôn chỉ có đúng 1 cơ sở, Backend đã tự lọc sẵn)
   useEffect(() => {
-    if (user?.role === 'manager' || user?.role === 'admin') {
+    if (isManager) {
       managerApi.getLocations().then((res: any) => setLocations(res || [])).catch((err: any) => {
         console.error('Không thể tải danh sách cơ sở:', err);
       });
@@ -280,7 +419,7 @@ export default function PendingAlertsPanel() {
         console.error('Không thể tải danh sách trụ:', err);
       });
     }
-  }, [user]);
+  }, [isManager]);
 
   const pillarLocationMap = useMemo(() => {
     const map = new Map<number, number>();
@@ -294,7 +433,7 @@ export default function PendingAlertsPanel() {
     return map;
   }, [locations]);
 
-  const canFilterByLocation = (user?.role === 'manager' || user?.role === 'admin') && locations.length > 0;
+  const canFilterByLocation = isManager && locations.length > 0;
 
   const visibleAlerts = useMemo(() => {
     return alerts
@@ -334,15 +473,22 @@ export default function PendingAlertsPanel() {
   const totalPages = Math.ceil(visibleAlerts.length / pageSize) || 1;
   const paginatedAlerts = visibleAlerts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  // Xử lý xong 1 alert: bỏ nó khỏi danh sách đang chờ (không cần gọi lại API), đóng form, báo thành công
-  const handleProcessed = (alertId: number) => {
-    setAlerts((prev) => prev.filter((a) => a.id !== alertId));
+  // Xử lý xong 1 alert:
+  // Nếu RESOLVED: loại khỏi danh sách chờ (đã đóng hoàn tất)
+  // Nếu IN_PROGRESS hoặc khác: cập nhật trạng thái trong danh sách
+  const handleProcessed = (alertId: number, newStatus: string) => {
+    if (newStatus === 'RESOLVED') {
+      setAlerts((prev) => prev.filter((a) => a.id !== alertId));
+      setSuccessMsg('🎉 Đã nghiệm thu và đóng cảnh báo thành công!');
+    } else {
+      setAlerts((prev) => prev.map((a) => a.id === alertId ? { ...a, status: newStatus } : a));
+      setSuccessMsg(isStaff ? '🚀 Đã gửi báo cáo xử lý cho Quản lý duyệt!' : '✅ Đã cập nhật trạng thái cảnh báo!');
+    }
     setExpandedId(null);
-    setSuccessMsg('🎉 Đã gửi báo cáo xử lý cảnh báo thành công!');
     setTimeout(() => setSuccessMsg(''), 4000);
   };
 
-  // Xử lý hàng loạt cảnh báo đang hiển thị
+  // Xử lý hàng loạt cảnh báo đang hiển thị (chỉ dành cho Quản lý)
   const handleBatchProcess = async () => {
     if (visibleAlerts.length === 0) return;
     setBatchLoading(true);
@@ -351,16 +497,16 @@ export default function PendingAlertsPanel() {
       const res = await alertApi.batchProcessAlerts({
         alertIds: ids,
         status: 'RESOLVED',
-        comment: batchComment.trim() || 'Đã xử lý hàng loạt cảnh báo.',
+        comment: batchComment.trim() || 'Đã kiểm tra hệ thống và nghiệm thu hàng loạt.',
       });
       toast.success(res.message || `Đã giải quyết thành công ${ids.length} cảnh báo!`);
       setAlerts(prev => prev.filter(a => !ids.includes(a.id)));
       setBatchModalOpen(false);
-      setSuccessMsg(`🎉 Đã giải quyết thành công ${ids.length} cảnh báo!`);
+      setSuccessMsg(`🎉 Đã nghiệm thu thành công ${ids.length} cảnh báo!`);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Lỗi khi xử lý hàng loạt:', err);
-      toast.error('Xử lý hàng loạt thất bại. Vui lòng thử lại!');
+      toast.error('Nghiệm thu hàng loạt thất bại. Vui lòng thử lại!');
     } finally {
       setBatchLoading(false);
     }
@@ -378,27 +524,32 @@ export default function PendingAlertsPanel() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-gray-800">
-                  Cảnh báo đang chờ xử lý: <span className="font-black text-gray-900 text-base">{visibleAlerts.length}</span>
+                  {isStaff ? 'Cảnh báo cần kiểm tra & xử lý:' : 'Cảnh báo & Báo cáo chờ duyệt:'}{' '}
+                  <span className="font-black text-gray-900 text-base">{visibleAlerts.length}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full animate-pulse">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Trực tiếp (15s)
                 </span>
               </div>
-              <p className="text-xs text-gray-500">Các cảnh báo cảm biến vượt ngưỡng sinh trưởng cần khắc phục</p>
+              <p className="text-xs text-gray-500">
+                {isStaff
+                  ? 'Kiểm tra hiện trường, khắc phục sự cố và gửi minh chứng cho Quản lý nghiệm thu'
+                  : 'Kiểm tra ảnh minh chứng và nghiệm thu hoàn tất sự cố từ nhân viên làm vườn'}
+              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {/* Nút Xử lý hàng loạt */}
-            {visibleAlerts.length > 0 && (
+            {/* Nút Nghiệm thu hàng loạt - Chỉ hiển thị cho Quản lý / Admin */}
+            {isManager && visibleAlerts.length > 0 && (
               <button
                 type="button"
                 onClick={() => setBatchModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition shadow-sm"
-                title="Đánh dấu tất cả cảnh báo đang lọc là đã xử lý"
+                title="Đánh dấu tất cả cảnh báo đang lọc là đã nghiệm thu hoàn thành"
               >
                 <Zap className="w-3.5 h-3.5" />
-                <span>Xử lý tất cả ({visibleAlerts.length})</span>
+                <span>Nghiệm thu tất cả ({visibleAlerts.length})</span>
               </button>
             )}
 
@@ -515,14 +666,32 @@ export default function PendingAlertsPanel() {
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-amber-100 rounded-2xl flex items-center justify-center shrink-0">
-                        <ShieldAlert className="w-5 h-5 text-amber-600" />
+                      <div className={clsx(
+                        'w-10 h-10 rounded-2xl flex items-center justify-center shrink-0',
+                        alert.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'
+                      )}>
+                        <ShieldAlert className="w-5 h-5" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/60 px-2.5 py-1 rounded-full">
                             {alert.alertType}
                           </span>
+                          {alert.status === 'IN_PROGRESS' ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                              Đã có báo cáo (Chờ duyệt)
+                            </span>
+                          ) : alert.status === 'ESCALATED' ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-purple-50 text-purple-700 border border-purple-200 px-2.5 py-0.5 rounded-full">
+                              Đã leo thang
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2.5 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              Chờ kiểm tra
+                            </span>
+                          )}
                           <span className="text-xs text-gray-400 font-medium">#{alert.id}</span>
                         </div>
                         <p className="text-sm text-gray-700 font-medium mt-1.5 max-w-lg">{alert.description}</p>
@@ -547,10 +716,28 @@ export default function PendingAlertsPanel() {
                         onClick={() => setExpandedId(isExpanded ? null : alert.id)}
                         className={clsx(
                           'inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl transition shrink-0',
-                          isExpanded ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
+                          isExpanded
+                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : isStaff
+                            ? alert.status === 'IN_PROGRESS'
+                              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                              : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm'
+                            : alert.status === 'IN_PROGRESS'
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm ring-2 ring-emerald-500/20'
+                            : 'bg-green-600 text-white hover:bg-green-700 shadow-sm'
                         )}
                       >
-                        <span>{isExpanded ? 'Đóng' : 'Xử lý ngay'}</span>
+                        <span>
+                          {isExpanded
+                            ? 'Đóng'
+                            : isStaff
+                            ? alert.status === 'IN_PROGRESS'
+                              ? 'Cập nhật báo cáo'
+                              : 'Báo cáo xử lý'
+                            : alert.status === 'IN_PROGRESS'
+                            ? 'Nghiệm thu ngay'
+                            : 'Xử lý ngay'}
+                        </span>
                         <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform', isExpanded && 'rotate-180')} />
                       </button>
                     </div>
@@ -589,7 +776,13 @@ export default function PendingAlertsPanel() {
                   </div>
                 </div>
 
-                {isExpanded && <ProcessForm alert={alert} onDone={() => handleProcessed(alert.id)} />}
+                {isExpanded && (
+                  <ProcessForm
+                    alert={alert}
+                    isStaff={isStaff}
+                    onDone={(status) => handleProcessed(alert.id, status)}
+                  />
+                )}
               </div>
             );
           })}
