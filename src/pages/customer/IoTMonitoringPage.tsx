@@ -209,28 +209,27 @@ export default function IoTMonitoringPage() {
 
       // CHẾ ĐỘ TẤT CẢ (ALL VIEW)
       if (isAllView && availablePillars.length > 0) {
+        // Chỉ tải dữ liệu cho các trụ hiển thị ở trang hiện tại để tối ưu hiệu năng và không spam mạng
+        const targetPillars = paginatedPillars.length > 0 ? paginatedPillars : availablePillars.slice(0, 10);
         const pillarResults = await Promise.all(
-          availablePillars.map(async p => {
+          targetPillars.map(async p => {
             try {
-              const [latest, history] = await Promise.all([
-                iotApi.getLatest(p.pillarCode).catch(() => []),
-                iotApi.getHistory(p.pillarCode, undefined, 5).catch(() => [])
-              ]);
-              return { pillarCode: p.pillarCode, latest, history };
+              const latest = await iotApi.getLatest(p.pillarCode).catch(() => []);
+              return { pillarCode: p.pillarCode, latest };
             } catch {
-              return { pillarCode: p.pillarCode, latest: [], history: [] };
+              return { pillarCode: p.pillarCode, latest: [] };
             }
           })
         );
         
-        const mapAll: Record<string, { data: Record<string, number>, isActive: boolean }> = {};
+        const mapAll: Record<string, { data: Record<string, number>, isActive: boolean }> = { ...allPillarsData };
         
         pillarResults.forEach(res => {
           const map: Record<string, number> = {};
           let isActive = false;
           
           if (res.latest && res.latest.length > 0) {
-            isActive = checkIsActive(res.latest, res.history);
+            isActive = checkIsActive(res.latest, []);
             res.latest.forEach((r: any) => { map[r.sensorType] = r.value; });
           }
           mapAll[res.pillarCode] = { data: map, isActive };
@@ -249,9 +248,11 @@ export default function IoTMonitoringPage() {
 
   useEffect(() => {
     fetchIoT(false);
-    const interval = setInterval(() => fetchIoT(true), 5000);
+    // Polling 10s cho chế độ xem tổng quan (nhiều trụ), 5s cho chế độ xem chi tiết từng trụ
+    const pollIntervalMs = isAllView ? 10000 : 5000;
+    const interval = setInterval(() => fetchIoT(true), pollIntervalMs);
     return () => clearInterval(interval);
-  }, [selectedDeviceId, isStaffView, availablePillars.length]);
+  }, [selectedDeviceId, isStaffView, availablePillars.length, currentPage, pageSize]);
 
   if (!isStaffView && activeRentals.length === 0 && !loading) {
     return (
