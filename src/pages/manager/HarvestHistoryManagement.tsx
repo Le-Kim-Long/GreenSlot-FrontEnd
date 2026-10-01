@@ -12,6 +12,7 @@ export default function HarvestHistoryManagement() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'EARLY' | 'NORMAL'>('ALL');
+  const [methodFilter, setMethodFilter] = useState<'ALL' | 'SELF' | 'STAFF'>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedItem, setSelectedItem] = useState<HarvestHistoryItem | null>(null);
@@ -34,8 +35,10 @@ export default function HarvestHistoryManagement() {
           item.pillarCodes?.toLowerCase().includes(search.toLowerCase());
 
         if (!matchSearch) return false;
-        if (filterType === 'EARLY') return item.isEarlyHarvest;
-        if (filterType === 'NORMAL') return !item.isEarlyHarvest;
+        if (filterType === 'EARLY' && !item.isEarlyHarvest) return false;
+        if (filterType === 'NORMAL' && item.isEarlyHarvest) return false;
+        if (methodFilter === 'SELF' && item.harvestMethod !== 'SELF') return false;
+        if (methodFilter === 'STAFF' && item.harvestMethod !== 'STAFF') return false;
         return true;
       })
       .sort((a, b) => {
@@ -44,7 +47,7 @@ export default function HarvestHistoryManagement() {
         if (timeA !== timeB) return timeB - timeA;
         return b.id - a.id;
       });
-  }, [items, search, filterType]);
+  }, [items, search, filterType, methodFilter]);
 
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
   const paginatedItems = useMemo(() => {
@@ -88,6 +91,28 @@ export default function HarvestHistoryManagement() {
                 className={`px-3 py-1.5 rounded-lg transition ${filterType === 'NORMAL' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
               >
                 Đúng chu kỳ ({items.filter(i => !i.isEarlyHarvest).length})
+              </button>
+            </div>
+
+            {/* Bộ lọc Phương thức thu hoạch */}
+            <div className="flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm text-xs font-semibold">
+              <button
+                onClick={() => { setMethodFilter('ALL'); setCurrentPage(1); }}
+                className={`px-3 py-1.5 rounded-lg transition ${methodFilter === 'ALL' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                Mọi hình thức
+              </button>
+              <button
+                onClick={() => { setMethodFilter('SELF'); setCurrentPage(1); }}
+                className={`px-3 py-1.5 rounded-lg transition ${methodFilter === 'SELF' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                🌾 Khách tự hái ({items.filter(i => i.harvestMethod === 'SELF').length})
+              </button>
+              <button
+                onClick={() => { setMethodFilter('STAFF'); setCurrentPage(1); }}
+                className={`px-3 py-1.5 rounded-lg transition ${methodFilter === 'STAFF' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+              >
+                👨‍🌾 Nhân viên hái ({items.filter(i => i.harvestMethod === 'STAFF').length})
               </button>
             </div>
 
