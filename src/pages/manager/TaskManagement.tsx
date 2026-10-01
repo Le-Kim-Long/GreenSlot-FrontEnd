@@ -898,14 +898,12 @@ export default function TaskManagement() {
                                             <div key={eq.id} className="flex items-center justify-between bg-white p-1.5 rounded border border-gray-200">
                                               <div className="flex items-center gap-1.5">
                                                 <span className="font-medium text-gray-800">{eq.equipmentName}</span>
-                                                {eq.quantity && eq.quantity > 1 ? (
-                                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                                    SL: {eq.quantity}
-                                                  </span>
-                                                ) : null}
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                  SL: {eq.quantity ?? 1}
+                                                </span>
                                               </div>
                                               <span className="font-mono text-gray-500 text-[10px]">
-                                                SN: {eq.serialNumber || 'N/A'} {eq.quantity && eq.quantity > 1 ? `(x${eq.quantity})` : ''}
+                                                SN: {eq.serialNumber || 'N/A'} (x{eq.quantity ?? 1})
                                               </span>
                                             </div>
                                           ))
@@ -914,14 +912,12 @@ export default function TaskManagement() {
                                             <div key={bIdx} className="flex items-center justify-between bg-white p-1.5 rounded border border-gray-200">
                                               <div className="flex items-center gap-1.5">
                                                 <span className="font-medium text-gray-800">{b.newEquipmentName || 'Thiết bị'}</span>
-                                                {b.quantity && b.quantity > 1 ? (
-                                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                                    SL: {b.quantity}
-                                                  </span>
-                                                ) : null}
+                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                  SL: {b.quantity ?? 1}
+                                                </span>
                                               </div>
                                               <span className="font-mono text-gray-500 text-[10px]">
-                                                SN: {b.newSerialNumber || 'N/A'} {b.quantity && b.quantity > 1 ? `(x${b.quantity})` : ''}
+                                                SN: {b.newSerialNumber || 'N/A'} (x{b.quantity ?? 1})
                                               </span>
                                             </div>
                                           ))
@@ -1313,14 +1309,12 @@ export default function TaskManagement() {
                                               <div key={eq.id} className="flex items-center justify-between bg-white p-1.5 rounded border border-gray-200">
                                                 <div className="flex items-center gap-1.5">
                                                   <span className="font-medium text-gray-800">{eq.equipmentName}</span>
-                                                  {eq.quantity && eq.quantity > 1 ? (
-                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                                      SL: {eq.quantity}
-                                                    </span>
-                                                  ) : null}
+                                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                    SL: {eq.quantity ?? 1}
+                                                  </span>
                                                 </div>
                                                 <span className="font-mono text-gray-500 text-[10px]">
-                                                  SN: {eq.serialNumber || 'N/A'} {eq.quantity && eq.quantity > 1 ? `(x${eq.quantity})` : ''}
+                                                  SN: {eq.serialNumber || 'N/A'} (x{eq.quantity ?? 1})
                                                 </span>
                                               </div>
                                             ))
@@ -1329,14 +1323,12 @@ export default function TaskManagement() {
                                               <div key={bIdx} className="flex items-center justify-between bg-white p-1.5 rounded border border-gray-200">
                                                 <div className="flex items-center gap-1.5">
                                                   <span className="font-medium text-gray-800">{b.newEquipmentName || 'Thiết bị'}</span>
-                                                  {b.quantity && b.quantity > 1 ? (
-                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                                      SL: {b.quantity}
-                                                    </span>
-                                                  ) : null}
+                                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                    SL: {b.quantity ?? 1}
+                                                  </span>
                                                 </div>
                                                 <span className="font-mono text-gray-500 text-[10px]">
-                                                  SN: {b.newSerialNumber || 'N/A'} {b.quantity && b.quantity > 1 ? `(x${b.quantity})` : ''}
+                                                  SN: {b.newSerialNumber || 'N/A'} (x{b.quantity ?? 1})
                                                 </span>
                                               </div>
                                             ))
