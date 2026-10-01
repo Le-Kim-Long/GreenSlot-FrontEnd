@@ -52,6 +52,15 @@ export default function MyRentalsPage() {
   const [earlyHarvestSubmitting, setEarlyHarvestSubmitting] = useState(false);
   const [earlyHarvestError, setEarlyHarvestError] = useState('');
 
+  // Modal thông báo thành công chuyên nghiệp (thay thế window.alert)
+  const [successModal, setSuccessModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    detail?: string;
+    method?: 'SELF' | 'STAFF';
+  }>({ isOpen: false, title: '', message: '' });
+
   const handleEarlyHarvestSubmit = async () => {
     if (!earlyHarvestModal) return;
     setEarlyHarvestSubmitting(true);
@@ -64,15 +73,22 @@ export default function MyRentalsPage() {
         earlyHarvestNotes
       );
       const isSelf = earlyHarvestMethod === 'SELF';
+      const notesCopy = earlyHarvestNotes;
+      const targetPillarCopy = earlyHarvestPillar;
+      const slotNum = earlyHarvestModal.slotNumber;
       setEarlyHarvestModal(null);
       setEarlyHarvestNotes('');
       setEarlyHarvestPillar('');
       fetchHistory();
-      alert(
-        isSelf
-          ? 'Đã ghi nhận bạn tự thu hoạch thành công! Dữ liệu đã được lưu vào Lịch sử thu hoạch và trụ đã sẵn sàng để trồng cây mới.'
-          : 'Đã gửi yêu cầu thu hoạch sớm cho nhân viên làm vườn! Nhân viên phụ trách sẽ tiến hành thu hoạch, chụp ảnh nghiệm thu và bàn giao cho bạn.'
-      );
+      setSuccessModal({
+        isOpen: true,
+        title: isSelf ? 'Đã ghi nhận bạn tự thu hoạch thành công!' : 'Đã gửi yêu cầu thu hoạch sớm cho nhân viên!',
+        message: isSelf
+          ? `Hệ thống đã lưu đợt thu hoạch tại Ô ${slotNum} vào Lịch sử thu hoạch. Trụ canh tác đã được giải phóng để bạn sẵn sàng gieo trồng giống cây mới.`
+          : `Yêu cầu thu hoạch sớm tại Ô ${slotNum} đã được gửi đến nhân viên làm vườn ca trực hôm nay. Nhân viên sẽ tiến hành thu hoạch, chụp ảnh nghiệm thu và bàn giao cho bạn.`,
+        detail: notesCopy ? `Ghi chú dặn dò: "${notesCopy}"` : (targetPillarCopy ? `Trụ thu hoạch: ${targetPillarCopy}` : undefined),
+        method: earlyHarvestMethod,
+      });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setEarlyHarvestError(msg || 'Gửi yêu cầu thu hoạch sớm thất bại. Vui lòng thử lại.');
@@ -229,11 +245,15 @@ export default function MyRentalsPage() {
     try {
       await bookingApi.recordHarvestDecision(rentalId, decision, pillarCode);
       fetchHistory();
-      if (decision === 'SELF') {
-        alert('Đã ghi nhận bạn tự thu hoạch thành công! Dữ liệu đã được lưu vào Lịch sử thu hoạch.');
-      } else {
-        alert('Đã gửi yêu cầu nhân viên hỗ trợ thu hoạch. Nhân viên sẽ tiến hành thu hoạch và bàn giao cho bạn!');
-      }
+      setSuccessModal({
+        isOpen: true,
+        title: decision === 'SELF' ? 'Ghi nhận tự thu hoạch thành công!' : 'Đã gửi yêu cầu nhân viên hỗ trợ thu hoạch!',
+        message: decision === 'SELF'
+          ? 'Hệ thống đã lưu đợt thu hoạch vào Lịch sử thu hoạch. Ô đất đã sẵn sàng để bạn đăng ký gieo trồng giống cây mới.'
+          : 'Yêu cầu của bạn đã được gửi đến nhân viên làm vườn. Nhân viên sẽ tiến hành thu hoạch, chụp ảnh nghiệm thu và bàn giao cho bạn.',
+        detail: pillarCode ? `Trụ thu hoạch: ${pillarCode}` : undefined,
+        method: decision,
+      });
     } catch {
       setError('Ghi nhận lựa chọn thất bại. Vui lòng thử lại.');
     } finally {
@@ -1217,25 +1237,31 @@ export default function MyRentalsPage() {
               {/* Chọn trụ nếu có nhiều trụ */}
               {((earlyHarvestModal.pillars && earlyHarvestModal.pillars.length > 0) || earlyHarvestModal.pillarCodes) && (
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    Chọn trụ muốn thu hoạch sớm:
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center justify-between">
+                    <span>Chọn trụ muốn thu hoạch sớm:</span>
+                    <span className="text-[11px] font-normal text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      {earlyHarvestModal.pillars ? `${earlyHarvestModal.pillars.length} trụ trong ô` : ''}
+                    </span>
                   </label>
                   <select
                     value={earlyHarvestPillar}
                     onChange={e => setEarlyHarvestPillar(e.target.value)}
-                    className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium"
                   >
-                    <option value="">🌱 Tất cả các trụ trong ô vườn</option>
+                    <option value="">🌱 Tất cả các trụ đang canh tác trong ô</option>
                     {earlyHarvestModal.pillars && earlyHarvestModal.pillars.length > 0 ? (
-                      earlyHarvestModal.pillars.map((p, idx) => (
-                        <option key={idx} value={p.pillarCode}>
-                          Trụ {p.pillarCode} ({p.pillarType || 'Trụ khí canh'})
-                        </option>
-                      ))
+                      earlyHarvestModal.pillars.map((p, idx) => {
+                        const treeOnPillar = p.treeName || earlyHarvestModal.treeName;
+                        return (
+                          <option key={idx} value={p.pillarCode}>
+                            Trụ {p.pillarCode} {treeOnPillar ? `(Đang trồng: ${treeOnPillar})` : `(${p.pillarType || 'Trụ khí canh'})`}
+                          </option>
+                        );
+                      })
                     ) : earlyHarvestModal.pillarCodes ? (
                       earlyHarvestModal.pillarCodes.map((pCode, idx) => (
                         <option key={idx} value={pCode}>
-                          Trụ {pCode}
+                          Trụ {pCode} {earlyHarvestModal.treeName ? `(Đang trồng: ${earlyHarvestModal.treeName})` : ''}
                         </option>
                       ))
                     ) : null}
@@ -1330,6 +1356,53 @@ export default function MyRentalsPage() {
                     <Zap className="w-3.5 h-3.5" /> Xác nhận thu hoạch sớm
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Thông Báo Thành Công Chuyên Nghiệp (Thay thế window.alert) */}
+      {successModal.isOpen && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => setSuccessModal(prev => ({ ...prev, isOpen: false }))}
+        >
+          <div
+            className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 text-center border border-gray-100 animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4 shadow-xs">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              {successModal.title}
+            </h3>
+
+            <p className="text-xs text-gray-600 leading-relaxed mb-4">
+              {successModal.message}
+            </p>
+
+            {successModal.detail && (
+              <div className="bg-gray-50 border border-gray-200/80 rounded-xl p-3 mb-5 text-left text-xs text-gray-700">
+                <span className="font-semibold text-gray-800">Thông tin chi tiết:</span> {successModal.detail}
+              </div>
+            )}
+
+            <div className="flex gap-2.5">
+              <Link
+                to="/dashboard/customer/harvest-history"
+                className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition flex items-center justify-center gap-1.5"
+              >
+                <Sprout className="w-4 h-4" /> Xem lịch sử
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSuccessModal(prev => ({ ...prev, isOpen: false }))}
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition shadow-sm"
+              >
+                Đã hiểu
               </button>
             </div>
           </div>
