@@ -14,6 +14,7 @@ import {
   History,
   // Video,
   Camera,
+  Users,
 } from 'lucide-react';
 
 export const staffNavItems = [
@@ -22,6 +23,7 @@ export const staffNavItems = [
   { label: 'Doanh thu', path: '/dashboard/staff/revenue', icon: <DollarSign className="w-full h-full" />, roles: ['manager'] },
   { label: 'Đang thuê', path: '/dashboard/staff/rentals', icon: <Calendar className="w-full h-full" /> },
   { label: 'Công việc', path: '/dashboard/staff/tasks', icon: <ClipboardList className="w-full h-full" /> },
+  { label: 'Lịch trực', path: '/dashboard/staff/schedules', icon: <Calendar className="w-full h-full" /> },
   { label: 'Xử lý Cảnh báo', path: '/dashboard/staff/alert-processing', icon: <ShieldAlert className="w-full h-full" /> },
   { label: 'Yêu cầu trồng cây', path: '/dashboard/staff/tree-planting', icon: <Sprout className="w-full h-full" /> },
 
@@ -30,6 +32,7 @@ export const staffNavItems = [
   { label: 'Trụ vườn', path: '/dashboard/staff/pillars', icon: <Columns3 className="w-full h-full" /> },
   { label: 'Quản lý Thiết bị', path: '/dashboard/staff/equipment', icon: <Cpu className="w-full h-full" /> },
   { label: 'Ô vườn', path: '/dashboard/staff/slots', icon: <Grid3X3 className="w-full h-full" /> },
+  { label: 'Nhân viên', path: '/dashboard/staff/staffs', icon: <Users className="w-full h-full" /> },
   { label: 'Cây trồng', path: '/dashboard/staff/trees', icon: <Trees className="w-full h-full" /> },
 
   // Giám sát & theo dõi

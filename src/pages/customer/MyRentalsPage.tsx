@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout, PlusCircle, Plus, Minus, Info, Layers, Wifi, Camera, Maximize2, ExternalLink } from 'lucide-react';
+import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout, PlusCircle, Plus, Minus, Info, Layers, Wifi, Camera, Maximize2, ExternalLink, Zap, CheckCircle2 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
@@ -43,6 +43,43 @@ export default function MyRentalsPage() {
   const [cancelError, setCancelError] = useState('');
   const [decidingId, setDecidingId] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Yêu cầu thu hoạch sớm
+  const [earlyHarvestModal, setEarlyHarvestModal] = useState<BookingHistory | null>(null);
+  const [earlyHarvestMethod, setEarlyHarvestMethod] = useState<'SELF' | 'STAFF'>('STAFF');
+  const [earlyHarvestPillar, setEarlyHarvestPillar] = useState<string>('');
+  const [earlyHarvestNotes, setEarlyHarvestNotes] = useState<string>('');
+  const [earlyHarvestSubmitting, setEarlyHarvestSubmitting] = useState(false);
+  const [earlyHarvestError, setEarlyHarvestError] = useState('');
+
+  const handleEarlyHarvestSubmit = async () => {
+    if (!earlyHarvestModal) return;
+    setEarlyHarvestSubmitting(true);
+    setEarlyHarvestError('');
+    try {
+      await bookingApi.recordHarvestDecision(
+        earlyHarvestModal.id,
+        earlyHarvestMethod,
+        earlyHarvestPillar || undefined,
+        earlyHarvestNotes
+      );
+      const isSelf = earlyHarvestMethod === 'SELF';
+      setEarlyHarvestModal(null);
+      setEarlyHarvestNotes('');
+      setEarlyHarvestPillar('');
+      fetchHistory();
+      alert(
+        isSelf
+          ? 'Đã ghi nhận bạn tự thu hoạch thành công! Dữ liệu đã được lưu vào Lịch sử thu hoạch và trụ đã sẵn sàng để trồng cây mới.'
+          : 'Đã gửi yêu cầu thu hoạch sớm cho nhân viên làm vườn! Nhân viên phụ trách sẽ tiến hành thu hoạch, chụp ảnh nghiệm thu và bàn giao cho bạn.'
+      );
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setEarlyHarvestError(msg || 'Gửi yêu cầu thu hoạch sớm thất bại. Vui lòng thử lại.');
+    } finally {
+      setEarlyHarvestSubmitting(false);
+    }
+  };
 
   const handleExtendMonthsChange = (rawVal: string) => {
     // Chỉ giữ chữ số, loại bỏ âm (-), thập phân (., ,), chữ cái
@@ -532,6 +569,22 @@ export default function MyRentalsPage() {
                               >
                                 <Sprout className="w-3.5 h-3.5" /> Trồng cây mới
                               </Link>
+                              {rental.harvestDecision !== 'STAFF' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEarlyHarvestModal(rental);
+                                    setEarlyHarvestMethod('STAFF');
+                                    setEarlyHarvestPillar('');
+                                    setEarlyHarvestNotes('');
+                                    setEarlyHarvestError('');
+                                  }}
+                                  className="text-xs flex items-center gap-1.5 h-fit px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-semibold transition-colors shadow-2xs"
+                                  title="Gửi yêu cầu thu hoạch sớm cây trồng trên ô hoặc trụ"
+                                >
+                                  <Zap className="w-3.5 h-3.5 text-amber-600" /> Thu hoạch sớm
+                                </button>
+                              )}
                               <button
                                 onClick={() => handleOpenAddPillars(rental)}
                                 disabled={availableArea < 1.0}
@@ -1103,6 +1156,181 @@ export default function MyRentalsPage() {
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Mở trong tab mới
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Yêu cầu Thu hoạch sớm */}
+      {earlyHarvestModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => !earlyHarvestSubmitting && setEarlyHarvestModal(null)}
+        >
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-gray-100 p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                  <Zap className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Yêu cầu thu hoạch sớm</h3>
+                  <p className="text-xs text-gray-500">Ô {earlyHarvestModal.slotNumber} · {earlyHarvestModal.locationName}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !earlyHarvestSubmitting && setEarlyHarvestModal(null)}
+                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-full hover:bg-gray-100 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4">
+              {/* Thông tin cây */}
+              <div className="bg-amber-50/60 rounded-xl p-3 border border-amber-200/60 space-y-1.5 text-xs text-amber-900">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Cây trồng hiện tại:</span>
+                  <span className="font-bold text-gray-900">{earlyHarvestModal.treeName || 'Cây trồng trên ô'}</span>
+                </div>
+                {earlyHarvestModal.plantedAt && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Ngày gieo trồng:</span>
+                    <span className="font-medium text-gray-800">{new Date(earlyHarvestModal.plantedAt).toLocaleDateString('vi-VN')}</span>
+                  </div>
+                )}
+                {earlyHarvestModal.expectedHarvestAt && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Dự kiến chuẩn:</span>
+                    <span className="font-medium text-gray-800">{new Date(earlyHarvestModal.expectedHarvestAt).toLocaleDateString('vi-VN')}</span>
+                  </div>
+                )}
+                <div className="pt-1.5 border-t border-amber-200/50 text-[11px] text-amber-700 leading-relaxed">
+                  💡 Thu hoạch sớm sẽ hoàn tất chu kỳ phát triển của cây trên ô/trụ trước ngày thu hoạch chuẩn. Sau khi thu hoạch, trụ sẽ được dọn trống để bạn gieo trồng lứa cây mới.
+                </div>
+              </div>
+
+              {/* Chọn trụ nếu có nhiều trụ */}
+              {((earlyHarvestModal.pillars && earlyHarvestModal.pillars.length > 0) || earlyHarvestModal.pillarCodes) && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    Chọn trụ muốn thu hoạch sớm:
+                  </label>
+                  <select
+                    value={earlyHarvestPillar}
+                    onChange={e => setEarlyHarvestPillar(e.target.value)}
+                    className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                  >
+                    <option value="">🌱 Tất cả các trụ trong ô vườn</option>
+                    {earlyHarvestModal.pillars && earlyHarvestModal.pillars.length > 0 ? (
+                      earlyHarvestModal.pillars.map((p, idx) => (
+                        <option key={idx} value={p.pillarCode}>
+                          Trụ {p.pillarCode} ({p.pillarType || 'Trụ khí canh'})
+                        </option>
+                      ))
+                    ) : earlyHarvestModal.pillarCodes ? (
+                      earlyHarvestModal.pillarCodes.map((pCode, idx) => (
+                        <option key={idx} value={pCode}>
+                          Trụ {pCode}
+                        </option>
+                      ))
+                    ) : null}
+                  </select>
+                </div>
+              )}
+
+              {/* Chọn hình thức thu hoạch */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Hình thức thu hoạch:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div
+                    onClick={() => setEarlyHarvestMethod('STAFF')}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                      earlyHarvestMethod === 'STAFF'
+                        ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
+                      <CheckCircle2 className={`w-4 h-4 ${earlyHarvestMethod === 'STAFF' ? 'text-emerald-600' : 'text-gray-300'}`} />
+                      Nhờ nhân viên thu hoạch
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-snug">
+                      Nhân viên ca trực sẽ thu hoạch, chụp ảnh nghiệm thu và liên hệ bàn giao rau sạch cho bạn.
+                    </p>
+                  </div>
+
+                  <div
+                    onClick={() => setEarlyHarvestMethod('SELF')}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                      earlyHarvestMethod === 'SELF'
+                        ? 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-500/20'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-gray-800">
+                      <CheckCircle2 className={`w-4 h-4 ${earlyHarvestMethod === 'SELF' ? 'text-emerald-600' : 'text-gray-300'}`} />
+                      Tôi tự thu hoạch
+                    </div>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-snug">
+                      Bạn tự đến vườn thu hoạch trải nghiệm. Hệ thống lưu lịch sử và giải phóng trụ ngay.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ghi chú / lý do */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                  Ghi chú / Dặn dò gửi nhân viên:
+                </label>
+                <textarea
+                  rows={3}
+                  value={earlyHarvestNotes}
+                  onChange={e => setEarlyHarvestNotes(e.target.value)}
+                  placeholder="Ví dụ: Rau đã đạt kích thước mong muốn, nhờ nhân viên hái sáng mai và gửi bảo quản mát giúp tôi..."
+                  className="w-full text-xs border border-gray-200 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 resize-none"
+                />
+              </div>
+
+              {earlyHarvestError && (
+                <div className="p-2.5 rounded-lg bg-red-50 text-red-600 text-xs border border-red-200">
+                  ⚠️ {earlyHarvestError}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-4 border-t border-gray-100 flex gap-2.5 justify-end">
+              <button
+                type="button"
+                disabled={earlyHarvestSubmitting}
+                onClick={() => setEarlyHarvestModal(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-100 transition"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="button"
+                disabled={earlyHarvestSubmitting}
+                onClick={handleEarlyHarvestSubmit}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 transition flex items-center gap-1.5 shadow-sm"
+              >
+                {earlyHarvestSubmitting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang gửi...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5" /> Xác nhận thu hoạch sớm
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

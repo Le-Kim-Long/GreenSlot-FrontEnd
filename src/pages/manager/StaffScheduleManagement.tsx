@@ -24,6 +24,9 @@ const emptyForm: Partial<StaffSchedule> = {
 
 export default function StaffScheduleManagement() {
   const { user } = useAuth();
+  const isGlobalManager = user?.role === 'manager' || user?.role === 'admin';
+  const isLocationManager = user?.role === 'location_manager';
+
   const [schedules, setSchedules] = useState<StaffSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -31,6 +34,7 @@ export default function StaffScheduleManagement() {
   // Bộ lọc
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [locationFilter, setLocationFilter] = useState('ALL');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
@@ -120,10 +124,12 @@ export default function StaffScheduleManagement() {
 
   const handleOpenCreate = () => {
     setEditingItem(null);
+    const defaultLocId = isLocationManager ? user?.locationId : (formData.locationId || locations[0]?.id || undefined);
+    const defaultLoc = locations.find(l => l.id === defaultLocId);
     setFormData({
       ...emptyForm,
-      locationId: user?.locationId || undefined,
-      locationName: user?.locationName || '',
+      locationId: defaultLocId,
+      locationName: defaultLoc?.name || user?.locationName || '',
     });
     setIsModalOpen(true);
   };
@@ -215,7 +221,8 @@ export default function StaffScheduleManagement() {
       const matchDate = !dateFilter || (
         s.scheduleDate <= dateFilter && (!s.endDate || s.endDate >= dateFilter)
       );
-      return matchSearch && matchDate;
+      const matchLocation = locationFilter === 'ALL' || String(s.locationId) === locationFilter;
+      return matchSearch && matchDate && matchLocation;
     })
     .sort((a, b) => {
       const timeA = new Date(a.scheduleDate || 0).getTime();
@@ -248,6 +255,34 @@ export default function StaffScheduleManagement() {
                 }} 
               />
             </div>
+
+            {/* Lọc theo chi nhánh cho Manager toàn hệ thống */}
+            {isGlobalManager && locations.length > 0 && (
+              <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-sm text-sm">
+                <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />
+                <select
+                  className="bg-transparent text-gray-700 outline-none text-xs font-medium cursor-pointer"
+                  value={locationFilter}
+                  onChange={e => {
+                    setLocationFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value="ALL">Toàn bộ chi nhánh ({locations.length})</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={String(loc.id)}>{loc.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Huy hiệu chi nhánh cho Location Manager */}
+            {isLocationManager && (
+              <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl px-3 py-1.5 text-xs font-semibold shadow-xs">
+                <MapPin className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Chi nhánh: {user?.locationName || 'Cơ sở của bạn'}</span>
+              </div>
+            )}
 
             {/* Lọc theo ngày */}
             <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-1.5 shadow-sm">
@@ -417,7 +452,11 @@ export default function StaffScheduleManagement() {
                     <label className="block font-medium text-gray-700 mb-1">Cơ sở <span className="text-red-500">*</span></label>
                     <select
                       required
-                      className="w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20 bg-white"
+                      disabled={isLocationManager}
+                      className={clsx(
+                        "w-full border border-gray-300 rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-green-500/20 bg-white",
+                        isLocationManager && "bg-gray-100 text-gray-600 cursor-not-allowed"
+                      )}
                       value={formData.locationId || ''}
                       onChange={e => handleLocationChange(Number(e.target.value))}
                     >
@@ -426,6 +465,11 @@ export default function StaffScheduleManagement() {
                         <option key={loc.id} value={loc.id}>{loc.name}</option>
                       ))}
                     </select>
+                    {isLocationManager && (
+                      <p className="text-[11px] text-gray-500 mt-1 italic">
+                        * Chi nhánh phụ trách của bạn được cố định tự động.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block font-medium text-gray-700 mb-1 flex items-center justify-between">

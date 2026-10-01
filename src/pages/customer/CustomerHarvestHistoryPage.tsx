@@ -4,6 +4,7 @@ import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { customerNavItems as navItems } from './customerNavItems';
 import { harvestHistoryApi, HarvestHistoryItem } from '../../api/harvestHistoryApi';
+import HarvestHistoryDetailModal from '../../components/harvest/HarvestHistoryDetailModal';
 
 export default function CustomerHarvestHistoryPage() {
   const [items, setItems] = useState<HarvestHistoryItem[]>([]);
@@ -12,6 +13,7 @@ export default function CustomerHarvestHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<HarvestHistoryItem | null>(null);
 
   useEffect(() => {
     harvestHistoryApi.getMyHistory()
@@ -82,6 +84,12 @@ export default function CustomerHarvestHistoryPage() {
                       }>
                         {item.harvestMethod === 'SELF' ? 'Tự thu hoạch' : 'Nhân viên thu hoạch'}
                       </span>
+                      <button
+                        onClick={() => setSelectedItem(item)}
+                        className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition"
+                      >
+                        Chi tiết
+                      </button>
                     </div>
                   </div>
 
@@ -196,6 +204,12 @@ export default function CustomerHarvestHistoryPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL CHI TIẾT ĐỢT THU HOẠCH */}
+      <HarvestHistoryDetailModal
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+      />
     </DashboardLayout>
   );
 }
