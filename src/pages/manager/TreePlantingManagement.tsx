@@ -132,8 +132,9 @@ export default function TreePlantingManagement() {
       toast.success(`Đã ${newStatus === 'APPROVED' ? 'Phê duyệt' : 'Từ chối'} yêu cầu thành công!`);
       setIsModalOpen(false);
       fetchData();
-    } catch (err) {
-      toast.error('Xử lý thất bại. Vui lòng thử lại sau.');
+    } catch (err: any) {
+      const errorMsg = err?.response?.data?.message || 'Xử lý thất bại. Vui lòng thử lại sau.';
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
