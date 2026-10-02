@@ -558,7 +558,7 @@ export default function EquipmentManagement() {
                     <td className="p-4">
                       <div className="font-medium text-gray-700 flex items-center gap-1.5">
                         <Layers className="w-4 h-4 text-gray-400" />
-                        {item.pillarId ? (item.pillarCode ? `Trụ: ${item.pillarCode}` : `Trụ #${item.pillarId}`) : <span className="text-gray-500 italic">📦 Cất kho (Chưa gắn trụ)</span>}
+                        {item.status === 'IN_USE' && item.pillarId ? (item.pillarCode ? `Trụ: ${item.pillarCode}` : `Trụ #${item.pillarId}`) : <span className="text-gray-500 italic">📦 Cất kho (Chưa gắn trụ)</span>}
                       </div>
                       <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3 text-emerald-600" />
@@ -794,7 +794,14 @@ export default function EquipmentManagement() {
       <CustomDropdown
         icon={<Layers className="w-4 h-4 text-green-600 shrink-0" />}
         value={formData.pillarId ?? ''}
-        onChange={(val: any) => setFormData({...formData, pillarId: val ? Number(val) : undefined})}
+        onChange={(val: any) => {
+          const pid = val ? Number(val) : undefined;
+          setFormData(prev => ({
+            ...prev,
+            pillarId: pid,
+            status: pid ? 'IN_USE' : 'AVAILABLE'
+          }));
+        }}
         options={[
           { value: '', label: '📦 Cất kho (Chưa gắn vào trụ nào)' },
           ...formPillarOptions.map((p: any) => ({
@@ -910,7 +917,14 @@ export default function EquipmentManagement() {
                       <select
                         className="w-full border border-gray-300 rounded-xl p-2.5 focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none bg-white"
                         value={formData.status || 'AVAILABLE'}
-                        onChange={e => setFormData({...formData, status: e.target.value})}
+                        onChange={e => {
+                          const newStatus = e.target.value;
+                          setFormData(prev => ({
+                            ...prev,
+                            status: newStatus,
+                            pillarId: (newStatus === 'AVAILABLE' || newStatus === 'MAINTENANCE' || newStatus === 'BROKEN') ? undefined : prev.pillarId
+                          }));
+                        }}
                       >
                         <option value="AVAILABLE">Sẵn sàng trong kho (Available)</option>
                         <option value="MAINTENANCE">Tạm ngưng / Bảo trì (Maintenance)</option>
