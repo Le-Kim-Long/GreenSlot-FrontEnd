@@ -9,6 +9,7 @@ import {
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
+import { treePlantingApi } from '../../api/TreePlantingApi';
 import { customerNavItems as navItems } from './customerNavItems';
 import type { PillarInfo, PaymentTransactionInfo } from '../../types/api';
 import clsx from 'clsx';
@@ -28,6 +29,14 @@ function getExtendedMonths(vnpTxnRef: string): number | null {
   if (parts?.[0] !== 'EXT') return null;
   const months = Number(parts[2]);
   return Number.isFinite(months) ? months : null;
+}
+
+// Hóa đơn mua giống đã thanh toán nhưng yêu cầu trồng cây bị từ chối → chờ ban quản lý hoàn tiền
+function isRefundPending(txn: PaymentTransactionInfo, rejectedRequestIds: Set<number>): boolean {
+  if (!txn.vnpTxnRef?.startsWith('PLANT_')) return false;
+  if (txn.status !== 'SUCCESS' && txn.status !== 'PAID') return false;
+  const requestId = Number(txn.vnpTxnRef.split('_')[1]);
+  return Number.isFinite(requestId) && rejectedRequestIds.has(requestId);
 }
 
 type FilterKind = 'ALL' | 'BOOK' | 'EXTEND' | 'PLANT' | 'ADD_PILLAR';
@@ -58,17 +67,22 @@ export default function PaymentHistoryPage() {
   const [pageSize, setPageSize] = useState(10);
   const [selectedTxn, setSelectedTxn] = useState<DetailedTransaction | null>(null);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [rejectedPlantRequestIds, setRejectedPlantRequestIds] = useState<Set<number>>(new Set());
   const toast = useToast();
 
   useEffect(() => {
     bookingApi.getHistory()
       .then(setRentals)
       .finally(() => setLoading(false));
+    treePlantingApi.getMyRequests()
+      .then(reqs => setRejectedPlantRequestIds(new Set(reqs.filter(r => r.status === 'REJECTED').map(r => r.id))))
+      .catch(() => setRejectedPlantRequestIds(new Set()));
   }, []);
 
   const allTransactions: DetailedTransaction[] = useMemo(() => rentals.flatMap(r =>
     (r.transactions ?? []).map(t => ({
       ...t,
+      status: isRefundPending(t, rejectedPlantRequestIds) ? 'REFUND_PENDING' : t.status,
       rentalId: r.id,
       slotNumber: r.slotNumber,
       locationName: r.locationName,
@@ -85,7 +99,7 @@ export default function PaymentHistoryPage() {
       kind: getTxnKind(t.vnpTxnRef),
       extendedMonths: getExtendedMonths(t.vnpTxnRef),
     }))
-  ).sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()), [rentals]);
+  ).sort((a, b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()), [rentals, rejectedPlantRequestIds]);
 
   const transactions = filter === 'ALL' ? allTransactions : allTransactions.filter(t => t.kind === filter);
   const totalPages = Math.ceil(transactions.length / pageSize) || 1;
@@ -104,6 +118,7 @@ export default function PaymentHistoryPage() {
     PAID: { label: 'Đã thanh toán', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
     PENDING: { label: 'Chờ thanh toán', cls: 'bg-amber-50 text-amber-700 border-amber-200', icon: Clock },
     FAILED: { label: 'Thanh toán thất bại', cls: 'bg-rose-50 text-rose-700 border-rose-200', icon: XCircle },
+    REFUND_PENDING: { label: 'Chờ hoàn tiền', cls: 'bg-orange-50 text-orange-700 border-orange-200', icon: RotateCw },
   };
 
   const filters: { key: FilterKind; label: string }[] = [
@@ -353,6 +368,11 @@ export default function PaymentHistoryPage() {
                       )}
                       {statusLabel[selectedTxn.status]?.label || selectedTxn.status}
                     </span>
+                    {selectedTxn.status === 'REFUND_PENDING' && (
+                      <p className="mt-2 text-xs text-orange-700 max-w-[220px] ml-auto">
+                        Yêu cầu trồng cây bị từ chối. Ban quản lý sẽ hoàn tiền qua STK ngân hàng trong vòng 24h làm việc.
+                      </p>
+                    )}
                   </div>
                 </div>
 
