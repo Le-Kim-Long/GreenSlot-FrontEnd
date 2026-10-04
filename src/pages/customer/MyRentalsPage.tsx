@@ -472,19 +472,56 @@ export default function MyRentalsPage() {
                           </div>
                           <div className="font-bold text-green-600 mt-1">{rental.totalPrice.toLocaleString('vi-VN')}đ</div>
 
-                          {rental.status === 'ACTIVE' && rental.treeName && rental.expectedHarvestAt && !rental.harvestNotifiedAt && (
-                            <div className="text-sm text-gray-600 mt-2 flex items-center gap-1.5">
-                              <Sprout className="w-3.5 h-3.5 text-green-600" />
-                              Đang trồng <span className="font-semibold text-gray-800">{rental.treeName}</span> · Dự kiến thu hoạch:{' '}
-                              <span className="font-semibold text-gray-800">
-                                {new Date(rental.expectedHarvestAt).toLocaleDateString('vi-VN')}
-                              </span>
-                              {(() => {
-                                const daysLeft = Math.ceil((new Date(rental.expectedHarvestAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                                return daysLeft > 0 ? <span className="text-gray-400">(còn {daysLeft} ngày)</span> : null;
-                              })()}
-                            </div>
-                          )}
+                          {rental.status === 'ACTIVE' && !rental.harvestNotifiedAt && (() => {
+                            const pillarsWithTrees = (rental.pillars || []).filter(
+                              (p: any) => p.treeName && p.pillarCode !== 'arduino-greenhouse-01'
+                            );
+                            const hasAnyTree = Boolean(rental.treeName) || pillarsWithTrees.length > 0;
+
+                            if (!hasAnyTree) {
+                              return (
+                                <div className="text-sm text-gray-400 mt-2 flex items-center gap-1.5">
+                                  <Sprout className="w-3.5 h-3.5 text-gray-300" />
+                                  Chưa trồng cây nào trên ô này
+                                </div>
+                              );
+                            }
+
+                            if (pillarsWithTrees.length > 1) {
+                              return (
+                                <div className="text-sm text-gray-600 mt-2 flex items-start gap-1.5 flex-wrap">
+                                  <Sprout className="w-3.5 h-3.5 text-green-600 mt-0.5" />
+                                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                                    {pillarsWithTrees.map((p: any) => (
+                                      <span key={p.id || p.pillarCode}>
+                                        {p.pillarCode}: <span className="font-semibold text-gray-800">{p.treeName}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            }
+
+                            const treeName = rental.treeName || pillarsWithTrees[0]?.treeName;
+                            return (
+                              <div className="text-sm text-gray-600 mt-2 flex items-center gap-1.5 flex-wrap">
+                                <Sprout className="w-3.5 h-3.5 text-green-600" />
+                                Đang trồng <span className="font-semibold text-gray-800">{treeName}</span>
+                                {rental.expectedHarvestAt && (
+                                  <>
+                                    · Dự kiến thu hoạch:{' '}
+                                    <span className="font-semibold text-gray-800">
+                                      {new Date(rental.expectedHarvestAt).toLocaleDateString('vi-VN')}
+                                    </span>
+                                    {(() => {
+                                      const daysLeft = Math.ceil((new Date(rental.expectedHarvestAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                      return daysLeft > 0 ? <span className="text-gray-400">(còn {daysLeft} ngày)</span> : null;
+                                    })()}
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                           {rental.status === 'ACTIVE' && rental.harvestNotifiedAt && !rental.harvestDecision && (
                             <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
