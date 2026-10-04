@@ -434,7 +434,7 @@ export default function MyRentalsPage() {
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     {uniquePillars.map((p: any) => (
                                       <span key={p.id || p.pillarCode} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                        Trụ: {p.pillarCode}
+                                        Trụ: {p.pillarCode} {p.treeName ? `(${p.treeName})` : ''}
                                       </span>
                                     ))}
                                   </div>
@@ -498,6 +498,18 @@ export default function MyRentalsPage() {
                                       </span>
                                     ))}
                                   </div>
+                                  {rental.expectedHarvestAt && (
+                                    <span className="text-xs text-gray-500 w-full mt-0.5 ml-5">
+                                      · Dự kiến thu hoạch:{' '}
+                                      <span className="font-semibold text-gray-800">
+                                        {new Date(rental.expectedHarvestAt).toLocaleDateString('vi-VN')}
+                                      </span>
+                                      {(() => {
+                                        const daysLeft = Math.ceil((new Date(rental.expectedHarvestAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                        return daysLeft > 0 ? <span className="text-gray-400"> (còn {daysLeft} ngày)</span> : null;
+                                      })()}
+                                    </span>
+                                  )}
                                 </div>
                               );
                             }
