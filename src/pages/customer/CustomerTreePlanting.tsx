@@ -320,6 +320,11 @@ export default function CustomerTreePlanting() {
 
   const selectedPillar = selectedRental?.pillars?.find(p => p.id === Number(formData.targetPillarId));
   const pillarCount = selectedPillar ? 1 : (selectedRental?.pillars?.length || selectedRental?.pillarCodes?.length || 1);
+  // Khi đã chọn 1 trụ cụ thể, chỉ chặn nếu CHÍNH trụ đó đang có cây — không chặn theo cả ô,
+  // để cho phép trồng giống khác nhau trên từng trụ trống trong cùng 1 ô.
+  const blockedByExistingTree = formData.targetPillarId
+    ? Boolean(selectedPillar?.treeName)
+    : hasActiveTree;
 
   const formatPillarTypeLabel = (p?: { pillarType?: string; capacityHoles?: number }) => {
     if (!p) return 'Trụ';
@@ -786,17 +791,18 @@ export default function CustomerTreePlanting() {
                         -- Toàn bộ các trụ trong ô ({selectedRental.pillars.length} trụ)
                         {selectedTree ? ` • Tổng: ${Math.round(selectedRental.pillars.reduce((acc, p) => acc + getTreePriceForPillar(selectedTree, p), 0)).toLocaleString('vi-VN')} VNĐ` : ''} --
                       </option>
-                      {selectedRental.pillars.map((pillar) => {
+                      {selectedRental.pillars.map((pillar: any) => {
                         const pillarPrice = selectedTree ? getTreePriceForPillar(selectedTree, pillar) : 0;
                         return (
                           <option key={pillar.id} value={pillar.id}>
                             Trụ {pillar.pillarCode} ({formatPillarTypeLabel(pillar)}){selectedTree ? ` - ${Math.round(pillarPrice).toLocaleString('vi-VN')} VNĐ` : ''}
+                            {pillar.treeName ? ` · Đang trồng: ${pillar.treeName}` : ' · Còn trống'}
                           </option>
                         );
                       })}
                     </select>
                     <span className="text-[11px] text-gray-400 mt-1 block">
-                      Bạn có thể chọn gieo giống cây này cho 1 trụ cụ thể (tỷ lệ 1-1) hoặc gieo đồng loạt cho tất cả các trụ đã thuê.
+                      Bạn có thể chọn gieo giống cây này cho 1 trụ cụ thể còn trống (để mỗi trụ trồng giống khác nhau) hoặc gieo đồng loạt cho tất cả các trụ đã thuê.
                     </span>
                   </div>
                 )}
@@ -865,16 +871,19 @@ export default function CustomerTreePlanting() {
                 </div>
               )}
 
-              {/* CẢNH BÁO ĐỎ NỔI BẬT: BẮT BUỘC THU HOẠCH HẾT TRỤ TRƯỚC KHI TRỒNG MỚI */}
-              {hasActiveTree ? (
+              {/* CẢNH BÁO ĐỎ NỔI BẬT: BẮT BUỘC THU HOẠCH TRỤ ĐANG CÓ CÂY TRƯỚC KHI TRỒNG MỚI */}
+              {blockedByExistingTree ? (
                 <div className="bg-rose-50 border-2 border-rose-400 p-4 rounded-2xl text-xs text-rose-950 flex items-start gap-3 shadow-sm animate-in fade-in duration-200">
                   <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                   <div className="space-y-1.5 flex-1">
                     <p className="font-bold text-sm text-rose-800 flex items-center gap-1.5">
-                      ⚠️ LƯU Ý BẮT BUỘC: Ô vườn đang có vụ rau/cây trồng ({selectedRental?.treeName})
+                      ⚠️ LƯU Ý BẮT BUỘC: {selectedPillar
+                        ? `Trụ ${selectedPillar.pillarCode} đang có vụ rau/cây trồng (${selectedPillar.treeName})`
+                        : `Ô vườn đang có vụ rau/cây trồng (${selectedRental?.treeName})`}
                     </p>
                     <p className="text-rose-700 leading-relaxed text-xs">
-                      Theo quy định của nhà vườn, bạn cần <strong>thu hoạch (hoặc hoàn tất thủ tục thu hoạch sớm)</strong> hết toàn bộ các trụ canh tác trong ô đất này trước khi gửi yêu cầu đăng ký giống cây mới.
+                      Theo quy định của nhà vườn, bạn cần <strong>thu hoạch (hoặc hoàn tất thủ tục thu hoạch sớm)</strong> {selectedPillar ? 'trụ này' : 'hết toàn bộ các trụ canh tác trong ô đất này'} trước khi gửi yêu cầu đăng ký giống cây mới
+                      {selectedPillar ? ', hoặc chọn một trụ khác còn trống ở mục chọn trụ phía trên.' : '.'}
                     </p>
                     <div className="pt-1">
                       <Link
@@ -949,12 +958,12 @@ export default function CustomerTreePlanting() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting || hasActiveTree || isGrowthExceeded || isPillarSelectionRequired || !formData.rentalId || !formData.newTreeId || !formData.reason.trim() || (selectedTree?.quantity != null && selectedTree.quantity <= 0)}
-                  title={hasActiveTree ? "Vui lòng thu hoạch toàn bộ trụ trước khi trồng mới" : undefined}
+                  disabled={isSubmitting || blockedByExistingTree || isGrowthExceeded || isPillarSelectionRequired || !formData.rentalId || !formData.newTreeId || !formData.reason.trim() || (selectedTree?.quantity != null && selectedTree.quantity <= 0)}
+                  title={blockedByExistingTree ? (selectedPillar ? `Trụ ${selectedPillar.pillarCode} cần thu hoạch trước khi trồng giống khác` : "Vui lòng thu hoạch toàn bộ trụ trước khi trồng mới") : undefined}
                   className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition shadow-md shadow-green-600/20 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sprout className="w-4 h-4" />}
-                  <span>{hasActiveTree ? 'Cần thu hoạch trước khi trồng' : 'Gửi yêu cầu ngay'}</span>
+                  <span>{blockedByExistingTree ? 'Cần thu hoạch trước khi trồng' : 'Gửi yêu cầu ngay'}</span>
                 </button>
               </div>
             </form>
