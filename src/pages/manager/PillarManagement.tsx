@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Columns3, Plus, Edit2, X, Search, Trash2, Loader2, Sprout, Layers, AlertCircle } from 'lucide-react';
+import { Columns3, Plus, Edit2, X, Search, Trash2, Loader2, Sprout, Layers, AlertCircle, Cpu } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { managerApi, PillarItem, PillarFormData } from '../../api/managerApi';
 import { treeApi, Tree } from '../../api/treeApi';
+import { equipmentApi, Equipment } from '../../api/equipmentApi';
+import PillarIoTConfigModal from '../../components/manager/PillarIoTConfigModal';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
 
@@ -46,19 +48,23 @@ export default function PillarManagement() {
   const [formError, setFormError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<PillarItem | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [iotPillar, setIotPillar] = useState<PillarItem | null>(null);
 
   const fetchData = async () => {
     try {
-      const [p, l, t, s] = await Promise.all([
+      const [p, l, t, s, eq] = await Promise.all([
         managerApi.getPillars(),
         managerApi.getLocations(),
         treeApi.getTrees().catch(() => []),
         managerApi.getSlots().catch(() => []),
+        equipmentApi.getEquipments().catch(() => []),
       ]);
       setPillars(Array.isArray(p) ? p : []);
       setLocations(Array.isArray(l) ? l : []);
       setTrees(Array.isArray(t) ? t.filter((item: Tree) => item.isActive) : []);
       setSlots(Array.isArray(s) ? s : []);
+      setEquipments(Array.isArray(eq) ? eq : []);
     } catch {
       setError('Không thể tải dữ liệu');
     } finally {
@@ -210,6 +216,7 @@ export default function PillarManagement() {
                 <th className="pb-3 font-medium">Sức chứa & Diện tích</th>
                 <th className="pb-3 font-medium">Giá thuê trụ</th>
                 <th className="pb-3 font-medium">Rau / Cây gán sẵn</th>
+                <th className="pb-3 font-medium">Thiết bị IoT</th>
                 <th className="pb-3 font-medium">Cơ sở</th>
                 <th className="pb-3 font-medium">Trạng thái</th>
                 <th className="pb-3 text-right">Thao tác</th>
@@ -281,6 +288,18 @@ export default function PillarManagement() {
                         <span className="text-xs text-gray-400 italic">Chưa gán giống</span>
                       )}
                     </td>
+                    <td className="py-3.5">
+                      {(() => {
+                        const deviceCount = equipments.filter(eq => eq.pillarId === p.id).length;
+                        return deviceCount > 0 ? (
+                          <span className="inline-flex items-center gap-1 text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 px-2.5 py-1 rounded-xl font-medium">
+                            <Cpu className="w-3.5 h-3.5" /> {deviceCount} thiết bị
+                          </span>
+                        ) : (
+                          <span className="text-xs text-rose-500 font-medium">Chưa gắn IoT</span>
+                        );
+                      })()}
+                    </td>
                     <td className="py-3.5 text-gray-600 text-xs font-medium">{getLocationName(p.locationId)}</td>
                     <td className="py-3.5">
                       <span className={clsx(
@@ -296,6 +315,9 @@ export default function PillarManagement() {
                     </td>
                     <td className="py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => setIotPillar(p)} className="p-2 hover:bg-indigo-50 rounded-xl text-gray-400 hover:text-indigo-600 transition-colors" title="Cấu hình IoT (gắn thiết bị)">
+                          <Cpu className="w-4 h-4" />
+                        </button>
                         <button onClick={() => openEdit(p)} className="p-2 hover:bg-gray-100 rounded-xl text-gray-400 hover:text-green-600 transition-colors" title="Chỉnh sửa">
                           <Edit2 className="w-4 h-4" />
                         </button>
@@ -492,6 +514,18 @@ export default function PillarManagement() {
             )}
           </div>
         </div>
+      )}
+
+      {iotPillar && (
+        <PillarIoTConfigModal
+          pillar={{ id: iotPillar.id, pillarCode: iotPillar.pillarCode, locationId: iotPillar.locationId }}
+          equipments={equipments}
+          onClose={() => setIotPillar(null)}
+          onSaved={() => {
+            setIotPillar(null);
+            fetchData();
+          }}
+        />
       )}
     </DashboardLayout>
   );

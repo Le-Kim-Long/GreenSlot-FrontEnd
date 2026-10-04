@@ -123,6 +123,9 @@ export default function EquipmentManagement() {
     ? pillars.filter((p: any) => String(p.locationId) === selectedLocationId)
     : pillars;
 
+  // Giá trị đặc biệt: Manager thêm thiết bị cho tất cả cơ sở cùng lúc
+  const ALL_LOCATIONS = 'ALL';
+
   // Modal & Form State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Equipment | null>(null);
@@ -327,11 +330,14 @@ export default function EquipmentManagement() {
       return;
     }
 
-    const targetLocationId = formLocationId
-      ? Number(formLocationId)
-      : (user?.locationId ? Number(user.locationId) : undefined);
+    const isAllLocations = !editingItem && formLocationId === ALL_LOCATIONS;
+    const targetLocationId = isAllLocations
+      ? undefined
+      : formLocationId
+        ? Number(formLocationId)
+        : (user?.locationId ? Number(user.locationId) : undefined);
 
-    if (!formData.pillarId && !targetLocationId) {
+    if (!isAllLocations && !formData.pillarId && !targetLocationId) {
       showToast('warning', 'Thiếu thông tin', 'Vui lòng chọn Cơ sở quản lý thiết bị này.');
       return;
     }
@@ -351,10 +357,15 @@ export default function EquipmentManagement() {
     try {
       if (editingItem) {
         await equipmentApi.updateEquipment(editingItem.id, payload);
+      } else if (isAllLocations) {
+        // Kho chung "Tất cả cơ sở": không gắn cơ sở, trụ ở cơ sở nào cũng lấy được
+        await equipmentApi.createEquipment({ ...payload, pillarId: null, status: 'AVAILABLE', locationId: undefined });
       } else {
         await equipmentApi.createEquipment(payload);
       }
-      showToast('success', editingItem ? 'Cập nhật thiết bị thành công!' : 'Thêm thiết bị mới thành công!');
+      showToast('success', editingItem
+        ? 'Cập nhật thiết bị thành công!'
+        : isAllLocations ? 'Đã thêm thiết bị vào kho chung cho tất cả cơ sở!' : 'Thêm thiết bị mới thành công!');
       handleCloseModal();
       fetchData();
     } catch (err: any) {
@@ -562,7 +573,7 @@ export default function EquipmentManagement() {
                       </div>
                       <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3 text-emerald-600" />
-                        {item.locationName || locationNameMap.get(item.locationId ?? -1) || (item.pillarId ? locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1) : undefined) || 'Chưa xác định cơ sở'}
+                        {item.locationName || locationNameMap.get(item.locationId ?? -1) || (item.pillarId ? locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1) : undefined) || '🌐 Tất cả cơ sở'}
                       </div>
                     </td>
                     <td className="p-4">
@@ -770,10 +781,18 @@ export default function EquipmentManagement() {
           icon={<MapPin className="w-4 h-4 text-green-600 shrink-0" />}
           value={formLocationId}
           onChange={(val: any) => handleFormLocationChange(String(val))}
-          options={locations.map((l: any) => ({ value: String(l.id), label: l.name }))}
+          options={[
+            ...(!editingItem ? [{ value: ALL_LOCATIONS, label: '🌐 Tất cả cơ sở' }] : []),
+            ...locations.map((l: any) => ({ value: String(l.id), label: l.name })),
+          ]}
           placeholder="Chọn cơ sở"
           className="w-full"
         />
+        {formLocationId === ALL_LOCATIONS && !editingItem && (
+          <p className="text-[11px] text-emerald-700 mt-1">
+            Thiết bị vào kho chung: trụ ở cơ sở nào cũng lấy được. Thiết bị của 1 cơ sở cụ thể thì chỉ trụ thuộc cơ sở đó mới lấy được.
+          </p>
+        )}
       </div>
     ) : null}
 

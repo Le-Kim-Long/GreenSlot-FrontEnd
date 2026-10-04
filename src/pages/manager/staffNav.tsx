@@ -30,7 +30,7 @@ export const staffNavItems = [
   // Cấu hình cơ sở vật chất & Thiết bị
   { label: 'Cơ sở', path: '/dashboard/staff/locations', icon: <MapPin className="w-full h-full" /> },
   { label: 'Trụ vườn', path: '/dashboard/staff/pillars', icon: <Columns3 className="w-full h-full" /> },
-  { label: 'Quản lý Thiết bị', path: '/dashboard/staff/equipment', icon: <Cpu className="w-full h-full" /> },
+  { label: 'Thiết bị IoT', path: '/dashboard/staff/equipment', icon: <Cpu className="w-full h-full" /> },
   { label: 'Ô vườn', path: '/dashboard/staff/slots', icon: <Grid3X3 className="w-full h-full" /> },
   { label: 'Nhân viên', path: '/dashboard/staff/staffs', icon: <Users className="w-full h-full" /> },
   { label: 'Cây trồng', path: '/dashboard/staff/trees', icon: <Trees className="w-full h-full" /> },
