@@ -17,6 +17,13 @@ export interface Equipment {
   quantity?: number;
 }
 
+export interface PillarEquipmentBinding {
+  equipmentId?: number;
+  newEquipmentName?: string;
+  newSerialNumber?: string;
+  quantity: number;
+}
+
 // Interface cho response trả về từ API Upload ảnh theo Swagger
 export interface EquipmentImageUploadResponse {
   id?: number;
@@ -46,6 +53,10 @@ export const equipmentApi = {
   
   deleteEquipment: (id: number): Promise<any> => 
     apiClient.delete(`/equipment/${id}`).then(r => r.data),
+
+  // Gán nhiều thiết bị IoT vào 1 trụ: lấy từ kho (equipmentId) hoặc khai báo mới (newEquipmentName + newSerialNumber)
+  bindToPillar: (pillarId: number, bindings: PillarEquipmentBinding[]): Promise<Equipment[]> =>
+    apiClient.post(`/equipment/pillar/${pillarId}/bind`, bindings).then(r => r.data),
 
   // Upload ảnh thiết bị lên Firebase Storage qua ImageController (không phải EquipmentController)
   uploadImage: async (file: File): Promise<EquipmentImageUploadResponse> => {
