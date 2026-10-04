@@ -13,6 +13,12 @@ import type {
 
 export type AvailableSlot = AvailableSlotDTO;
 
+// RECORDED: đã ghi nhận quyết định; ALREADY_HARVESTED: trụ đã thu hoạch trước đó, BE chỉ gỡ thông báo treo
+export interface HarvestDecisionResult {
+  status: 'RECORDED' | 'ALREADY_HARVESTED';
+  message?: string;
+}
+
 export const bookingApi = {
   getAvailableSlots: (locationId?: number): Promise<AvailableSlot[]> =>
     apiClient
@@ -48,8 +54,8 @@ export const bookingApi = {
     apiClient.patch(`/bookings/${rentalId}/cancel`).then(() => undefined),
 
   // Khách chọn tự thu hoạch (SELF) hay nhờ nhân viên thu hoạch giúp (STAFF)
-  recordHarvestDecision: (rentalId: number, decision: 'SELF' | 'STAFF', pillarCode?: string, notes?: string): Promise<void> =>
-    apiClient.post(`/bookings/${rentalId}/harvest-decision`, { decision, pillarCode, notes }).then(() => undefined),
+  recordHarvestDecision: (rentalId: number, decision: 'SELF' | 'STAFF', pillarCode?: string, notes?: string): Promise<HarvestDecisionResult> =>
+    apiClient.post<HarvestDecisionResult>(`/bookings/${rentalId}/harvest-decision`, { decision, pillarCode, notes }).then(r => r.data ?? { status: 'RECORDED' }),
 
   downloadPaymentInvoice: async (paymentId: number): Promise<Blob> => {
     const res = await apiClient.get(`/invoices/payment/${paymentId}`, { responseType: 'blob' });

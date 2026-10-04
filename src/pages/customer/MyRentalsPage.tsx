@@ -61,12 +61,19 @@ export default function MyRentalsPage() {
     method?: 'SELF' | 'STAFF';
   }>({ isOpen: false, title: '', message: '' });
 
+  const buildAlreadyHarvestedModal = (pillarCode?: string) => ({
+    isOpen: true,
+    title: 'Trụ này đã được thu hoạch trước đó',
+    message: 'Hệ thống ghi nhận trụ đã thu hoạch xong và hiện chưa có cây mới, nên không cần xác nhận thêm. Thông báo thu hoạch đã được gỡ bỏ.',
+    detail: pillarCode ? `Trụ: ${pillarCode}` : undefined,
+  });
+
   const handleEarlyHarvestSubmit = async () => {
     if (!earlyHarvestModal) return;
     setEarlyHarvestSubmitting(true);
     setEarlyHarvestError('');
     try {
-      await bookingApi.recordHarvestDecision(
+      const result = await bookingApi.recordHarvestDecision(
         earlyHarvestModal.id,
         earlyHarvestMethod,
         earlyHarvestPillar || undefined,
@@ -80,6 +87,10 @@ export default function MyRentalsPage() {
       setEarlyHarvestNotes('');
       setEarlyHarvestPillar('');
       fetchHistory();
+      if (result.status === 'ALREADY_HARVESTED') {
+        setSuccessModal(buildAlreadyHarvestedModal(targetPillarCopy || undefined));
+        return;
+      }
       setSuccessModal({
         isOpen: true,
         title: isSelf ? 'Đã ghi nhận bạn tự thu hoạch thành công!' : 'Đã gửi yêu cầu thu hoạch sớm cho nhân viên!',
@@ -243,8 +254,12 @@ export default function MyRentalsPage() {
   const handleHarvestDecision = async (rentalId: number, decision: 'SELF' | 'STAFF', pillarCode?: string) => {
     setDecidingId(rentalId);
     try {
-      await bookingApi.recordHarvestDecision(rentalId, decision, pillarCode);
+      const result = await bookingApi.recordHarvestDecision(rentalId, decision, pillarCode);
       fetchHistory();
+      if (result.status === 'ALREADY_HARVESTED') {
+        setSuccessModal(buildAlreadyHarvestedModal(pillarCode));
+        return;
+      }
       setSuccessModal({
         isOpen: true,
         title: decision === 'SELF' ? 'Ghi nhận tự thu hoạch thành công!' : 'Đã gửi yêu cầu nhân viên hỗ trợ thu hoạch!',
@@ -254,8 +269,8 @@ export default function MyRentalsPage() {
         detail: pillarCode ? `Trụ thu hoạch: ${pillarCode}` : undefined,
         method: decision,
       });
-    } catch {
-      setError('Ghi nhận lựa chọn thất bại. Vui lòng thử lại.');
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Ghi nhận lựa chọn thất bại. Vui lòng thử lại.');
     } finally {
       setDecidingId(null);
     }
