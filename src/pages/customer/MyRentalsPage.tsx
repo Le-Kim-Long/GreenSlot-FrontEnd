@@ -655,7 +655,7 @@ export default function MyRentalsPage() {
                               >
                                 <Sprout className="w-3.5 h-3.5" /> Trồng cây mới
                               </Link>
-                              {Boolean(rental.treeName || (rental.pillars && rental.pillars.some((p: any) => p.treeName))) && rental.harvestDecision !== 'STAFF' && (
+                              {/* {Boolean(rental.treeName || (rental.pillars && rental.pillars.some((p: any) => p.treeName))) && rental.harvestDecision !== 'STAFF' && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -670,7 +670,7 @@ export default function MyRentalsPage() {
                                 >
                                   <Zap className="w-3.5 h-3.5 text-amber-600" /> Thu hoạch sớm
                                 </button>
-                              )}
+                              )} */}
                               <button
                                 onClick={() => handleOpenAddPillars(rental)}
                                 disabled={availableArea < 1.0}
