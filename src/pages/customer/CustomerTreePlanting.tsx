@@ -214,6 +214,13 @@ export default function CustomerTreePlanting() {
     return false;
   };
 
+  // Khớp quy tắc BE: yêu cầu bị từ chối và có phí giống > 0 → khách được hoàn tiền
+  const isRefundPending = (item: TreePlantingRequest | null | undefined): boolean =>
+    !!item && item.status === 'REJECTED' && Number(item.amount ?? 0) > 0;
+
+  // Dữ liệu cũ có thể lưu lý do dạng chuỗi JSON (vd: "\"\"") → bỏ dấu ngoặc kép thừa
+  const cleanNotes = (notes?: string): string => (notes ?? '').trim().replace(/^"+|"+$/g, '').trim();
+
   const fetchMyRequests = async () => {
     setIsLoading(true);
     try {
@@ -472,9 +479,16 @@ export default function CustomerTreePlanting() {
     }
     if (item.status === 'REJECTED') {
       return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200/60">
-          <XCircle className="w-3.5 h-3.5" /> Từ chối
-        </span>
+        <div className="flex flex-col items-start gap-1">
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200/60">
+            <XCircle className="w-3.5 h-3.5" /> Từ chối
+          </span>
+          {isRefundPending(item) && (
+            <span className="text-[11px] font-medium text-orange-700">
+              Hoàn {Math.round(Number(item.amount)).toLocaleString('vi-VN')}đ trong 24h
+            </span>
+          )}
+        </div>
       );
     }
     if (isRequestPaid(item)) {
@@ -1029,9 +1043,9 @@ export default function CustomerTreePlanting() {
                 <span className="block text-xs font-semibold text-gray-500 uppercase mb-1">Lý do & Ghi chú của bạn:</span>
                 <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-100 text-gray-800">
                   <p className="font-medium">"{selectedDetail.reason}"</p>
-                  {selectedDetail.notes && (
+                  {cleanNotes(selectedDetail.notes) && (
                     <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-200/60">
-                      <strong>Ghi chú:</strong> {selectedDetail.notes}
+                      <strong>Ghi chú:</strong> {cleanNotes(selectedDetail.notes)}
                     </p>
                   )}
                 </div>
@@ -1057,8 +1071,13 @@ export default function CustomerTreePlanting() {
                       {selectedDetail.status === 'APPROVED' ? '🌱 Yêu cầu đã được phê duyệt!' : '⚠️ Yêu cầu chưa thể thực hiện'}
                     </p>
                     <p className="font-medium text-gray-700 bg-white/80 p-2.5 rounded-xl border border-gray-200/40">
-                      "{selectedDetail.notes || (selectedDetail.status === 'APPROVED' ? 'Nhà vườn sẽ sớm tiến hành chuẩn bị cây giống và trồng theo lịch.' : 'Vị trí hoặc giống cây hiện tại chưa đáp ứng điều kiện quy hoạch.')}"
+                      "{cleanNotes(selectedDetail.notes) || (selectedDetail.status === 'APPROVED' ? 'Nhà vườn sẽ sớm tiến hành chuẩn bị cây giống và trồng theo lịch.' : 'Vị trí hoặc giống cây hiện tại chưa đáp ứng điều kiện quy hoạch.')}"
                     </p>
+                    {isRefundPending(selectedDetail) && (
+                      <p className="font-semibold text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-200">
+                        💸 Số tiền {Math.round(Number(selectedDetail.amount)).toLocaleString('vi-VN')} VNĐ đã thanh toán sẽ được hoàn trả. Ban quản lý cơ sở sẽ liên hệ hoàn tiền qua STK ngân hàng trong vòng 24h làm việc.
+                      </p>
+                    )}
                     {selectedDetail.processedByName && (
                       <p className="text-[11px] text-gray-500 text-right pt-1">
                         Xử lý bởi: <strong>{selectedDetail.processedByName}</strong> lúc {new Date(selectedDetail.processedAt || '').toLocaleString('vi-VN')}
