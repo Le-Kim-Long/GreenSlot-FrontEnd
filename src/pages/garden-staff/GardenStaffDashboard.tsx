@@ -4,7 +4,7 @@ import {
   Loader2, Upload, Bell, Eye,
   X, ExternalLink, Sprout, Zap, Wrench, Camera,
   MapPin, Layers, Filter, Play, Search, AlertCircle, Sparkles,
-  Cpu, Image as ImageIcon, FileText, Plus, Trash2, Droplets
+  Cpu, Image as ImageIcon, FileText, Plus, Trash2
 } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
@@ -821,21 +821,6 @@ export default function GardenStaffDashboard() {
                           {/* 6. Thao tác hành động */}
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                              {/* Bật bơm tưới nước nếu là việc khẩn cấp / độ ẩm / tưới nước */}
-                              {(task.taskName?.toLowerCase().includes('tưới') ||
-                                task.taskName?.toLowerCase().includes('moisture') ||
-                                task.taskName?.toLowerCase().includes('độ ẩm') ||
-                                task.description?.toLowerCase().includes('độ ẩm') ||
-                                task.description?.toLowerCase().includes('tưới')) && (
-                                <Link
-                                  to={`/dashboard/garden-staff/pump-control?slotId=${task.targetSlotId || ''}&pillarCode=${task.pillarCodes || ''}`}
-                                  className="btn-secondary text-xs py-1.5 px-2.5 inline-flex items-center gap-1 text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100"
-                                  title="Mở màn hình Điều khiển máy bơm tưới nước cho ô/trụ này"
-                                >
-                                  <Droplets className="w-3 h-3 text-blue-600" /> Bơm tưới
-                                </Link>
-                              )}
-
                               {/* Bắt đầu làm (khi PENDING) */}
                               {task.status === 'PENDING' && (
                                 <button

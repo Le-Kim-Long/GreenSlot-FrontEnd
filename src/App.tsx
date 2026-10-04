@@ -44,7 +44,6 @@ import HarvestHistoryManagement from './pages/manager/HarvestHistoryManagement';
 
 import GardenStaffDashboard from './pages/garden-staff/GardenStaffDashboard';
 import GardenStaffAlerts from './pages/garden-staff/GardenStaffAlert';
-import PumpControl from './pages/garden-staff/PumpControl';
 import MySchedule from './pages/garden-staff/MySchedule';
 import GardenStaffHarvestHistoryPage from './pages/garden-staff/HarvestHistoryPage';
 
@@ -131,7 +130,7 @@ function AppRoutes() {
       <Route path="/dashboard/garden-staff/schedules" element={<ProtectedRoute allowedRoles={['garden_staff']}><MySchedule /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/alerts" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffAlerts /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/monitoring" element={<ProtectedRoute allowedRoles={['garden_staff']}><IoTMonitoringPage /></ProtectedRoute>} />
-      <Route path="/dashboard/garden-staff/pump-control" element={<ProtectedRoute allowedRoles={['garden_staff']}><PumpControl /></ProtectedRoute>} />
+      <Route path="/dashboard/garden-staff/pump-control" element={<Navigate to="/dashboard/garden-staff/alerts" replace />} />
       <Route path="/dashboard/garden-staff/harvest-history" element={<ProtectedRoute allowedRoles={['garden_staff']}><GardenStaffHarvestHistoryPage /></ProtectedRoute>} />
       <Route path="/dashboard/garden-staff/tasks" element={<Navigate to="/dashboard/garden-staff" replace />} />
       <Route path="/dashboard/garden-staff/notifications" element={<ProtectedRoute allowedRoles={['garden_staff']}><CustomerNotificationsPage /></ProtectedRoute>} />
