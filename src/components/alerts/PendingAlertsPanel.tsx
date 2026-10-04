@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import {
   ShieldAlert,
   RefreshCw,
@@ -19,7 +18,6 @@ import {
   ChevronDown,
   Search,
   Zap,
-  Droplets,
 } from 'lucide-react';
 import { alertApi, AlertDTO, AlertProcessingLogDTO, ProcessAlertPayload } from '../../api/alertApi';
 import { managerApi } from '../../api/managerApi';
@@ -659,7 +657,6 @@ export default function PendingAlertsPanel() {
         <div className="space-y-4">
           {paginatedAlerts.map((alert) => {
             const isExpanded = expandedId === alert.id;
-            const isSoilMoisture = (alert.sensorType || alert.alertType || '').toUpperCase().includes('MOISTURE');
 
             return (
               <div key={alert.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:border-gray-200 transition">
@@ -699,18 +696,6 @@ export default function PendingAlertsPanel() {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      {/* Phím tắt Điều khiển máy bơm nếu là cảnh báo độ ẩm đất */}
-                      {isSoilMoisture && (
-                        <Link
-                          to={`/dashboard/garden-staff/pump-control?slotId=${alert.gardenSlotId || ''}&pillarCode=${alert.pillarCode || ''}`}
-                          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold rounded-xl transition bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 shadow-2xs"
-                          title="Mở màn hình Điều khiển máy bơm cho trụ này"
-                        >
-                          <Droplets className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Kích hoạt Bơm</span>
-                        </Link>
-                      )}
-
                       <button
                         type="button"
                         onClick={() => setExpandedId(isExpanded ? null : alert.id)}

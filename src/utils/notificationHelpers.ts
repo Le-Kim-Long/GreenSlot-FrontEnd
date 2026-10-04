@@ -264,7 +264,7 @@ export function getNotificationMeta(type?: string | null, title?: string | null)
       borderClasses: 'border-blue-200',
       badgeLabel: 'Cần tưới cây',
       category: 'iot',
-      defaultActionLabel: 'Xem ô vườn & Bơm',
+      defaultActionLabel: 'Xem cảnh báo',
     };
   }
 
@@ -346,6 +346,11 @@ export function getNotificationTargetUrl(
     rawUrl = rawUrl.replace('/dashboard/customer/iot', '/dashboard/customer/monitoring');
     rawUrl = rawUrl.replace('/dashboard/customer/sensors', '/dashboard/customer/monitoring');
 
+    // Pump control page was removed -> send staff to IoT alerts page
+    if (rawUrl.startsWith('/dashboard/garden-staff/pump-control')) {
+      rawUrl = '/dashboard/garden-staff/alerts';
+    }
+
     // Strip trailing dynamic IDs that don't have dedicated subroutes
     if (rawUrl.startsWith('/dashboard/customer/rentals/')) {
       rawUrl = '/dashboard/customer/rentals';
@@ -369,9 +374,9 @@ export function getNotificationTargetUrl(
     if (t.includes('ALERT') || t.includes('IOT') || t.includes('SENSOR') || text.includes('cảm biến') || text.includes('cảnh báo')) {
       return '/dashboard/garden-staff/alerts';
     }
-    // Pump control & Auto watering
+    // Watering notifications (pump control page removed) -> IoT alerts page
     if (t.startsWith('PUMP_') || t.includes('WATERING') || text.includes('bơm') || text.includes('tưới')) {
-      return '/dashboard/garden-staff/pump-control';
+      return '/dashboard/garden-staff/alerts';
     }
     // Harvest history
     if (
