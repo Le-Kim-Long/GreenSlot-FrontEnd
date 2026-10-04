@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout, PlusCircle, Plus, Minus, Info, Layers, Wifi, Camera, Maximize2, ExternalLink, Zap, CheckCircle2 } from 'lucide-react';
+import { Leaf, CreditCard, Calendar, Clock, Loader2, X, AlertTriangle, Sprout, PlusCircle, Plus, Minus, Info, Layers, Wifi, Camera, Maximize2, ExternalLink, Zap, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
 import { bookingApi, type BookingHistory } from '../../api/bookingApi';
@@ -43,6 +43,7 @@ export default function MyRentalsPage() {
   const [cancelError, setCancelError] = useState('');
   const [decidingId, setDecidingId] = useState<number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [expandedRentalId, setExpandedRentalId] = useState<number | null>(null); // Thêm state quản lý mở rộng chi tiết trụ
 
   // Yêu cầu thu hoạch sớm
   const [earlyHarvestModal, setEarlyHarvestModal] = useState<BookingHistory | null>(null);
@@ -404,6 +405,7 @@ export default function MyRentalsPage() {
                   const st = statusConfig[rental.status] || { label: rental.status, cls: 'badge-gray' };
                   const pay = rental.paymentStatus ? paymentConfig[rental.paymentStatus] : null;
                   const slotArea = rental.slotArea || 10.0;
+                  const isExpanded = expandedRentalId === rental.id; // Kiểm tra xem thẻ này có đang được mở chi tiết hay không
                   let currentUsedArea = (rental.pillars || []).reduce((sum, p) => {
                     const req = p.requiredArea || (p.capacityHoles && p.capacityHoles >= 48 ? 2.0 : (p.capacityHoles && p.capacityHoles >= 36 ? 1.5 : 1.0));
                     return sum + req;
@@ -472,56 +474,19 @@ export default function MyRentalsPage() {
                           </div>
                           <div className="font-bold text-green-600 mt-1">{rental.totalPrice.toLocaleString('vi-VN')}đ</div>
 
-                          {rental.status === 'ACTIVE' && !rental.harvestNotifiedAt && (() => {
-                            const pillarsWithTrees = (rental.pillars || []).filter(
-                              (p: any) => p.treeName && p.pillarCode !== 'arduino-greenhouse-01'
-                            );
-                            const hasAnyTree = Boolean(rental.treeName) || pillarsWithTrees.length > 0;
-
-                            if (!hasAnyTree) {
-                              return (
-                                <div className="text-sm text-gray-400 mt-2 flex items-center gap-1.5">
-                                  <Sprout className="w-3.5 h-3.5 text-gray-300" />
-                                  Chưa trồng cây nào trên ô này
-                                </div>
-                              );
-                            }
-
-                            if (pillarsWithTrees.length > 1) {
-                              return (
-                                <div className="text-sm text-gray-600 mt-2 flex items-start gap-1.5 flex-wrap">
-                                  <Sprout className="w-3.5 h-3.5 text-green-600 mt-0.5" />
-                                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                                    {pillarsWithTrees.map((p: any) => (
-                                      <span key={p.id || p.pillarCode}>
-                                        {p.pillarCode}: <span className="font-semibold text-gray-800">{p.treeName}</span>
-                                      </span>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            }
-
-                            const treeName = rental.treeName || pillarsWithTrees[0]?.treeName;
-                            return (
-                              <div className="text-sm text-gray-600 mt-2 flex items-center gap-1.5 flex-wrap">
-                                <Sprout className="w-3.5 h-3.5 text-green-600" />
-                                Đang trồng <span className="font-semibold text-gray-800">{treeName}</span>
-                                {rental.expectedHarvestAt && (
-                                  <>
-                                    · Dự kiến thu hoạch:{' '}
-                                    <span className="font-semibold text-gray-800">
-                                      {new Date(rental.expectedHarvestAt).toLocaleDateString('vi-VN')}
-                                    </span>
-                                    {(() => {
-                                      const daysLeft = Math.ceil((new Date(rental.expectedHarvestAt!).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-                                      return daysLeft > 0 ? <span className="text-gray-400">(còn {daysLeft} ngày)</span> : null;
-                                    })()}
-                                  </>
-                                )}
-                              </div>
-                            );
-                          })()}
+                          {rental.status === 'ACTIVE' && rental.treeName && rental.expectedHarvestAt && !rental.harvestNotifiedAt && (
+                            <div className="text-sm text-gray-600 mt-2 flex items-center gap-1.5">
+                              <Sprout className="w-3.5 h-3.5 text-green-600" />
+                              Đang trồng <span className="font-semibold text-gray-800">{rental.treeName}</span> · Dự kiến thu hoạch:{' '}
+                              <span className="font-semibold text-gray-800">
+                                {new Date(rental.expectedHarvestAt).toLocaleDateString('vi-VN')}
+                              </span>
+                              {(() => {
+                                const daysLeft = Math.ceil((new Date(rental.expectedHarvestAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                return daysLeft > 0 ? <span className="text-gray-400">(còn {daysLeft} ngày)</span> : null;
+                              })()}
+                            </div>
+                          )}
 
                           {rental.status === 'ACTIVE' && rental.harvestNotifiedAt && !rental.harvestDecision && (
                             <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-3.5 shadow-sm">
@@ -611,18 +576,18 @@ export default function MyRentalsPage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex flex-row sm:flex-col gap-2 h-fit">
+                        <div className="flex flex-row sm:flex-col gap-2 h-fit flex-wrap sm:flex-nowrap">
                           {rental.status === 'ACTIVE' && (
                             <>
                               <Link
                                 to={`/dashboard/customer/monitoring?pillarCode=${rental.pillars?.[0]?.pillarCode || rental.pillarCode || ''}`}
-                                className="text-xs flex items-center gap-1.5 h-fit px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 text-indigo-700 hover:bg-indigo-100 font-semibold transition-colors shadow-2xs"
+                                className="text-xs flex items-center gap-1.5 h-fit px-3 py-1.5 rounded-lg border border-indigo-200 bg-indigo-50/80 text-indigo-700 hover:bg-indigo-100 font-semibold transition-colors shadow-2xs w-full sm:w-auto justify-center"
                               >
                                 <Wifi className="w-3.5 h-3.5 text-indigo-600" /> Theo dõi cảm biến
                               </Link>
                               <Link
                                 to={`/dashboard/customer/tree-planting?rentalId=${rental.id}`}
-                                className="btn-primary text-xs flex items-center gap-1 h-fit shadow-xs bg-emerald-600 hover:bg-emerald-700"
+                                className="btn-primary text-xs flex items-center gap-1 h-fit shadow-xs bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto justify-center"
                               >
                                 <Sprout className="w-3.5 h-3.5" /> Trồng cây mới
                               </Link>
@@ -636,7 +601,7 @@ export default function MyRentalsPage() {
                                     setEarlyHarvestNotes('');
                                     setEarlyHarvestError('');
                                   }}
-                                  className="text-xs flex items-center gap-1.5 h-fit px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-semibold transition-colors shadow-2xs"
+                                  className="text-xs flex items-center gap-1.5 h-fit px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-semibold transition-colors shadow-2xs w-full sm:w-auto justify-center"
                                   title="Gửi yêu cầu thu hoạch sớm cây trồng trên ô hoặc trụ"
                                 >
                                   <Zap className="w-3.5 h-3.5 text-amber-600" /> Thu hoạch sớm
@@ -647,7 +612,7 @@ export default function MyRentalsPage() {
                                 disabled={availableArea < 1.0}
                                 title={availableArea < 1.0 ? "Ô vườn đã hết diện tích trống để đặt thêm trụ" : "Thuê thêm trụ khí canh vào ô vườn"}
                                 className={clsx(
-                                  "text-xs flex items-center gap-1 h-fit px-3 py-1.5 rounded-lg border font-medium transition-colors",
+                                  "text-xs flex items-center gap-1 h-fit px-3 py-1.5 rounded-lg border font-medium transition-colors w-full sm:w-auto justify-center",
                                   availableArea >= 1.0
                                     ? "border-emerald-600 text-emerald-700 hover:bg-emerald-50 cursor-pointer"
                                     : "border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed"
@@ -656,32 +621,79 @@ export default function MyRentalsPage() {
                                 <PlusCircle className="w-3.5 h-3.5" /> Thuê thêm trụ
                               </button>
                               <button onClick={() => { setExtendModal(rental); setExtendMonths(1); setExtendMonthsInput('1'); setExtendMonthsError(''); setExtendError(''); }}
-                                className="btn-outline-green text-xs flex items-center gap-1 h-fit">
+                                className="btn-outline-green text-xs flex items-center gap-1 h-fit w-full sm:w-auto justify-center">
                                 <Clock className="w-3.5 h-3.5" /> Gia hạn
                               </button>
                               <button onClick={() => setReportModal(rental)}
-                                className="btn-outline-red text-xs flex items-center gap-1 h-fit mt-2 sm:mt-0">
+                                className="btn-outline-red text-xs flex items-center gap-1 h-fit mt-2 sm:mt-0 w-full sm:w-auto justify-center">
                                 <AlertTriangle className="w-3.5 h-3.5" /> Báo cáo sự cố
+                              </button>
+                              
+                              {/* Nút Xem chi tiết trụ canh tác */}
+                              <button onClick={() => setExpandedRentalId(isExpanded ? null : rental.id)}
+                                className="text-xs flex items-center justify-center gap-1.5 h-fit px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 font-semibold transition-colors shadow-2xs mt-2 sm:mt-0 w-full sm:w-auto">
+                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                {isExpanded ? 'Ẩn chi tiết' : 'Chi tiết trụ'}
                               </button>
                             </>
                           )}
                           {(rental.status === 'PENDING' || rental.paymentStatus === 'PENDING') && rental.status !== 'CANCELLED' && (
                             <>
                               <button onClick={() => handlePay(rental)} disabled={payingId === rental.id}
-                                className="btn-primary text-xs flex items-center gap-1 h-fit">
+                                className="btn-primary text-xs flex items-center gap-1 h-fit w-full sm:w-auto justify-center">
                                 {payingId === rental.id
                                   ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                   : <CreditCard className="w-3.5 h-3.5" />}
                                 Thanh toán
                               </button>
                               <button onClick={() => setCancelModal(rental)}
-                                className="btn-outline-red text-xs flex items-center gap-1 h-fit">
+                                className="btn-outline-red text-xs flex items-center gap-1 h-fit mt-2 sm:mt-0 w-full sm:w-auto justify-center">
                                 <X className="w-3.5 h-3.5" /> Hủy
                               </button>
                             </>
                           )}
                         </div>
                       </div>
+
+                      {/* Phần hiển thị chi tiết trụ (Thêm mới dựa trên FE Mobile) */}
+                      {isExpanded && rental.pillars && rental.pillars.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <h4 className="text-sm font-bold text-gray-800 flex items-center gap-1.5 mb-3">
+                            <Sprout className="w-4 h-4 text-green-600" />
+                            Chi tiết trụ canh tác
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {rental.pillars.map((p: any, idx: number) => (
+                              <div key={idx} className="bg-white border border-gray-100 shadow-xs rounded-xl p-3 flex items-center justify-between hover:border-green-200 transition-colors">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 bg-green-50 border border-green-100 rounded-lg flex items-center justify-center">
+                                    <Leaf className="w-4 h-4 text-green-600" />
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-bold text-gray-900">Trụ {p.pillarCode}</div>
+                                    <div className="text-xs text-green-700 font-medium flex items-center gap-1 mt-0.5">
+                                      <Sprout className="w-3 h-3 text-green-600" />
+                                      {p.treeName || rental.treeName || 'Chưa trồng cây'}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Link
+                                    to={`/dashboard/customer/monitoring?pillarCode=${p.pillarCode}`}
+                                    className="w-8 h-8 bg-indigo-50 border border-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 hover:bg-indigo-100 hover:text-indigo-700 transition-colors"
+                                    title="Theo dõi cảm biến"
+                                  >
+                                    <Wifi className="w-4 h-4" />
+                                  </Link>
+                                  <span className="text-[10px] font-bold text-gray-600 bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-md uppercase">
+                                    {p.pillarType || 'MEDIUM'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -709,6 +721,7 @@ export default function MyRentalsPage() {
         </div>
       )}
 
+      {/* CÁC MODAL HIỆN TẠI GIỮ NGUYÊN */}
       {extendModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
