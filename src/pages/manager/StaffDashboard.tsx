@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Columns3, Grid3X3, Wrench, DollarSign, TrendingUp, Calendar, ArrowRight, ClipboardList, User, ShieldAlert, CheckCircle2, AlertTriangle, PieChart as PieIcon, Cpu } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { MapPin, Columns3, Grid3X3, Wrench, DollarSign, TrendingUp, Calendar, ArrowRight, ClipboardList, Layers, User, ShieldAlert, CheckCircle2, AlertTriangle, PieChart as PieIcon, Cpu } from 'lucide-react';import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import { useAuth } from '../../context/AuthContext';
 import { managerApi, LocationDashboardMetrics, RevenueAnalyticsResponse } from '../../api/managerApi';
@@ -27,7 +26,7 @@ export default function StaffDashboard() {
   const { user } = useAuth();
   const [stats, setStats] = useState<Stats>({ locations: 0, pillars: 0, slots: 0, availableSlots: 0, serviceCategories: 0, serviceTypes: 0, activeRentals: 0, totalRevenue: 0, totalTasks: 0 });
   
-  // State Mới cho Chức năng theo Cơ sở (Location Metrics)
+  // 👉 State Mới cho Chức năng theo Cơ sở (Location Metrics)
   const [locationsList, setLocationsList] = useState<any[]>([]);
   const [selectedLocationId, setSelectedLocationId] = useState<number>(() => user?.locationId || 1);
   const [metrics, setMetrics] = useState<LocationDashboardMetrics | null>(null);
@@ -165,7 +164,7 @@ export default function StaffDashboard() {
             </div>
           )}
 
-          {/* 2. KHU VỰC SỐ LIỆU CHUYÊN SOU THEO CƠ SỞ (LOCATION METRICS) */}
+          {/* 💥 2. KHU VỰC SỐ LIỆU CHUYÊN SOU THEO CƠ SỞ (LOCATION METRICS) */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm mb-6">
             
             {/* Thanh chọn Cơ sở & Thời gian */}
@@ -210,7 +209,7 @@ export default function StaffDashboard() {
             ) : metrics ? (
               <>
                 {/* 4 Thẻ Chỉ Số Nhanh của riêng Cơ Sở */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                   <div className="bg-gray-50/80 rounded-xl p-4 border border-gray-100">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-green-600 shrink-0"><CheckCircle2 className="w-5 h-5"/></div>
@@ -220,7 +219,15 @@ export default function StaffDashboard() {
                       </div>
                     </div>
                   </div>
-
+                                    <div className="bg-gray-50/80 rounded-xl p-4 border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 shrink-0"><Layers className="w-5 h-5"/></div>
+                      <div>
+                        <div className="text-xs text-gray-400 font-semibold uppercase">Tổng ô / Trống</div>
+                        <div className="text-xl font-black text-gray-900">{totalSlots} <span className="text-xs font-normal text-gray-500">/ {availableSlotsCount} trống</span></div>
+                      </div>
+                    </div>
+                  </div>
                   <div className="bg-gray-50/80 rounded-xl p-4 border border-gray-100">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0"><AlertTriangle className="w-5 h-5"/></div>
@@ -242,7 +249,7 @@ export default function StaffDashboard() {
                   </div>
                 </div>
 
-                {/* 2 BIỂU ĐỒ SONG SONG: Tỷ lệ lấp đầy & Doanh thu cơ sở */}
+                {/* 💥 2 BIỂU ĐỒ SONG SONG: Tỷ lệ lấp đầy & Doanh thu cơ sở */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                   <div className="bg-gray-50/50 rounded-2xl p-5 border border-gray-100 flex flex-col justify-between">
                     <div className="flex items-center gap-2 mb-4">
@@ -284,7 +291,7 @@ export default function StaffDashboard() {
                   </div>
                 </div>
 
-                {/* 2 BẢNG DỮ LIỆU CỦA CƠ SỞ: Lượt thuê & Cảnh báo */}
+                {/* 💥 2 BẢNG DỮ LIỆU CỦA CƠ SỞ: Lượt thuê & Cảnh báo */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Bảng Lượt thuê */}
                   <div className="border border-gray-100 rounded-xl overflow-hidden">
