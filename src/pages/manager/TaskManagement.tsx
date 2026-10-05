@@ -14,7 +14,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import DashboardLayout from '../../components/common/DashboardLayout';
 import Pagination from '../../components/common/Pagination';
-import { staffNavItems } from './staffNav'; 
+import { staffNavItems } from './staffNav';
+import { localizeIssueText } from '../../utils/taskText'; 
 
 // Interfaces
 interface Task {
@@ -116,8 +117,8 @@ export default function TaskManagement() {
       // Map dữ liệu từ API để khớp với UI
       const formattedTasks = tasksData.map((t: any) => ({
         id: t.id,
-        name: t.taskName,
-        description: t.description || '',
+        name: localizeIssueText(t.taskName),
+        description: localizeIssueText(t.description),
         type: t.taskType || 'MAINTENANCE',
         status: t.status || 'PENDING',
         slotId: t.targetSlotId,
@@ -690,7 +691,7 @@ export default function TaskManagement() {
               <div className="bg-green-50/60 border border-green-100 p-4 rounded-xl mb-5">
                 <p className="font-semibold text-gray-900 text-base">{selectedTask.name}</p>
                 <div className="flex gap-4 mt-2 text-xs font-medium text-green-700 bg-white inline-flex px-3 py-1.5 rounded-lg border border-green-200">
-                  <span>Loại: {selectedTask.type}</span>
+                  <span>Loại: {TASK_TYPE_MAP[selectedTask.type] || selectedTask.type}</span>
                   <span className="w-px bg-green-200"></span>
                   <span>Ô vườn: {selectedTask.slotNumber}</span>
                 </div>

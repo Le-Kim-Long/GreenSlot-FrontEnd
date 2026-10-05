@@ -15,6 +15,7 @@ import type { GardeningTask, PillarEquipmentBinding } from '../../types/api';
 import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import { gardenStaffNavItems } from './gardenStaffNav';
+import { localizeIssueText } from '../../utils/taskText';
 
 const navItems = gardenStaffNavItems;
 
@@ -128,7 +129,9 @@ export default function GardenStaffDashboard() {
       taskApi.getEligibleEarlyHarvestRentals()
     ])
       .then(([mine, eligible]) => {
-        setTasks((mine || []).sort((a, b) => b.id - a.id));
+        setTasks((mine || [])
+        .map(t => ({ ...t, taskName: localizeIssueText(t.taskName), description: localizeIssueText(t.description) }))
+        .sort((a, b) => b.id - a.id));
         setEligibleRentals(eligible || []);
       })
       .catch(() => setError('Không thể tải danh sách công việc'))
@@ -1728,18 +1731,49 @@ function ReportIssueModal({
 }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => () => { if (imagePreview) URL.revokeObjectURL(imagePreview); }, [imagePreview]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Vui lòng chỉ chọn file hình ảnh (JPG, PNG, WEBP...).');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Dung lượng ảnh tối đa là 5MB.');
+      return;
+    }
+    setError('');
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview('');
+  };
 
   const handleSubmit = async () => {
     if (!title.trim() || !description.trim()) {
       setError('Vui lòng nhập đầy đủ tiêu đề và mô tả sự cố.');
       return;
     }
+    if (!imageFile) {
+      setError('Vui lòng đính kèm ảnh chụp hiện trường sự cố để Quản lý nắm rõ.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
-      await taskApi.reportIssue(task.id, { issueTitle: title, description });
+      const evidenceImageUrl = await taskApi.uploadEvidenceImage(imageFile);
+      await taskApi.reportIssue(task.id, { issueTitle: title.trim(), description: description.trim(), evidenceImageUrl });
       onSuccess();
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Gửi báo cáo sự cố thất bại.');
@@ -1788,6 +1822,37 @@ function ReportIssueModal({
               onChange={e => setDescription(e.target.value)}
               className="input text-sm w-full bg-white resize-none"
             />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-700 mb-1">Ảnh chụp hiện trường <span className="text-rose-500">*</span></label>
+            <div className="flex items-center gap-3">
+              <div className="w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 bg-white flex items-center justify-center overflow-hidden relative group shrink-0">
+                {imagePreview ? (
+                  <>
+                    <img src={imagePreview} alt="Ảnh sự cố" className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      disabled={loading}
+                      className="absolute inset-0 bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      title="Xóa ảnh"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </>
+                ) : (
+                  <ImageIcon className="w-6 h-6 text-gray-400" />
+                )}
+              </div>
+              <label className={clsx(
+                'inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 cursor-pointer shadow-sm transition',
+                loading && 'opacity-50 pointer-events-none'
+              )}>
+                <Camera className="w-4 h-4 text-rose-600" />
+                <span>{imageFile ? 'Chọn ảnh khác' : 'Chụp/Tải ảnh sự cố'}</span>
+                <input type="file" accept="image/*" onChange={handleImageChange} disabled={loading} className="hidden" />
+              </label>
+            </div>
           </div>
         </div>
 
