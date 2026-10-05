@@ -110,8 +110,8 @@ export default function StaffDashboard() {
   const activeRentalsCount = metrics?.activeRentals || 0;
   // 1 ô nhiều trụ có thể có nhiều hợp đồng => đếm số ô, không đếm số hợp đồng
   const rentedSlotsCount = metrics?.rentedSlots ?? activeRentalsCount;
-  const totalSlots = metrics?.totalSlots ?? ((rentedSlotsCount + (metrics?.availableSlots || 0)) || 0);
-  const availableSlotsCount = Math.max(0, totalSlots - rentedSlotsCount);
+  const availableSlotsCount = metrics?.availableSlots ?? 0;
+  const totalSlots = rentedSlotsCount + availableSlotsCount;
 
   const occupancyData = [
     { name: 'Đang cho thuê', value: rentedSlotsCount },
@@ -217,7 +217,7 @@ export default function StaffDashboard() {
                       <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-green-600 shrink-0"><CheckCircle2 className="w-5 h-5"/></div>
                       <div>
                         <div className="text-xs text-gray-400 font-semibold uppercase">Đang cho thuê</div>
-                        <div className="text-xl font-black text-gray-900">{rentedSlotsCount} <span className="text-xs font-normal text-gray-500">ô · {activeRentalsCount} hợp đồng</span></div>
+                        <div className="text-xl font-black text-gray-900">{rentedSlotsCount} <span className="text-xs font-normal text-gray-500">ô</span></div>
                       </div>
                     </div>
                   </div>
