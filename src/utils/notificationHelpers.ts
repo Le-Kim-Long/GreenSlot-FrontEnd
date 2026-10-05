@@ -152,7 +152,7 @@ export function getNotificationMeta(type?: string | null, title?: string | null)
         colorClasses: 'text-amber-600',
         bgClasses: 'bg-amber-50',
         borderClasses: 'border-amber-200',
-        badgeLabel: isEarly ? '⚡ Sẵn sàng thu hoạch sớm' : 'Sẵn sàng thu hoạch',
+        badgeLabel: isEarly ? 'Sẵn sàng thu hoạch sớm' : 'Sẵn sàng thu hoạch',
         category: 'harvest',
         defaultActionLabel: 'Chọn phương án',
       };
@@ -173,7 +173,7 @@ export function getNotificationMeta(type?: string | null, title?: string | null)
       colorClasses: 'text-amber-600',
       bgClasses: 'bg-amber-50',
       borderClasses: 'border-amber-200',
-      badgeLabel: isEarly ? '⚡ Thu hoạch sớm' : 'Thu hoạch',
+      badgeLabel: isEarly ? 'Thu hoạch sớm' : 'Thu hoạch',
       category: 'harvest',
       defaultActionLabel: 'Xem thu hoạch',
     };
@@ -586,13 +586,13 @@ export function formatNotificationTitle(title?: string | null, type?: string | n
     const pillarMatch = trimmed.match(/Trụ\s+([A-Za-z0-9-_]+)/i);
     const slotMatch = trimmed.match(/Ô\s+([A-Za-z0-9-_]+)/i);
     if (pillarMatch && slotMatch) {
-      return `💧 Yêu cầu tưới cây: Trụ ${pillarMatch[1]} (Ô ${slotMatch[1]})`;
+      return `Yêu cầu tưới cây: Trụ ${pillarMatch[1]} (Ô ${slotMatch[1]})`;
     } else if (pillarMatch) {
-      return `💧 Cần tưới cây: Trụ ${pillarMatch[1]}`;
+      return `Cần tưới cây: Trụ ${pillarMatch[1]}`;
     } else if (slotMatch) {
-      return `💧 Cần tưới cây: Ô ${slotMatch[1]}`;
+      return `Cần tưới cây: Ô ${slotMatch[1]}`;
     }
-    return '💧 Cảm biến cảnh báo: Cần tưới cây';
+    return 'Cảm biến cảnh báo: Cần tưới cây';
   }
 
   // General clean up of "tự động tưới" if found anywhere in title

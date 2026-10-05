@@ -428,7 +428,7 @@ export default function CustomerTreePlanting() {
         window.location.href = res.paymentUrl;
         return;
       }
-      toast.success('🎉 Đã gửi yêu cầu trồng cây thành công! Hệ thống nhà vườn sẽ sớm kiểm tra và phản hồi.');
+      toast.success('Đã gửi yêu cầu trồng cây thành công! Hệ thống nhà vườn sẽ sớm kiểm tra và phản hồi.');
       setIsCreateModalOpen(false);
       fetchMyRequests();
     } catch (err: any) {
@@ -721,7 +721,7 @@ export default function CustomerTreePlanting() {
         )}
       </div>
 
-      {/* 💥 MODAL 1: TẠO YÊU CẦU TRỒNG CÂY MỚI (POST /api/tree-planting) */}
+      {/* MODAL 1: TẠO YÊU CẦU TRỒNG CÂY MỚI (POST /api/tree-planting) */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
@@ -855,7 +855,7 @@ export default function CustomerTreePlanting() {
                           Giống cây <strong>{selectedTree.treeName}</strong> cần ít nhất <strong>{growthDays} ngày</strong> để phát triển / thu hoạch, nhưng thời hạn thuê ô vườn <strong>{selectedRental.slotNumber}</strong> chỉ còn <strong>{remainingDays} ngày</strong>.
                         </p>
                         <p className="mt-1 font-semibold text-red-700">
-                          👉 Vui lòng gia hạn thêm thời gian thuê ô vườn trước khi đăng ký giống cây này.
+                          Vui lòng gia hạn thêm thời gian thuê ô vườn trước khi đăng ký giống cây này.
                         </p>
                       </div>
                     </div>
@@ -891,7 +891,7 @@ export default function CustomerTreePlanting() {
                   <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                   <div className="space-y-1.5 flex-1">
                     <p className="font-bold text-sm text-rose-800 flex items-center gap-1.5">
-                      ⚠️ LƯU Ý BẮT BUỘC: {selectedPillar
+                      LƯU Ý BẮT BUỘC: {selectedPillar
                         ? `Trụ ${selectedPillar.pillarCode} đang có vụ rau/cây trồng (${selectedPillar.treeName})`
                         : `Ô vườn đang có vụ rau/cây trồng (${selectedRental?.treeName})`}
                     </p>
@@ -985,7 +985,7 @@ export default function CustomerTreePlanting() {
         </div>
       )}
 
-      {/* 💥 MODAL 2: XEM CHI TIẾT & PHẢN HỒI TỪ QUẢN LÝ */}
+      {/* MODAL 2: XEM CHI TIẾT & PHẢN HỒI TỪ QUẢN LÝ */}
       {selectedDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg p-6 relative">
@@ -1068,14 +1068,14 @@ export default function CustomerTreePlanting() {
                     selectedDetail.status === 'APPROVED' ? "bg-green-50/80 border-green-100 text-green-900" : "bg-red-50/80 border-red-100 text-red-900"
                   )}>
                     <p className="font-bold text-sm">
-                      {selectedDetail.status === 'APPROVED' ? '🌱 Yêu cầu đã được phê duyệt!' : '⚠️ Yêu cầu chưa thể thực hiện'}
+                      {selectedDetail.status === 'APPROVED' ? 'Yêu cầu đã được phê duyệt!' : 'Yêu cầu chưa thể thực hiện'}
                     </p>
                     <p className="font-medium text-gray-700 bg-white/80 p-2.5 rounded-xl border border-gray-200/40">
                       "{cleanNotes(selectedDetail.notes) || (selectedDetail.status === 'APPROVED' ? 'Nhà vườn sẽ sớm tiến hành chuẩn bị cây giống và trồng theo lịch.' : 'Vị trí hoặc giống cây hiện tại chưa đáp ứng điều kiện quy hoạch.')}"
                     </p>
                     {isRefundPending(selectedDetail) && (
                       <p className="font-semibold text-orange-800 bg-orange-50 p-2.5 rounded-xl border border-orange-200">
-                        💸 Số tiền {Math.round(Number(selectedDetail.amount)).toLocaleString('vi-VN')} VNĐ đã thanh toán sẽ được hoàn trả. Ban quản lý cơ sở sẽ liên hệ hoàn tiền qua STK ngân hàng trong vòng 24h làm việc.
+                        Số tiền {Math.round(Number(selectedDetail.amount)).toLocaleString('vi-VN')} VNĐ đã thanh toán sẽ được hoàn trả. Ban quản lý cơ sở sẽ liên hệ hoàn tiền qua STK ngân hàng trong vòng 24h làm việc.
                       </p>
                     )}
                     {selectedDetail.processedByName && (

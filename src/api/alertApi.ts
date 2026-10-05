@@ -1,7 +1,7 @@
 import apiClient from './axiosConfig';
 
 export interface ProcessAlertPayload {
-  alertId?: number; // 👉 Đã đổi thành optional (?) để không cần truyền ID
+  alertId?: number; // Đã đổi thành optional (?) để không cần truyền ID
   status: string;   // 'RESOLVED' | 'PENDING' | 'IGNORED'
   comment: string;
   evidenceImageUrl?: string;

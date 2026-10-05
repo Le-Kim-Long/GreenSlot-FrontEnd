@@ -28,7 +28,7 @@ export default function LocationManagement() {
   const [editing, setEditing] = useState<Location | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [loadingDetail, setLoadingDetail] = useState(false); // 👉 State loading cho lúc lấy chi tiết
+  const [loadingDetail, setLoadingDetail] = useState(false); // State loading cho lúc lấy chi tiết
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<Location | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -66,7 +66,7 @@ export default function LocationManagement() {
     setShowForm(true);
   };
 
-  // 👉 Cập nhật openEdit thành async để lấy data chi tiết từ Server
+  // Cập nhật openEdit thành async để lấy data chi tiết từ Server
   const openEdit = async (loc: Location) => {
     setError('');
     setEditing(loc); // Đặt tạm thời để tiêu đề Modal hiện chữ "Sửa cơ sở"
@@ -75,7 +75,7 @@ export default function LocationManagement() {
     setLoadingDetail(true);
 
     try {
-      // 💥 Gọi API detail lấy dữ liệu mới nhất
+      // Gọi API detail lấy dữ liệu mới nhất
       const freshLoc = await managerApi.getLocation(loc.id);
       
       setEditing(freshLoc);
@@ -284,7 +284,7 @@ export default function LocationManagement() {
               <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5" /></button>
             </div>
             
-            {/* 👉 Tách UI: Spinner loading vs Form điền liệu */}
+            {/* Tách UI: Spinner loading vs Form điền liệu */}
             {loadingDetail ? (
               <div className="flex flex-col items-center justify-center py-12 text-gray-400 gap-2">
                 <Loader2 className="w-8 h-8 animate-spin text-green-600" />

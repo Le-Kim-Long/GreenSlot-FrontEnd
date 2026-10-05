@@ -106,13 +106,13 @@ export default function HarvestHistoryManagement() {
                 onClick={() => { setMethodFilter('SELF'); setCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-lg transition ${methodFilter === 'SELF' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
               >
-                🌾 Khách tự hái ({items.filter(i => i.harvestMethod === 'SELF').length})
+                Khách tự hái ({items.filter(i => i.harvestMethod === 'SELF').length})
               </button>
               <button
                 onClick={() => { setMethodFilter('STAFF'); setCurrentPage(1); }}
                 className={`px-3 py-1.5 rounded-lg transition ${methodFilter === 'STAFF' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
               >
-                👨‍🌾 Nhân viên hái ({items.filter(i => i.harvestMethod === 'STAFF').length})
+                Nhân viên hái ({items.filter(i => i.harvestMethod === 'STAFF').length})
               </button>
             </div>
 
@@ -200,7 +200,7 @@ export default function HarvestHistoryManagement() {
                         <div className="flex items-center gap-2 mt-1">
                           {item.daysGrown != null && (
                             <span className="text-[11px] text-gray-500">
-                              ⏱️ {item.daysGrown} ngày {item.harvestDays ? `(chu kỳ ${item.harvestDays} ngày)` : ''}
+                              {item.daysGrown} ngày {item.harvestDays ? `(chu kỳ ${item.harvestDays} ngày)` : ''}
                             </span>
                           )}
                           {item.isEarlyHarvest && (

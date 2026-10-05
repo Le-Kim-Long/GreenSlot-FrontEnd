@@ -131,7 +131,7 @@ export default function PillarIoTConfigModal({ pillar, equipments, onClose, onSa
             Thiết bị đang gắn trên trụ ({installedDevices.length}):
           </div>
           {installedDevices.length === 0 ? (
-            <div className="text-[11px] text-rose-600 font-medium">⚠️ Trụ này chưa gắn thiết bị IoT nào.</div>
+            <div className="text-[11px] text-rose-600 font-medium">Trụ này chưa gắn thiết bị IoT nào.</div>
           ) : (
             <div className="flex flex-wrap gap-1.5">
               {installedDevices.map(eq => (
@@ -193,7 +193,7 @@ export default function PillarIoTConfigModal({ pillar, equipments, onClose, onSa
                       <option value="">-- Chọn thiết bị IoT từ kho --</option>
                       {stockItems.map(s => (
                         <option key={s.id} value={s.id}>
-                          {s.equipmentName} (Tồn kho: {s.quantity ?? 1} cái/bộ) (SN: {s.serialNumber || 'N/A'}) {s.locationId == null ? '- 🌐 Tất cả cơ sở' : s.locationName ? `- ${s.locationName}` : ''}
+                          {s.equipmentName} (Tồn kho: {s.quantity ?? 1} cái/bộ) (SN: {s.serialNumber || 'N/A'}) {s.locationId == null ? '- Tất cả cơ sở' : s.locationName ? `- ${s.locationName}` : ''}
                         </option>
                       ))}
                     </select>
@@ -278,7 +278,7 @@ export default function PillarIoTConfigModal({ pillar, equipments, onClose, onSa
         </button>
 
         {error && (
-          <div className="mt-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5">⚠️ {error}</div>
+          <div className="mt-3 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-2.5">{error}</div>
         )}
 
         <div className="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">

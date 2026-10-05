@@ -629,7 +629,7 @@ export default function SlotManagement() {
                   </div>
 
                   <p className="text-[11px] text-emerald-800 mt-2">
-                    💡 Đơn vị tính: <strong>VNĐ/tháng</strong> (ví dụ nhập <code>400000</code> là <strong>400.000đ/tháng</strong>). Khách thuê ô sẽ thanh toán: [Tiền thuê đất] + [Tiền thuê trụ] + [Tiền phôi giống].
+                    Đơn vị tính: <strong>VNĐ/tháng</strong> (ví dụ nhập <code>400000</code> là <strong>400.000đ/tháng</strong>). Khách thuê ô sẽ thanh toán: [Tiền thuê đất] + [Tiền thuê trụ] + [Tiền phôi giống].
                   </p>
                 </div>
 
@@ -653,7 +653,7 @@ export default function SlotManagement() {
                     placeholder="VD: 5.0 (m²)"
                   />
                   <p className="text-[11px] text-emerald-800 mt-2 font-medium">
-                    💡 Quy chuẩn không gian theo kích thước từng loại trụ: <strong>Trụ Nhỏ: 1.0 m² (24 hốc)</strong>, <strong>Trụ Vừa: 1.5 m² (36 hốc)</strong>, <strong>Trụ Lớn: 2.0 m² (48 hốc)</strong>.
+                    Quy chuẩn không gian theo kích thước từng loại trụ: <strong>Trụ Nhỏ: 1.0 m² (24 hốc)</strong>, <strong>Trụ Vừa: 1.5 m² (36 hốc)</strong>, <strong>Trụ Lớn: 2.0 m² (48 hốc)</strong>.
                   </p>
                 </div>
 

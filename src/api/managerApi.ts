@@ -124,7 +124,7 @@ export interface GardenStaff {
   address?: string;
 }
 
-// 👉 1. Interface cho Dashboard Metrics theo từng Location
+// 1. Interface cho Dashboard Metrics theo từng Location
 export interface LocationDashboardMetrics {
   locationId: number;
   locationName: string;
@@ -259,11 +259,11 @@ export const managerApi = {
       params: { startDate, endDate },
     }).then(r => r.data || []),
 
-  // 👉 2. API Mới: Lấy Metrics Dashboard theo Location ID
+  // 2. API Mới: Lấy Metrics Dashboard theo Location ID
   getLocationMetrics: (locationId: number): Promise<LocationDashboardMetrics> =>
     apiClient.get<LocationDashboardMetrics>(`/dashboard/metrics/${locationId}`).then(r => r.data),
 
-  // 👉 3. API Mới: Lấy Doanh thu Metrics theo Location ID & khoảng thời gian
+  // 3. API Mới: Lấy Doanh thu Metrics theo Location ID & khoảng thời gian
   getLocationRevenueMetrics: (locationId: number, startDate: string, endDate: string): Promise<RevenueAnalyticsResponse> =>
     apiClient.get<RevenueAnalyticsResponse>(`/dashboard/metrics/${locationId}/revenue`, {
       params: { startDate, endDate },

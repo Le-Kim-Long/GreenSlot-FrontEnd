@@ -24,7 +24,7 @@ export interface TreePlantingRequest {
   isPaid?: boolean;
 }
 
-// 👉 Interface cho request body gửi lên khi tạo mới (Theo đúng Swagger POST)
+// Interface cho request body gửi lên khi tạo mới (Theo đúng Swagger POST)
 export interface CreateTreePlantingPayload {
   rentalId: number;
   newTreeId: number;
@@ -57,7 +57,7 @@ export const treePlantingApi = {
   rejectRequest: (id: number, reason?: string): Promise<TreePlantingRequest> =>
     apiClient.post(`/tree-planting/${id}/reject`, reason ?? '').then(r => r.data),
 
-  // 2. 💥 DÀNH CHO KHÁCH HÀNG (Customer Endpoints)
+  // 2. DÀNH CHO KHÁCH HÀNG (Customer Endpoints)
   // Lấy danh sách yêu cầu của chính khách hàng đang đăng nhập
   getMyRequests: (): Promise<TreePlantingRequest[]> => 
     apiClient.get('/tree-planting/my-requests').then(r => r.data),

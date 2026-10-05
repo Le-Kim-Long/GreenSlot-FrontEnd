@@ -44,7 +44,7 @@ export default function ServiceManagement() {
   // Form state
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [loadingDetail, setLoadingDetail] = useState(false); // 👉 State loading cho lúc lấy chi tiết
+  const [loadingDetail, setLoadingDetail] = useState(false); // State loading cho lúc lấy chi tiết
   const [editingCat, setEditingCat] = useState<ServiceCategory | null>(null);
   const [editingType, setEditingType] = useState<ServiceType | null>(null);
   const [catForm, setCatForm] = useState({ name: '', description: '' });
@@ -84,7 +84,7 @@ export default function ServiceManagement() {
     setShowForm(true);
   };
 
-  // 👉 Lấy chi tiết Danh mục (Category) từ Server
+  // Lấy chi tiết Danh mục (Category) từ Server
   const openEditCat = async (c: ServiceCategory) => {
     setError('');
     setEditingCat(c);
@@ -120,7 +120,7 @@ export default function ServiceManagement() {
     setShowForm(true);
   };
 
-  // 👉 Lấy chi tiết Loại dịch vụ (Type) từ Server
+  // Lấy chi tiết Loại dịch vụ (Type) từ Server
   const openEditType = async (t: ServiceType) => {
     if (isLocationManager && t.locationId !== user?.locationId) {
       setFormError('Bạn chỉ có quyền chỉnh sửa dịch vụ thuộc cơ sở của mình.');
@@ -539,9 +539,9 @@ export default function ServiceManagement() {
                       value={typeForm.locationId ?? ''}
                       onChange={e => setTypeForm(f => ({ ...f, locationId: e.target.value === '' ? undefined : Number(e.target.value) }))}
                     >
-                      <option value="">🌐 Chung toàn hệ thống (Áp dụng cho mọi cơ sở)</option>
+                      <option value="">Chung toàn hệ thống (Áp dụng cho mọi cơ sở)</option>
                       {locations.map(l => (
-                        <option key={l.id} value={l.id}>📍 Cơ sở: {l.name}</option>
+                        <option key={l.id} value={l.id}>Cơ sở: {l.name}</option>
                       ))}
                     </select>
                   )}

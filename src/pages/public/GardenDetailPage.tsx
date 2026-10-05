@@ -532,7 +532,7 @@ export default function GardenDetailPage() {
                 <div className="flex items-center justify-between text-[11px] mt-2">
                   <span className="text-gray-500">
                     {isAreaExceeded ? (
-                      <span className="text-rose-600 font-bold">⚠️ Vượt quá {(totalAreaUsed - slotArea).toFixed(1)} m² so với diện tích ô!</span>
+                      <span className="text-rose-600 font-bold">Vượt quá {(totalAreaUsed - slotArea).toFixed(1)} m² so với diện tích ô!</span>
                     ) : remainingArea >= 1.0 ? (
                       <span className="text-emerald-700 font-medium">Còn trống {remainingArea.toFixed(1)} m² (có thể chọn thêm trụ)</span>
                     ) : (
@@ -690,7 +690,6 @@ export default function GardenDetailPage() {
 
                 {/* Ghi chú điều phối lắp đặt bổ sung */}
                 <div className="mt-4 p-3 bg-blue-50/80 border border-blue-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-blue-800">
-                  <span className="text-base shrink-0">💡</span>
                   <div>
                     <strong className="font-semibold">Lắp đặt linh hoạt theo nhu cầu:</strong> Bạn có thể tùy ý chọn loại trụ theo diện tích ô. Kỹ thuật viên của cơ sở sẽ tự động nhận lệnh kiểm tra và lắp đặt hoàn thiện đầy đủ {totalPillarsCount} trụ trước ngày bạn bắt đầu canh tác.
                   </div>
@@ -735,7 +734,7 @@ export default function GardenDetailPage() {
                       className="w-full bg-white border border-emerald-300 text-gray-900 text-sm font-semibold rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 block p-3 pr-10 shadow-xs appearance-none cursor-pointer transition-all hover:border-emerald-400"
                     >
                       <option value="ALL" className="font-bold text-emerald-800 py-1">
-                        🌱 Áp dụng 1 giống cho tất cả các trụ ({totalPillarsCount} trụ • {totalHoles} hốc)
+                        Áp dụng 1 giống cho tất cả các trụ ({totalPillarsCount} trụ • {totalHoles} hốc)
                       </option>
                       {chosenPillars.length > 1 && (
                         <optgroup label="Tùy chỉnh giống riêng cho từng trụ:" className="font-semibold text-gray-700">
@@ -743,7 +742,7 @@ export default function GardenDetailPage() {
                             const assignedTree = getTreeForPillar(p.id);
                             return (
                               <option key={p.id} value={p.id} className="py-1">
-                                📍 {p.label} — Đang chọn: {assignedTree?.treeName || 'Mặc định'}
+                                {p.label} — Đang chọn: {assignedTree?.treeName || 'Mặc định'}
                               </option>
                             );
                           })}
@@ -785,7 +784,7 @@ export default function GardenDetailPage() {
                         }
                         handleSelectTree(t.id);
                         if (isExceededForRental) {
-                          setBookingError(`⚠️ Lưu ý: Giống rau "${t.treeName}" cần ~${t.harvestDays} ngày sinh trưởng. Bạn nên chọn thời gian thuê từ ${treeMinMonths} tháng trở lên.`);
+                          setBookingError(`Lưu ý: Giống rau "${t.treeName}" cần ~${t.harvestDays} ngày sinh trưởng. Bạn nên chọn thời gian thuê từ ${treeMinMonths} tháng trở lên.`);
                         } else {
                           setBookingError('');
                         }
@@ -848,7 +847,7 @@ export default function GardenDetailPage() {
                         {isExceededForRental && (
                           <div className="mt-1">
                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200 inline-block">
-                              ⚠️ Cần thuê ≥ {treeMinMonths} tháng
+                              Cần thuê ≥ {treeMinMonths} tháng
                             </span>
                           </div>
                         )}
@@ -952,7 +951,7 @@ export default function GardenDetailPage() {
                   </div>
                   {monthsError && (
                     <p className="text-xs text-red-600 font-medium mt-1.5 flex items-center gap-1">
-                      ⚠️ {monthsError}
+                      {monthsError}
                     </p>
                   )}
                   {/* Gợi ý chọn nhanh các gói tháng */}

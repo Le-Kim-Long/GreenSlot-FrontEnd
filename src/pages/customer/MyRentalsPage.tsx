@@ -559,12 +559,12 @@ export default function MyRentalsPage() {
                                 <span>Cây {rental.treeName || ''} tại ô {rental.slotNumber} đã sẵn sàng thu hoạch!</span>
                                 {rental.expectedHarvestAt && new Date(rental.expectedHarvestAt).getTime() > Date.now() && (
                                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-900 bg-amber-200/80 border border-amber-400 px-2 py-0.5 rounded-full">
-                                    ⚡ Thu hoạch sớm
+                                    Thu hoạch sớm
                                   </span>
                                 )}
                               </div>
                               <div className="text-xs text-amber-800 font-semibold mb-2 flex items-center gap-1">
-                                🏷️ Vị trí: Trụ {rental.harvestPillarCode || (rental.pillarCodes && rental.pillarCodes.length > 0 ? rental.pillarCodes.join(', ') : rental.pillarCode || 'Tất cả trụ')}
+                                Vị trí: Trụ {rental.harvestPillarCode || (rental.pillarCodes && rental.pillarCodes.length > 0 ? rental.pillarCodes.join(', ') : rental.pillarCode || 'Tất cả trụ')}
                               </div>
 
                               {/* Hình ảnh thực tế do nhân viên gửi lên kèm đề xuất thu hoạch sớm */}
@@ -825,7 +825,7 @@ export default function MyRentalsPage() {
               </div>
               {extendMonthsError && (
                 <p className="text-xs text-red-600 font-medium mt-1.5 flex items-center gap-1">
-                  ⚠️ {extendMonthsError}
+                  {extendMonthsError}
                 </p>
               )}
               {/* Gợi ý chọn nhanh */}
@@ -1219,7 +1219,7 @@ export default function MyRentalsPage() {
 
             {addPillarsError && (
               <div className="text-red-600 text-sm mb-3 bg-red-50 p-2.5 rounded-lg border border-red-200">
-                ⚠️ {addPillarsError}
+                {addPillarsError}
               </div>
             )}
 
@@ -1344,7 +1344,7 @@ export default function MyRentalsPage() {
                   </div>
                 )}
                 <div className="pt-1.5 border-t border-amber-200/50 text-[11px] text-amber-700 leading-relaxed">
-                  💡 Thu hoạch sớm sẽ hoàn tất chu kỳ phát triển của cây trên ô/trụ trước ngày thu hoạch chuẩn. Sau khi thu hoạch, trụ sẽ được dọn trống để bạn gieo trồng lứa cây mới.
+                  Thu hoạch sớm sẽ hoàn tất chu kỳ phát triển của cây trên ô/trụ trước ngày thu hoạch chuẩn. Sau khi thu hoạch, trụ sẽ được dọn trống để bạn gieo trồng lứa cây mới.
                 </div>
               </div>
 
@@ -1362,7 +1362,7 @@ export default function MyRentalsPage() {
                     onChange={e => setEarlyHarvestPillar(e.target.value)}
                     className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium"
                   >
-                    <option value="">🌱 Tất cả các trụ đang canh tác trong ô</option>
+                    <option value="">Tất cả các trụ đang canh tác trong ô</option>
                     {earlyHarvestModal.pillars && earlyHarvestModal.pillars.length > 0 ? (
                       earlyHarvestModal.pillars.map((p, idx) => {
                         const treeOnPillar = p.treeName || earlyHarvestModal.treeName;
@@ -1441,7 +1441,7 @@ export default function MyRentalsPage() {
 
               {earlyHarvestError && (
                 <div className="p-2.5 rounded-lg bg-red-50 text-red-600 text-xs border border-red-200">
-                  ⚠️ {earlyHarvestError}
+                  {earlyHarvestError}
                 </div>
               )}
             </div>

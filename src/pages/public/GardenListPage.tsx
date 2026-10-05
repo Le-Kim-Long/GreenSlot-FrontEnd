@@ -119,11 +119,11 @@ export default function GardenListPage() {
                     className="w-full pl-4 pr-10 py-2.5 bg-white hover:bg-gray-50/80 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all cursor-pointer shadow-sm appearance-none"
                   >
                     <option value="">
-                      🌐 Tất cả cơ sở ({locations.length} cơ sở • {slots.length} ô khả dụng)
+                      Tất cả cơ sở ({locations.length} cơ sở • {slots.length} ô khả dụng)
                     </option>
                     {locations.map((loc) => (
                       <option key={loc.id} value={loc.id}>
-                        📍 {loc.name} {loc.address ? `(${loc.address})` : ''}
+                        {loc.name} {loc.address ? `(${loc.address})` : ''}
                       </option>
                     ))}
                   </select>
@@ -355,7 +355,7 @@ export default function GardenListPage() {
                       {/* Badge năng suất, diện tích & giá đất */}
                       <div className="flex items-center gap-1.5 mb-3 flex-wrap">
                         <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
-                          🌱 {holes} hốc
+                          {holes} hốc
                         </span>
                         <span className="text-[11px] font-medium px-2 py-0.5 rounded-lg bg-gray-50 text-gray-600 border border-gray-100">
                           {slotArea} m² ({pCount} trụ)

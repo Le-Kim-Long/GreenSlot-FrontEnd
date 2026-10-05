@@ -392,13 +392,13 @@ export default function TaskManagement() {
               className="border border-gray-300 rounded-xl px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 font-medium"
             >
               <option value="ALL">Tất cả loại công việc</option>
-              <option value="MAINTENANCE">🔧 Bảo trì & Kỹ thuật</option>
-              <option value="PLANTING">🌱 Gieo trồng & Chăm sóc</option>
-              <option value="CLEANING">🧹 Vệ sinh & Dọn dẹp</option>
-              <option value="INSPECTION">🔍 Kiểm tra định kỳ</option>
-              <option value="HARVEST">🌾 Thu hoạch</option>
-              <option value="INCIDENT">⚠️ Báo cáo sự cố</option>
-              <option value="SERVICE_REQUEST">🛠️ Dịch vụ yêu cầu</option>
+              <option value="MAINTENANCE">Bảo trì & Kỹ thuật</option>
+              <option value="PLANTING">Gieo trồng & Chăm sóc</option>
+              <option value="CLEANING">Vệ sinh & Dọn dẹp</option>
+              <option value="INSPECTION">Kiểm tra định kỳ</option>
+              <option value="HARVEST">Thu hoạch</option>
+              <option value="INCIDENT">Báo cáo sự cố</option>
+              <option value="SERVICE_REQUEST">Dịch vụ yêu cầu</option>
             </select>
             <select
               value={statusFilter}
@@ -621,10 +621,10 @@ export default function TaskManagement() {
                     <label className="block font-medium text-gray-700 mb-1.5">Loại công việc</label>
                     <select className="w-full border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500/20 focus:border-green-500 p-2.5 bg-white outline-none font-medium"
                       value={createForm.taskType} onChange={e => setCreateForm({...createForm, taskType: e.target.value})}>
-                      <option value="MAINTENANCE">🔧 Bảo trì & Kỹ thuật</option>
-                      <option value="PLANTING">🌱 Gieo trồng & Chăm sóc</option>
-                      <option value="CLEANING">🧹 Vệ sinh & Dọn dẹp</option>
-                      <option value="INSPECTION">🔍 Kiểm tra định kỳ</option>
+                      <option value="MAINTENANCE">Bảo trì & Kỹ thuật</option>
+                      <option value="PLANTING">Gieo trồng & Chăm sóc</option>
+                      <option value="CLEANING">Vệ sinh & Dọn dẹp</option>
+                      <option value="INSPECTION">Kiểm tra định kỳ</option>
                     </select>
                   </div>
                   <div>
@@ -941,7 +941,7 @@ export default function TaskManagement() {
                                       </div>
                                     ) : (
                                       <div className="text-[11px] text-rose-600 font-medium">
-                                        ⚠️ Chưa có thiết bị IoT nào được gắn vào trụ này!
+                                        Chưa có thiết bị IoT nào được gắn vào trụ này!
                                       </div>
                                     )}
                                   </div>
@@ -1051,7 +1051,7 @@ export default function TaskManagement() {
                   <>
                     <div className="mb-5">
                       <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center justify-between">
-                        <span>{isEarlyHarvestTask ? '📸 Ảnh Chụp Cây Rau Thực Tế (Gửi kèm đề xuất)' : '📸 Ảnh Bằng Chứng Hoàn Thành'}</span>
+                        <span>{isEarlyHarvestTask ? 'Ảnh Chụp Cây Rau Thực Tế (Gửi kèm đề xuất)' : 'Ảnh Bằng Chứng Hoàn Thành'}</span>
                         {selectedTask.evidenceImageUrl && (
                           <a 
                             href={selectedTask.evidenceImageUrl} 
@@ -1078,11 +1078,11 @@ export default function TaskManagement() {
                         </div>
                       ) : isEarlyHarvestTask ? (
                         <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-xl text-center text-amber-800 text-xs">
-                          ℹ️ Nhân viên không đính kèm ảnh chụp cây rau khi gửi đề xuất này.
+                          Nhân viên không đính kèm ảnh chụp cây rau khi gửi đề xuất này.
                         </div>
                       ) : (
                         <div className="p-6 bg-yellow-50 border border-yellow-200 rounded-xl text-center text-yellow-800 text-sm">
-                          ⚠️ Nhân viên chưa đính kèm ảnh bằng chứng.
+                          Nhân viên chưa đính kèm ảnh bằng chứng.
                         </div>
                       )}
                     </div>
@@ -1134,7 +1134,7 @@ export default function TaskManagement() {
 
                   {isEarlyHarvestTask && reviewForm.action === 'APPROVE' && (
                     <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 leading-relaxed">
-                      💡 Khi duyệt đề xuất này, hệ thống sẽ gửi thông báo đến tài khoản Khách hàng để khách lựa chọn phương thức: <strong>Tự thu hoạch</strong> hoặc <strong>Nhờ nhân viên thu hoạch gửi về</strong>.
+                      Khi duyệt đề xuất này, hệ thống sẽ gửi thông báo đến tài khoản Khách hàng để khách lựa chọn phương thức: <strong>Tự thu hoạch</strong> hoặc <strong>Nhờ nhân viên thu hoạch gửi về</strong>.
                     </div>
                   )}
 
@@ -1265,7 +1265,7 @@ export default function TaskManagement() {
 
                     {selectedTask.rejectionReason && (
                       <div className="text-xs text-red-700 bg-red-50 p-3 rounded-lg border border-red-200">
-                        <span className="font-bold block mb-1">⚠️ Lý do từ chối:</span>
+                        <span className="font-bold block mb-1">Lý do từ chối:</span>
                         {selectedTask.rejectionReason}
                       </div>
                     )}
@@ -1368,7 +1368,7 @@ export default function TaskManagement() {
                                         </div>
                                       ) : (
                                         <div className="text-[11px] text-rose-600">
-                                          ⚠️ Chưa gắn thiết bị IoT vào trụ này!
+                                          Chưa gắn thiết bị IoT vào trụ này!
                                         </div>
                                       )}
                                     </div>

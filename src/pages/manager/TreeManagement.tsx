@@ -12,7 +12,7 @@ import Pagination from '../../components/common/Pagination';
 import { Toast, ToastData } from '../../components/common/Toast';
 import { staffNavItems } from './staffNav';
 import clsx from 'clsx';
-// 👉 Import thêm hàm deleteTreeImage
+// Import thêm hàm deleteTreeImage
 import { uploadTreeImage, deleteTreeImage } from '../../utils/firebaseUpload';
 
 export interface Option {
@@ -20,7 +20,7 @@ export interface Option {
   label: string;
 }
 
-// 👉 Component CustomDropdown bo tròn rounded-xl đẹp mắt
+// Component CustomDropdown bo tròn rounded-xl đẹp mắt
 function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn', className }: { icon: any; value: any; onChange: any; options: Option[]; placeholder?: string; className?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -132,7 +132,7 @@ export default function TreeManagement() {
   const [toast, setToast] = useState<ToastData | null>(null);
   const showToast = (type: ToastData['type'], title: string, detail?: string) => setToast({ type, title, detail });
 
-  // 💥 HÀM THÔNG MINH: Xóa ảnh tạm khỏi Firebase nếu ảnh đó KHÔNG phải ảnh gốc trong DB
+  // HÀM THÔNG MINH: Xóa ảnh tạm khỏi Firebase nếu ảnh đó KHÔNG phải ảnh gốc trong DB
   const removeTempImage = async (urlToRemove?: string | null) => {
     if (!urlToRemove) return;
     // Chỉ xóa trên Cloud Storage nếu ảnh này khác với ảnh ban đầu của cây đang chỉnh sửa
@@ -157,7 +157,7 @@ export default function TreeManagement() {
 
     setIsUploadingImage(true);
     try {
-      // 💥 1. Nếu trước đó đã lỡ tải lên 1 ảnh tạm khác rồi, xóa ngay ảnh đó khỏi Firebase cho sạch rác
+      // 1. Nếu trước đó đã lỡ tải lên 1 ảnh tạm khác rồi, xóa ngay ảnh đó khỏi Firebase cho sạch rác
       await removeTempImage(formData.imageUrl);
 
       // 2. Upload ảnh mới lên
@@ -216,7 +216,7 @@ export default function TreeManagement() {
     setEditingItem(null);
   };
 
-  // 💥 Xử lý khi bấm nút "Hủy" hoặc nút "X" tắt Modal -> Dọn rác nếu có upload ảnh tạm
+  // Xử lý khi bấm nút "Hủy" hoặc nút "X" tắt Modal -> Dọn rác nếu có upload ảnh tạm
   const handleCancelModal = async () => {
     await removeTempImage(formData.imageUrl);
     handleCloseModal();
@@ -562,15 +562,15 @@ export default function TreeManagement() {
                     <td className="p-4">
                       <div className="flex flex-col gap-1 text-xs min-w-[170px]">
                         <div className="flex items-center justify-between gap-2 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200/60 font-medium">
-                          <span>🟢 Nhỏ (24h):</span>
+                          <span>Nhỏ (24h):</span>
                           <span className="font-bold">{Number(tree.priceSmall || tree.price || 0).toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div className="flex items-center justify-between gap-2 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200/60 font-medium">
-                          <span>🔵 Vừa (36h):</span>
+                          <span>Vừa (36h):</span>
                           <span className="font-bold">{Number(tree.priceMedium || ((tree.price || 0) * 1.5)).toLocaleString('vi-VN')}đ</span>
                         </div>
                         <div className="flex items-center justify-between gap-2 px-2 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-200/60 font-medium">
-                          <span>🟣 Lớn (48h):</span>
+                          <span>Lớn (48h):</span>
                           <span className="font-bold">{Number(tree.priceLarge || ((tree.price || 0) * 2.0)).toLocaleString('vi-VN')}đ</span>
                         </div>
                       </div>
@@ -788,7 +788,7 @@ export default function TreeManagement() {
                         <div className="bg-white p-3 rounded-xl border-2 border-emerald-200 shadow-2xs">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="font-semibold text-emerald-800 text-xs flex items-center gap-1">
-                              🟢 Trụ Nhỏ (24 hốc)
+                              Trụ Nhỏ (24 hốc)
                             </span>
                             <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">1.0x</span>
                           </div>
@@ -811,7 +811,7 @@ export default function TreeManagement() {
                         <div className="bg-white p-3 rounded-xl border-2 border-blue-200 shadow-2xs">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="font-semibold text-blue-800 text-xs flex items-center gap-1">
-                              🔵 Trụ Vừa (36 hốc)
+                              Trụ Vừa (36 hốc)
                             </span>
                             <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-bold">1.5x</span>
                           </div>
@@ -834,7 +834,7 @@ export default function TreeManagement() {
                         <div className="bg-white p-3 rounded-xl border-2 border-purple-200 shadow-2xs">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="font-semibold text-purple-800 text-xs flex items-center gap-1">
-                              🟣 Trụ Lớn (48 hốc)
+                              Trụ Lớn (48 hốc)
                             </span>
                             <span className="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-bold">2.0x</span>
                           </div>
@@ -871,7 +871,7 @@ export default function TreeManagement() {
                           ) : formData.imageUrl ? (
                             <>
                               <img src={formData.imageUrl} alt="Preview" className="w-full h-full object-cover" />
-                              {/* 💥 NÚT XÓA ẢNH NHANH TRÊN FORM: Tự động xóa trên Firebase nếu là ảnh tạm */}
+                              {/* NÚT XÓA ẢNH NHANH TRÊN FORM: Tự động xóa trên Firebase nếu là ảnh tạm */}
                               <button
                                 type="button"
                                 onClick={async () => {
@@ -1099,7 +1099,7 @@ export default function TreeManagement() {
 
                   {/* Footer Actions */}
                   <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                    {/* 💥 NÚT HỦY: Sử dụng handleCancelModal để dọn rác ảnh tạm */}
+                    {/* NÚT HỦY: Sử dụng handleCancelModal để dọn rác ảnh tạm */}
                     <button type="button" onClick={handleCancelModal} disabled={isSubmitting} className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 font-medium transition">
                       Hủy
                     </button>
