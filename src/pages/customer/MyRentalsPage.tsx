@@ -655,22 +655,33 @@ export default function MyRentalsPage() {
                               >
                                 <Sprout className="w-3.5 h-3.5" /> Trồng cây mới
                               </Link>
-                              {/* {Boolean(rental.treeName || (rental.pillars && rental.pillars.some((p: any) => p.treeName))) && rental.harvestDecision !== 'STAFF' && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setEarlyHarvestModal(rental);
-                                    setEarlyHarvestMethod('STAFF');
-                                    setEarlyHarvestPillar('');
-                                    setEarlyHarvestNotes('');
-                                    setEarlyHarvestError('');
-                                  }}
-                                  className="text-xs flex items-center gap-1.5 h-fit px-3 py-1.5 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 font-semibold transition-colors shadow-2xs w-full sm:w-auto justify-center"
-                                  title="Gửi yêu cầu thu hoạch sớm cây trồng trên ô hoặc trụ"
-                                >
-                                  <Zap className="w-3.5 h-3.5 text-amber-600" /> Thu hoạch sớm
-                                </button>
-                              )} */}
+                              {rental.harvestDecision !== 'STAFF' && (() => {
+                                const hasPlantedTree = Boolean(rental.treeName || (rental.pillars && rental.pillars.some((p: any) => p.treeName)));
+                                return (
+                                  <button
+                                    type="button"
+                                    disabled={!hasPlantedTree}
+                                    onClick={() => {
+                                      setEarlyHarvestModal(rental);
+                                      setEarlyHarvestMethod('STAFF');
+                                      setEarlyHarvestPillar('');
+                                      setEarlyHarvestNotes('');
+                                      setEarlyHarvestError('');
+                                    }}
+                                    className={clsx(
+                                      "text-xs flex items-center gap-1.5 h-fit px-3 py-1.5 rounded-lg border font-semibold transition-colors shadow-2xs w-full sm:w-auto justify-center",
+                                      hasPlantedTree
+                                        ? "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                        : "border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed"
+                                    )}
+                                    title={hasPlantedTree
+                                      ? "Gửi yêu cầu thu hoạch sớm cây trồng trên ô hoặc trụ"
+                                      : "Trụ cây trong ô vườn đã được thu hoạch và chưa gieo trồng cây mới. Vui lòng gieo trồng cây trước."}
+                                  >
+                                    <Zap className={clsx("w-3.5 h-3.5", hasPlantedTree ? "text-amber-600" : "text-gray-400")} /> Thu hoạch sớm
+                                  </button>
+                                );
+                              })()}
                               <button
                                 onClick={() => handleOpenAddPillars(rental)}
                                 disabled={availableArea < 1.0}
