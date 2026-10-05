@@ -270,6 +270,17 @@ export function getNotificationMeta(type?: string | null, title?: string | null)
 
   // 6. IoT & Alert
   if (normalizedType.startsWith('IOT_') || normalizedType.startsWith('ALERT_') || normalizedType.includes('SENSOR')) {
+    if (normalizedType === 'ALERT_RESOLVED') {
+      return {
+        icon: CheckCircle2,
+        colorClasses: 'text-emerald-600',
+        bgClasses: 'bg-emerald-50',
+        borderClasses: 'border-emerald-200',
+        badgeLabel: 'Cảnh báo đã xử lý',
+        category: 'iot',
+        defaultActionLabel: 'Xem cảm biến',
+      };
+    }
     if (normalizedType === 'ALERT_ESCALATED') {
       return {
         icon: AlertOctagon,
