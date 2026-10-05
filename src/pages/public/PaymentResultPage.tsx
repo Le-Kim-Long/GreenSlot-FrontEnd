@@ -90,7 +90,7 @@ export default function PaymentResultPage() {
             onClick={handleOpenApp}
             className="w-full bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold py-4 px-6 rounded-2xl shadow-lg transition-all text-center block text-base cursor-pointer"
           >
-            📱 Mở ứng dụng GreenSlot
+            Mở ứng dụng GreenSlot
           </button>
           <p className="text-xs text-gray-400 mt-4 leading-relaxed">
             Hoặc bạn có thể vuốt chuyển tab quay lại <strong>Expo Go / GreenSlot App</strong> để xem ô đất đã được cập nhật thành công.
@@ -164,7 +164,7 @@ export default function PaymentResultPage() {
               href={`greenslot://payment-result${window.location.search}`}
               className="btn-primary flex items-center justify-center gap-2 col-span-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 px-4 rounded-xl shadow-md transition-all text-center"
             >
-              📱 Mở ứng dụng GreenSlot Mobile
+              Mở ứng dụng GreenSlot Mobile
             </a>
           )}
 

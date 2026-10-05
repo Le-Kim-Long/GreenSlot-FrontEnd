@@ -16,7 +16,7 @@ import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 import apiClient from '../../api/axiosConfig';
 
-// 👉 Component CustomDropdown bo tròn rounded-xl
+// Component CustomDropdown bo tròn rounded-xl
 function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn', className }: any) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -183,7 +183,7 @@ export default function EquipmentManagement() {
   const [toast, setToast] = useState<ToastData | null>(null);
   const showToast = (type: ToastData['type'], title: string, detail?: string) => setToast({ type, title, detail });
 
-  // 👉 Xử lý khi chọn file hình từ máy -> upload thẳng lên Firebase Storage (client-side)
+  // Xử lý khi chọn file hình từ máy -> upload thẳng lên Firebase Storage (client-side)
   // Lưu ý: không dùng equipmentApi.uploadImage() (backend) vì endpoint đó tạo file không public,
   // link trả về luôn bị 403 Forbidden khi tải lại
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -569,11 +569,11 @@ export default function EquipmentManagement() {
                     <td className="p-4">
                       <div className="font-medium text-gray-700 flex items-center gap-1.5">
                         <Layers className="w-4 h-4 text-gray-400" />
-                        {item.status === 'IN_USE' && item.pillarId ? (item.pillarCode ? `Trụ: ${item.pillarCode}` : `Trụ #${item.pillarId}`) : <span className="text-gray-500 italic">📦 Cất kho (Chưa gắn trụ)</span>}
+                        {item.status === 'IN_USE' && item.pillarId ? (item.pillarCode ? `Trụ: ${item.pillarCode}` : `Trụ #${item.pillarId}`) : <span className="text-gray-500 italic">Cất kho (Chưa gắn trụ)</span>}
                       </div>
                       <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3 h-3 text-emerald-600" />
-                        {item.locationName || locationNameMap.get(item.locationId ?? -1) || (item.pillarId ? locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1) : undefined) || '🌐 Tất cả cơ sở'}
+                        {item.locationName || locationNameMap.get(item.locationId ?? -1) || (item.pillarId ? locationNameMap.get(pillarLocationMap.get(item.pillarId) ?? -1) : undefined) || 'Tất cả cơ sở'}
                       </div>
                     </td>
                     <td className="p-4">
@@ -782,7 +782,7 @@ export default function EquipmentManagement() {
           value={formLocationId}
           onChange={(val: any) => handleFormLocationChange(String(val))}
           options={[
-            ...(!editingItem ? [{ value: ALL_LOCATIONS, label: '🌐 Tất cả cơ sở' }] : []),
+            ...(!editingItem ? [{ value: ALL_LOCATIONS, label: 'Tất cả cơ sở' }] : []),
             ...locations.map((l: any) => ({ value: String(l.id), label: l.name })),
           ]}
           placeholder="Chọn cơ sở"
@@ -822,7 +822,7 @@ export default function EquipmentManagement() {
           }));
         }}
         options={[
-          { value: '', label: '📦 Cất kho (Chưa gắn vào trụ nào)' },
+          { value: '', label: 'Cất kho (Chưa gắn vào trụ nào)' },
           ...formPillarOptions.map((p: any) => ({
             value: String(p.id),
             label: p.pillarName ? `${p.pillarName}${p.pillarCode ? ` (${p.pillarCode})` : ''}` : (p.pillarCode || `Trụ #${p.id}`),

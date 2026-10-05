@@ -10,7 +10,7 @@ app.use(cors());
 app.get('/', (req, res) => {
     res.send(`
         <div style="font-family: sans-serif; text-align: center; margin-top: 50px;">
-            <h1 style="color: #16a34a;">✅ Proxy Server Đang Hoạt Động!</h1>
+            <h1 style="color: #16a34a;">Proxy Server Đang Hoạt Động!</h1>
             <p>Hệ thống truyền phát Video từ ESP32 đã sẵn sàng.</p>
         </div>
     `);
@@ -22,7 +22,7 @@ const ESP32_IP = '192.168.1.4'; // CHÚ Ý: Kiểm tra lại IP ESP32 lúc demo
 const ESP32_STREAM_URL = `http://${ESP32_IP}:81/stream`;
 const BACKEND_API_URL = 'https://greenslot-backend.onrender.com/api/cameras/ping';
 
-// 👇 DÁN LINK CLOUDFLARE VÀO ĐÂY MỖI LẦN CHẠY 👇
+// DÁN LINK CLOUDFLARE VÀO ĐÂY MỖI LẦN CHẠY
 const CLOUDFLARE_URL = 'https://wells-rubber-youth-favorite.trycloudflare.com';
 
 // ================= 1. HỆ THỐNG PROXY ĐỘNG CÓ CACHE =================
@@ -34,7 +34,7 @@ let frameCache = null;
 let cacheUpdateTime = 0;
 
 function startESP32Stream() {
-    console.log("🔄 Bắt đầu yêu cầu luồng video từ ESP32...");
+    console.log("Bắt đầu yêu cầu luồng video từ ESP32...");
     esp32Controller = new AbortController();
 
     axios({
@@ -43,7 +43,7 @@ function startESP32Stream() {
         responseType: 'stream',
         signal: esp32Controller.signal
     }).then(response => {
-        console.log("✅ Đã kết nối thành công tới ESP32-CAM!");
+        console.log("Đã kết nối thành công tới ESP32-CAM!");
         
         response.data.on('data', (chunk) => {
             // LƯU VÀO CACHE: Cập nhật vùng nhớ đệm liên tục
@@ -56,9 +56,9 @@ function startESP32Stream() {
         });
     }).catch(err => {
         if (axios.isCancel(err)) {
-            console.log("🛑 Đã cho ESP32 đi ngủ vì không còn ai xem.");
+            console.log("Đã cho ESP32 đi ngủ vì không còn ai xem.");
         } else {
-            console.log("❌ Không tìm thấy ESP32, thử lại sau 2 giây...");
+            console.log("Không tìm thấy ESP32, thử lại sau 2 giây...");
             setTimeout(() => {
                 if (clients.length > 0) startESP32Stream();
             }, 2000);
@@ -89,11 +89,11 @@ app.get('/stream', (req, res) => {
     // PHỤC VỤ TỪ CACHE (Nếu Cache chưa quá cũ - ví dụ < 5 giây)
     if (frameCache && (Date.now() - cacheUpdateTime < 5000)) {
         res.write(frameCache);
-        console.log("⚡ Đã phục vụ khung hình đầu tiên từ vùng nhớ Cache!");
+        console.log("Đã phục vụ khung hình đầu tiên từ vùng nhớ Cache!");
     }
 
     clients.push(res);
-    console.log(`🎥 Có người mới vào xem. Tổng số người đang xem: ${clients.length}`);
+    console.log(`Có người mới vào xem. Tổng số người đang xem: ${clients.length}`);
 
     if (clients.length === 1) {
         startESP32Stream();
@@ -101,7 +101,7 @@ app.get('/stream', (req, res) => {
 
     req.on('close', () => {
         clients = clients.filter(client => client !== res);
-        console.log(`👋 Một người vừa thoát. Còn lại: ${clients.length}`);
+        console.log(`Một người vừa thoát. Còn lại: ${clients.length}`);
         
         if (clients.length === 0) {
             stopESP32Stream();
@@ -111,7 +111,7 @@ app.get('/stream', (req, res) => {
 
 const server = http.createServer(app);
 server.listen(PROXY_PORT, () => {
-    console.log(`\n🚀 [PROXY SERVER] Đang chạy tại http://localhost:${PROXY_PORT}`);
+    console.log(`\n[PROXY SERVER] Đang chạy tại http://localhost:${PROXY_PORT}`);
 });
 
 // ================= 2. HỆ THỐNG AUTO-PING LÊN SERVER =================
@@ -125,9 +125,9 @@ async function autoUpdateCameraUrl() {
             stream_url: streamUrl,
             capture_url: ""
         });
-        console.log(`[${new Date().toLocaleTimeString()}] 🎉 Ping URL Cloudflare thành công!`);
+        console.log(`[${new Date().toLocaleTimeString()}] Ping URL Cloudflare thành công!`);
     } catch (error) {
-        console.log("❌ Lỗi ping lên Spring Boot...");
+        console.log("Lỗi ping lên Spring Boot...");
     }
 }
 

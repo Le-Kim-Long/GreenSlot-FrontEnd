@@ -576,7 +576,7 @@ export default function RegisterPage() {
                     {demoOtp && (
                       <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-center">
                         <p className="text-xs text-amber-800 mb-1.5">
-                          💡 <strong>Hỗ trợ kiểm thử / Demo:</strong> Mã OTP dự phòng:
+                          <strong>Hỗ trợ kiểm thử / Demo:</strong> Mã OTP dự phòng:
                         </p>
                         <div className="flex items-center justify-center gap-2">
                           <span className="font-mono text-lg font-bold text-amber-900 tracking-widest bg-amber-100 px-3 py-1 rounded-lg border border-amber-300">

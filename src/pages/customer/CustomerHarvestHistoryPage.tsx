@@ -74,7 +74,7 @@ export default function CustomerHarvestHistoryPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       {item.isEarlyHarvest && (
                         <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-300 shadow-sm animate-pulse">
-                          🌱 Thu hoạch sớm {item.daysGrown != null && item.harvestDays ? `(${item.daysGrown}/${item.harvestDays} ngày)` : ''}
+                          Thu hoạch sớm {item.daysGrown != null && item.harvestDays ? `(${item.daysGrown}/${item.harvestDays} ngày)` : ''}
                         </span>
                       )}
                       <span className={
@@ -98,7 +98,7 @@ export default function CustomerHarvestHistoryPage() {
                       <div className="flex flex-wrap gap-1.5 items-center">
                         {item.pillarCodes.split(',').map(s => s.trim()).filter(Boolean).map((pCode, idx) => (
                           <span key={idx} className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                            🏷️ Trụ: {pCode} {item.pillarHarvestCount ? `(Thu hoạch lần ${item.pillarHarvestCount})` : ''}
+                            Trụ: {pCode} {item.pillarHarvestCount ? `(Thu hoạch lần ${item.pillarHarvestCount})` : ''}
                           </span>
                         ))}
                       </div>
@@ -113,7 +113,7 @@ export default function CustomerHarvestHistoryPage() {
                     </span>
                     {item.daysGrown != null && (
                       <span className="text-gray-600 font-medium">
-                        ⏱️ Thời gian sinh trưởng: <strong className="text-gray-900">{item.daysGrown} ngày</strong> {item.harvestDays ? `(Chu kỳ chuẩn: ${item.harvestDays} ngày)` : ''}
+                        Thời gian sinh trưởng: <strong className="text-gray-900">{item.daysGrown} ngày</strong> {item.harvestDays ? `(Chu kỳ chuẩn: ${item.harvestDays} ngày)` : ''}
                       </span>
                     )}
                     {item.harvestMethod === 'STAFF' && item.staffName && (

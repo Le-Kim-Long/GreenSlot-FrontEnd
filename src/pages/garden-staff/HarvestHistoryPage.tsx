@@ -89,19 +89,19 @@ export default function HarvestHistoryPage() {
               onClick={() => { setFilterMethod('SELF'); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-lg transition ${filterMethod === 'SELF' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'}`}
             >
-              🌾 Khách tự hái ({items.filter(i => i.harvestMethod === 'SELF').length})
+              Khách tự hái ({items.filter(i => i.harvestMethod === 'SELF').length})
             </button>
             <button
               onClick={() => { setFilterMethod('STAFF'); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-lg transition ${filterMethod === 'STAFF' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'}`}
             >
-              👨‍🌾 Nhân viên hái ({items.filter(i => i.harvestMethod === 'STAFF').length})
+              Nhân viên hái ({items.filter(i => i.harvestMethod === 'STAFF').length})
             </button>
             <button
               onClick={() => { setFilterMethod('EARLY'); setCurrentPage(1); }}
               className={`px-3 py-1.5 rounded-lg transition ${filterMethod === 'EARLY' ? 'bg-amber-600 text-white shadow-2xs' : 'text-gray-600 hover:text-gray-900'}`}
             >
-              ⚡ Thu hoạch sớm ({items.filter(i => i.isEarlyHarvest).length})
+              Thu hoạch sớm ({items.filter(i => i.isEarlyHarvest).length})
             </button>
           </div>
 
@@ -144,7 +144,7 @@ export default function HarvestHistoryPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     {item.isEarlyHarvest && (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-300 shadow-sm animate-pulse">
-                        🌱 Thu hoạch sớm {item.daysGrown != null && item.harvestDays ? `(${item.daysGrown}/${item.harvestDays} ngày)` : ''}
+                        Thu hoạch sớm {item.daysGrown != null && item.harvestDays ? `(${item.daysGrown}/${item.harvestDays} ngày)` : ''}
                       </span>
                     )}
                     <span className={item.harvestMethod === 'SELF' ? 'badge-green' : 'badge-blue'}>
@@ -164,7 +164,7 @@ export default function HarvestHistoryPage() {
                     <div className="flex flex-wrap gap-1.5 items-center">
                       {item.pillarCodes.split(',').map(s => s.trim()).filter(Boolean).map((pCode, idx) => (
                         <span key={idx} className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          🏷️ Trụ: {pCode} {item.pillarHarvestCount ? `(Thu hoạch lần ${item.pillarHarvestCount})` : ''}
+                          Trụ: {pCode} {item.pillarHarvestCount ? `(Thu hoạch lần ${item.pillarHarvestCount})` : ''}
                         </span>
                       ))}
                     </div>
@@ -179,7 +179,7 @@ export default function HarvestHistoryPage() {
                   </span>
                   {item.daysGrown != null && (
                     <span className="text-gray-600 font-medium">
-                      ⏱️ Sinh trưởng: <strong className="text-gray-900">{item.daysGrown} ngày</strong> {item.harvestDays ? `(Chu kỳ: ${item.harvestDays} ngày)` : ''}
+                      Sinh trưởng: <strong className="text-gray-900">{item.daysGrown} ngày</strong> {item.harvestDays ? `(Chu kỳ: ${item.harvestDays} ngày)` : ''}
                     </span>
                   )}
                   {item.customerName && (

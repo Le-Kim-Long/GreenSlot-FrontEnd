@@ -13,7 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import clsx from 'clsx';
 
-// 👉 Custom Dropdown bo tròn đẹp mắt
+// Custom Dropdown bo tròn đẹp mắt
 function CustomDropdown({ icon, value, onChange, options, placeholder = 'Chọn', className }: any) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

@@ -34,7 +34,7 @@ function getNavForRole(role?: UserRole) {
   }
 }
 
-// 💥 HÀM THẦN THÁNH: Chuyển đổi link GCS (bị Google Cloud khóa) sang link Firebase Web (đọc thoải mái)
+// HÀM THẦN THÁNH: Chuyển đổi link GCS (bị Google Cloud khóa) sang link Firebase Web (đọc thoải mái)
 const formatFirebaseUrl = (url?: string): string => {
   if (!url) return '';
   if (url.startsWith('https://storage.googleapis.com/')) {
@@ -84,9 +84,9 @@ export default function ProfilePage() {
             const latestAvatar = avatarImages.sort((a, b) => (b.id || 0) - (a.id || 0))[0];
 
             if (latestAvatar?.publicUrl) {
-              // 👉 CHUYỂN ĐỔI LINK TRƯỚC KHI HIỂN THỊ
+              // CHUYỂN ĐỔI LINK TRƯỚC KHI HIỂN THỊ
               const readableUrl = formatFirebaseUrl(latestAvatar.publicUrl);
-              console.log('✅ Link sau khi đã chuyển đổi để trình duyệt đọc được:', readableUrl);
+              console.log('Link sau khi đã chuyển đổi để trình duyệt đọc được:', readableUrl);
               
               setAvatarUrl(readableUrl);
               updateUser({
@@ -129,7 +129,7 @@ export default function ProfilePage() {
     try {
       const serverPublicUrl = await imageApi.uploadAvatar(file);
       
-      // 👉 Chuyển đổi link server trả về sang định dạng đọc được
+      // Chuyển đổi link server trả về sang định dạng đọc được
       const finalUrl = (typeof serverPublicUrl === 'string' && serverPublicUrl.startsWith('http')) 
         ? formatFirebaseUrl(serverPublicUrl) 
         : localPreviewUrl;
@@ -237,7 +237,7 @@ export default function ProfilePage() {
                     alt="Avatar" 
                     className="w-full h-full object-cover" 
                     onError={(e) => {
-                      console.error('⚠️ Vẫn lỗi load link ảnh:', avatarUrl);
+                      console.error('Vẫn lỗi load link ảnh:', avatarUrl);
                       e.currentTarget.style.display = 'none';
                     }}
                   />

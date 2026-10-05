@@ -361,7 +361,7 @@ export default function StaffScheduleManagement() {
                       <div className="mt-1">
                         {schedule.slotNumber ? (
                           <span className="bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded text-[11px] border border-emerald-200">
-                            🌿 Phụ trách: Ô {schedule.slotNumber}
+                            Phụ trách: Ô {schedule.slotNumber}
                           </span>
                         ) : (
                           <span className="text-gray-400 text-xs">Toàn khu vực</span>

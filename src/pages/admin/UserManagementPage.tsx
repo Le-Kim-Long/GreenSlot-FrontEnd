@@ -321,7 +321,7 @@ export default function UserManagementPage() {
               </select>
               <p className="text-xs mt-1.5 leading-relaxed">
                 {!isLocationRequiredRole(selectedRole) ? (
-                  <span className="text-amber-600 font-medium">🔒 Vai trò <strong>{roleLabel(selectedRole)}</strong> không gán cơ sở cố định (hoạt động toàn hệ thống hoặc là khách hàng).</span>
+                  <span className="text-amber-600 font-medium">Vai trò <strong>{roleLabel(selectedRole)}</strong> không gán cơ sở cố định (hoạt động toàn hệ thống hoặc là khách hàng).</span>
                 ) : (
                   <span className="text-gray-500">Chỉ định vị trí cơ sở làm việc cho Location Manager hoặc Garden Staff.</span>
                 )}
@@ -464,7 +464,7 @@ export default function UserManagementPage() {
                 </select>
                 <p className="text-xs mt-1.5 leading-relaxed">
                   {!isLocationRequiredRole(createForm.role) ? (
-                    <span className="text-amber-600 font-medium">🔒 Vai trò <strong>{roleLabel(createForm.role)}</strong> không gán cơ sở cố định (hoạt động toàn hệ thống hoặc là khách hàng).</span>
+                    <span className="text-amber-600 font-medium">Vai trò <strong>{roleLabel(createForm.role)}</strong> không gán cơ sở cố định (hoạt động toàn hệ thống hoặc là khách hàng).</span>
                   ) : (
                     <span className="text-gray-500">Chỉ định vị trí cơ sở làm việc cho Location Manager hoặc Garden Staff.</span>
                   )}

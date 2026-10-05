@@ -210,7 +210,7 @@ function ProcessForm({
               <div key={log.id} className="p-3 bg-gray-50/80 rounded-xl border border-gray-100 text-xs space-y-2">
                 <div className="flex items-center justify-between gap-2 text-gray-500 flex-wrap">
                   <span className="font-bold text-gray-800 flex items-center gap-1">
-                    👤 {log.processedByName || 'Nhân viên'}
+                    {log.processedByName || 'Nhân viên'}
                   </span>
                   <span className="text-[11px] text-gray-400">{formatDateTime(log.processedAt)}</span>
                 </div>
@@ -477,10 +477,10 @@ export default function PendingAlertsPanel() {
   const handleProcessed = (alertId: number, newStatus: string) => {
     if (newStatus === 'RESOLVED') {
       setAlerts((prev) => prev.filter((a) => a.id !== alertId));
-      setSuccessMsg('🎉 Đã nghiệm thu và đóng cảnh báo thành công!');
+      setSuccessMsg('Đã nghiệm thu và đóng cảnh báo thành công!');
     } else {
       setAlerts((prev) => prev.map((a) => a.id === alertId ? { ...a, status: newStatus } : a));
-      setSuccessMsg(isStaff ? '🚀 Đã gửi báo cáo xử lý cho Quản lý duyệt!' : '✅ Đã cập nhật trạng thái cảnh báo!');
+      setSuccessMsg(isStaff ? 'Đã gửi báo cáo xử lý cho Quản lý duyệt!' : 'Đã cập nhật trạng thái cảnh báo!');
     }
     setExpandedId(null);
     setTimeout(() => setSuccessMsg(''), 4000);
@@ -500,7 +500,7 @@ export default function PendingAlertsPanel() {
       toast.success(res.message || `Đã giải quyết thành công ${ids.length} cảnh báo!`);
       setAlerts(prev => prev.filter(a => !ids.includes(a.id)));
       setBatchModalOpen(false);
-      setSuccessMsg(`🎉 Đã nghiệm thu thành công ${ids.length} cảnh báo!`);
+      setSuccessMsg(`Đã nghiệm thu thành công ${ids.length} cảnh báo!`);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Lỗi khi xử lý hàng loạt:', err);
@@ -600,11 +600,11 @@ export default function PendingAlertsPanel() {
               className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white"
             >
               <option value="ALL">Tất cả loại cảm biến</option>
-              <option value="SOIL_MOISTURE">💧 Độ ẩm đất (Soil Moisture)</option>
-              <option value="TEMPERATURE">🌡️ Nhiệt độ (Temperature)</option>
-              <option value="HUMIDITY">💨 Độ ẩm không khí (Air Humidity)</option>
-              <option value="LIGHT_INTENSITY">☀️ Cường độ ánh sáng (Light)</option>
-              <option value="PH">🧪 Độ pH đất</option>
+              <option value="SOIL_MOISTURE">Độ ẩm đất (Soil Moisture)</option>
+              <option value="TEMPERATURE">Nhiệt độ (Temperature)</option>
+              <option value="HUMIDITY">Độ ẩm không khí (Air Humidity)</option>
+              <option value="LIGHT_INTENSITY">Cường độ ánh sáng (Light)</option>
+              <option value="PH">Độ pH đất</option>
             </select>
           </div>
 
@@ -619,7 +619,7 @@ export default function PendingAlertsPanel() {
                 }}
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs font-medium focus:ring-2 focus:ring-green-500/20 focus:border-green-500 outline-none transition bg-white"
               >
-                <option value="">🏢 Tất cả cơ sở</option>
+                <option value="">Tất cả cơ sở</option>
                 {locations.map((l: any) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
@@ -650,7 +650,7 @@ export default function PendingAlertsPanel() {
       ) : visibleAlerts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-2 bg-white rounded-2xl border border-gray-100 shadow-sm">
           <CheckCircle2 className="w-10 h-10 opacity-30 text-emerald-600" />
-          <p className="text-sm font-bold text-gray-700">Không có cảnh báo nào đang chờ xử lý 🎉</p>
+          <p className="text-sm font-bold text-gray-700">Không có cảnh báo nào đang chờ xử lý</p>
           <p className="text-xs text-gray-400">Tất cả cảm biến và cây trồng đều đang ở trạng thái an toàn.</p>
         </div>
       ) : (

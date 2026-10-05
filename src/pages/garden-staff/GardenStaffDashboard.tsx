@@ -270,7 +270,6 @@ export default function GardenStaffDashboard() {
           <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border border-emerald-200 rounded-2xl p-5 shadow-xs">
             <div className="flex items-center justify-between gap-3 mb-2 flex-wrap">
               <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm sm:text-base">
-                <span className="p-1.5 bg-emerald-100 text-emerald-700 rounded-xl text-lg leading-none">🌾</span>
                 <span>Khách hàng tự thu hoạch hôm nay ({todaySelfHarvests.length} lượt)</span>
               </div>
               <Link 
@@ -294,15 +293,15 @@ export default function GardenStaffDashboard() {
                       </span>
                     </div>
                     <div className="text-xs text-gray-600 mt-1.5 font-medium">
-                      🌱 <span className="font-semibold text-gray-800">{item.treeName || 'Cây trồng'}</span>
+                      <span className="font-semibold text-gray-800">{item.treeName || 'Cây trồng'}</span>
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      👤 Khách: <span className="text-gray-900 font-semibold">{item.customerName || 'Khách hàng'}</span>
+                      Khách: <span className="text-gray-900 font-semibold">{item.customerName || 'Khách hàng'}</span>
                     </div>
                   </div>
                   {item.staffNotes && item.staffNotes.includes('Khách ghi chú:') && (
                     <div className="text-[11px] text-amber-800 mt-2 italic bg-amber-50/90 rounded-lg px-2.5 py-1 border border-amber-200/60">
-                      💬 {item.staffNotes.split('Khách ghi chú:')[1]?.trim()}
+                      {item.staffNotes.split('Khách ghi chú:')[1]?.trim()}
                     </div>
                   )}
                 </div>
@@ -360,12 +359,12 @@ export default function GardenStaffDashboard() {
                   setCurrentPage(1);
                 }}
               >
-                <option value="ALL">🌟 Tất cả loại công việc ({categoryCounts.ALL})</option>
-                <option value="PLANTING_CARE">🌱 Gieo trồng & Chăm sóc ({categoryCounts.PLANTING_CARE})</option>
-                <option value="HARVEST">🌾 Thu hoạch ({categoryCounts.HARVEST})</option>
-                <option value="ISSUE">⚠️ Báo cáo sự cố ({categoryCounts.ISSUE})</option>
-                <option value="SERVICE_REQUEST">🛠️ Dịch vụ khách yêu cầu ({categoryCounts.SERVICE_REQUEST})</option>
-                <option value="MAINTENANCE">🧹 Bảo trì & Kỹ thuật ({categoryCounts.MAINTENANCE})</option>
+                <option value="ALL">Tất cả loại công việc ({categoryCounts.ALL})</option>
+                <option value="PLANTING_CARE">Gieo trồng & Chăm sóc ({categoryCounts.PLANTING_CARE})</option>
+                <option value="HARVEST">Thu hoạch ({categoryCounts.HARVEST})</option>
+                <option value="ISSUE">Báo cáo sự cố ({categoryCounts.ISSUE})</option>
+                <option value="SERVICE_REQUEST">Dịch vụ khách yêu cầu ({categoryCounts.SERVICE_REQUEST})</option>
+                <option value="MAINTENANCE">Bảo trì & Kỹ thuật ({categoryCounts.MAINTENANCE})</option>
               </select>
 
               {/* Lọc theo Trạng thái */}
@@ -491,13 +490,13 @@ export default function GardenStaffDashboard() {
                       const key = `${r.rentalId}_${r.pillarId || r.pillarCode || idx}`;
                       const isAll = r.pillarCode === 'ALL' || (r.pillarCode && r.pillarCode.includes('Tất cả'));
                       const pillarText = isAll 
-                        ? ` · 🌿 TẤT CẢ CÁC TRỤ (${r.pillarCodes || 'Tách thành từng Task riêng'})` 
+                        ? ` · TẤT CẢ CÁC TRỤ (${r.pillarCodes || 'Tách thành từng Task riêng'})` 
                         : (r.pillarCode ? ` · Trụ ${r.pillarCode}` : (r.pillarCodes ? ` · Trụ ${r.pillarCodes}` : ''));
                       const growthText = r.daysGrown != null ? ` · Đã trồng ${r.daysGrown} ngày` : '';
                       const harvestDaysText = r.harvestDays ? ` (Chu kỳ ${r.harvestDays} ngày)` : '';
                       return (
                         <option key={key} value={key} className={isAll ? "font-bold text-emerald-800 bg-emerald-50" : ""}>
-                          Ô {r.slotNumber}{pillarText} · 🌱 {r.treeName}{growthText}{harvestDaysText}
+                          Ô {r.slotNumber}{pillarText} · {r.treeName}{growthText}{harvestDaysText}
                         </option>
                       );
                     })}
@@ -572,7 +571,6 @@ export default function GardenStaffDashboard() {
                 </div>
               ) : (
                 <div className="p-3 bg-white/80 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
-                  <span className="text-base">🌱</span>
                   <span>Hiện tại tất cả các trụ / cây trồng tại cơ sở đều đang ở trạng thái bình thường hoặc đã gửi đề xuất thu hoạch sớm.</span>
                 </div>
               )}
@@ -637,12 +635,12 @@ export default function GardenStaffDashboard() {
                                     <span>{task.taskName}</span>
                                     {(task.isEarlyHarvest || task.taskName?.includes('sớm')) && (
                                       <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
-                                        ⚡ Thu hoạch sớm
+                                        Thu hoạch sớm
                                       </span>
                                     )}
                                     {(task.taskName?.toLowerCase().includes('khẩn cấp') || task.taskName?.toLowerCase().includes('cảnh báo')) && (
                                       <span className="text-[10px] font-bold text-rose-800 bg-rose-100 border border-rose-300 px-2 py-0.5 rounded-full animate-pulse flex items-center gap-1">
-                                        🚨 Khẩn cấp: Cảm biến
+                                        Khẩn cấp: Cảm biến
                                       </span>
                                     )}
                                   </div>
@@ -668,7 +666,7 @@ export default function GardenStaffDashboard() {
 
                               {task.status === 'REJECTED' && task.rejectionReason && (
                                 <div className="text-xs text-rose-700 bg-rose-50 p-2 border border-rose-200 rounded-lg font-medium">
-                                  ⚠️ <strong>Lý do từ chối:</strong> {task.rejectionReason}
+                                  <strong>Lý do từ chối:</strong> {task.rejectionReason}
                                 </div>
                               )}
 

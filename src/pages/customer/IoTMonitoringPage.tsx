@@ -301,10 +301,10 @@ export default function IoTMonitoringPage() {
               onChange={(e) => setSelectedDeviceId(e.target.value)}
               className="w-full bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition cursor-pointer"
             >
-              <option value="arduino-greenhouse-01">🌐 Tất cả các trụ (Bảng tổng hợp)</option>
+              <option value="arduino-greenhouse-01">Tất cả các trụ (Bảng tổng hợp)</option>
               {availablePillars.map((p) => (
                 <option key={p.pillarCode} value={p.pillarCode}>
-                  🌱 Trụ {p.pillarCode} - Ô {p.slotNumber} ({p.treeName || 'Đang canh tác'})
+                  Trụ {p.pillarCode} - Ô {p.slotNumber} ({p.treeName || 'Đang canh tác'})
                 </option>
               ))}
             </select>
@@ -363,7 +363,7 @@ export default function IoTMonitoringPage() {
         </div>
       </div>
 
-      {/* 💥 BẢNG TỔNG HỢP SỐ LIỆU CỦA TỪNG TRỤ */}
+      {/* BẢNG TỔNG HỢP SỐ LIỆU CỦA TỪNG TRỤ */}
       {isAllView && availablePillars.length > 0 && (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between mb-4">

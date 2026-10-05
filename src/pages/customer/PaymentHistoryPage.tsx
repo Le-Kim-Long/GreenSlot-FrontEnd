@@ -270,11 +270,11 @@ export default function PaymentHistoryPage() {
                         <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
                           {t.targetPillarCode && t.targetPillarCode !== 'Toàn bộ các trụ' ? (
                             <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                              🌱 Trụ: {t.targetPillarCode} {t.treeName ? `(${t.treeName})` : ''}
+                              Trụ: {t.targetPillarCode} {t.treeName ? `(${t.treeName})` : ''}
                             </span>
                           ) : t.treeName ? (
                             <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                              🌱 Giống: {t.treeName}
+                              Giống: {t.treeName}
                             </span>
                           ) : null}
 
@@ -325,7 +325,7 @@ export default function PaymentHistoryPage() {
           </div>
         )}
 
-        {/* 💥 MODAL CHI TIẾT HÓA ĐƠN & BIÊN LAI THANH TOÁN */}
+        {/* MODAL CHI TIẾT HÓA ĐƠN & BIÊN LAI THANH TOÁN */}
         {selectedTxn && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden relative max-h-[92vh] flex flex-col">
@@ -409,7 +409,7 @@ export default function PaymentHistoryPage() {
                   </div>
                 </div>
 
-                {/* 🧾 BẢNG KÊ CHI TIẾT CÁC KHOẢN PHÍ (ITEMIZED BREAKDOWN) */}
+                {/* BẢNG KÊ CHI TIẾT CÁC KHOẢN PHÍ (ITEMIZED BREAKDOWN) */}
                 {(() => {
                   const total = Number(selectedTxn.amount) || 0;
                   const isPlantOnly = selectedTxn.kind === 'PLANT';
@@ -528,7 +528,6 @@ export default function PaymentHistoryPage() {
                                   <tr key={p.pillarCode || pIdx}>
                                     <td className="py-2.5">
                                       <div className="font-bold text-emerald-800 flex items-center gap-1">
-                                        <span>🌱</span>
                                         <span>{p.treeName || selectedTxn.treeName || 'Phôi giống rau thủy canh'} (Trụ {p.pillarCode})</span>
                                       </div>
                                       <div className="text-[11px] text-gray-500 mt-0.5">
@@ -550,7 +549,6 @@ export default function PaymentHistoryPage() {
                                 <tr>
                                   <td className="py-2.5">
                                     <div className="font-bold text-emerald-800 flex items-center gap-1">
-                                      <span>🌱</span>
                                       <span>{selectedTxn.treeName || 'Phôi giống rau thủy canh'}</span>
                                     </div>
                                     <div className="text-[11px] text-gray-500 mt-0.5">
@@ -647,7 +645,7 @@ export default function PaymentHistoryPage() {
                       <span className="text-gray-500">Trụ & Giống trồng mới:</span>
                       <div className="flex flex-wrap gap-1 justify-end max-w-xs">
                         <span className="bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-lg font-bold text-[11px] border border-emerald-300 shadow-xs">
-                          🏷️ Trụ {selectedTxn.targetPillarCode} ({selectedTxn.targetPillarHoles || 24} hốc): 🌱 {selectedTxn.treeName}
+                          Trụ {selectedTxn.targetPillarCode} ({selectedTxn.targetPillarHoles || 24} hốc): {selectedTxn.treeName}
                         </span>
                       </div>
                     </div>
@@ -657,7 +655,7 @@ export default function PaymentHistoryPage() {
                       <div className="flex flex-wrap gap-1 justify-end max-w-xs">
                         {selectedTxn.pillars.map((p, idx) => (
                           <span key={idx} className="bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded font-semibold text-[11px] border border-emerald-200">
-                            Trụ {p.pillarCode} ({p.capacityHoles || 24} hốc): 🌱 {p.treeName || selectedTxn.treeName || 'Đang canh tác'}
+                            Trụ {p.pillarCode} ({p.capacityHoles || 24} hốc): {p.treeName || selectedTxn.treeName || 'Đang canh tác'}
                           </span>
                         ))}
                       </div>
@@ -665,7 +663,7 @@ export default function PaymentHistoryPage() {
                   ) : selectedTxn.treeName ? (
                     <div className="flex justify-between">
                       <span className="text-gray-500">Giống cây đăng ký:</span>
-                      <span className="font-bold text-emerald-700">🌱 {selectedTxn.treeName}</span>
+                      <span className="font-bold text-emerald-700">{selectedTxn.treeName}</span>
                     </div>
                   ) : null}
 

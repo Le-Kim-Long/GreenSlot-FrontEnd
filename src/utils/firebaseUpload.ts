@@ -1,5 +1,5 @@
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
-import { app } from "./firebase"; // 👉 Import instance firebase app của bạn ở đây
+import { app } from "./firebase"; // Import instance firebase app của bạn ở đây
 
 const storage = getStorage(app);
 
@@ -32,7 +32,7 @@ export const uploadEvidenceImageToFirebase = async (file: File): Promise<string>
   return getDownloadURL(uploadTask.ref);
 };
 
-// 💥 THÊM HÀM NÀY: Xóa ảnh khỏi kho Firebase Storage dựa vào link URL
+// THÊM HÀM NÀY: Xóa ảnh khỏi kho Firebase Storage dựa vào link URL
 export const deleteTreeImage = async (imageUrl: string): Promise<void> => {
   try {
     // Chỉ xử lý nếu đúng là link tải từ Firebase Storage
@@ -40,7 +40,7 @@ export const deleteTreeImage = async (imageUrl: string): Promise<void> => {
     
     const imageRef = ref(storage, imageUrl);
     await deleteObject(imageRef);
-    console.log("♻️ Đã dọn dẹp ảnh tạm trên Firebase Storage:", imageUrl);
+    console.log("Đã dọn dẹp ảnh tạm trên Firebase Storage:", imageUrl);
   } catch (error) {
     console.warn("Không thể xóa ảnh cũ trên Firebase (Có thể ảnh đã bị xóa trước đó):", error);
   }
@@ -59,7 +59,7 @@ export const deleteSlotImage = async (imageUrl: string): Promise<void> => {
     if (!imageUrl || !imageUrl.includes("firebasestorage.googleapis.com")) return;
     const imageRef = ref(storage, imageUrl);
     await deleteObject(imageRef);
-    console.log("♻️ Đã dọn dẹp ảnh ô vườn trên Firebase Storage:", imageUrl);
+    console.log("Đã dọn dẹp ảnh ô vườn trên Firebase Storage:", imageUrl);
   } catch (error) {
     console.warn("Không thể xóa ảnh ô vườn cũ trên Firebase:", error);
   }

@@ -118,7 +118,7 @@ export default function MySchedule() {
                       <div className="p-5 space-y-3.5">
                         <div className="flex items-center gap-2 text-gray-800">
                           <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 font-bold text-sm px-3 py-1.5 rounded-xl border border-emerald-200">
-                            📅 Thời gian trực: {schedule.endDate && schedule.endDate !== schedule.scheduleDate
+                            Thời gian trực: {schedule.endDate && schedule.endDate !== schedule.scheduleDate
                               ? `${schedule.scheduleDate} ➔ ${schedule.endDate}`
                               : `${schedule.scheduleDate} (Cả ngày)`}
                           </span>
@@ -126,21 +126,21 @@ export default function MySchedule() {
 
                         {schedule.locationName && (
                           <div className="text-xs text-gray-600 flex items-center gap-2 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                            <span className="font-semibold text-gray-700">🏢 Cơ sở:</span>
+                            <span className="font-semibold text-gray-700">Cơ sở:</span>
                             <span className="text-gray-900 font-medium">{schedule.locationName}</span>
                           </div>
                         )}
 
                         {schedule.slotNumber && (
                           <div className="text-xs text-emerald-800 flex items-center gap-2 bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-100">
-                            <span className="font-semibold text-emerald-900">🌱 Khu vực phụ trách:</span>
+                            <span className="font-semibold text-emerald-900">Khu vực phụ trách:</span>
                             <span className="font-bold text-emerald-700">Ô vườn {schedule.slotNumber}</span>
                           </div>
                         )}
 
                         {schedule.notes && (
                           <div className="p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-xs text-amber-900 space-y-1">
-                            <span className="font-bold block text-amber-950">📝 Ghi chú phân công:</span>
+                            <span className="font-bold block text-amber-950">Ghi chú phân công:</span>
                             <p className="leading-relaxed">{schedule.notes}</p>
                           </div>
                         )}
