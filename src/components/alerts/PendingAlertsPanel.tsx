@@ -127,6 +127,10 @@ function ProcessForm({
       toast.warning(isStaff ? 'Vui lòng nhập mô tả công việc đã xử lý tại trụ!' : 'Vui lòng nhập nội dung / ghi chú nghiệm thu!');
       return;
     }
+    if (isStaff && !evidenceImageUrl) {
+      toast.warning('Vui lòng đính kèm ảnh chụp hiện trường để Quản lý có bằng chứng nghiệm thu!');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -163,7 +167,7 @@ function ProcessForm({
         {
           val: 'FAILED',
           label: 'Báo lỗi thiết bị',
-          desc: 'Cảm biến/máy bơm hỏng, cần kỹ thuật hỗ trợ',
+          desc: 'Cảm biến/thiết bị hỏng, cần kỹ thuật hỗ trợ',
           cls: 'border-red-500 bg-red-50 text-red-700',
         },
       ]
@@ -284,7 +288,7 @@ function ProcessForm({
           required
           placeholder={
             isStaff
-              ? 'VD: Đã kiểm tra trụ, tiến hành kích hoạt bơm tưới bổ sung 15 phút, độ ẩm đất đã tăng trở lại mức an toàn...'
+              ? 'VD: Đã kiểm tra trụ, tưới bổ sung thủ công, độ ẩm đất đã tăng trở lại mức an toàn...'
               : 'VD: Đã đối chiếu ảnh chụp và các thông số cảm biến, nghiệm thu hoàn tất sự cố...'
           }
           className="w-full border border-gray-300 rounded-xl p-3 outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition text-gray-800 bg-white"
@@ -298,7 +302,7 @@ function ProcessForm({
         <label className="block font-bold text-gray-800 mb-1.5 text-xs uppercase tracking-wider flex items-center gap-1.5">
           <ImageIcon className="w-4 h-4 text-green-600" /> Ảnh chụp bằng chứng hiện trường
           {isStaff ? (
-            <span className="text-emerald-600 font-semibold text-[11px] lowercase">(khuyến khích để Quản lý duyệt nhanh)</span>
+            <span className="text-red-500">*</span>
           ) : (
             <span className="text-gray-400 font-normal text-[11px] lowercase">(tùy chọn)</span>
           )}
