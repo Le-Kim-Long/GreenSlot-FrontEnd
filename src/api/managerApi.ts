@@ -131,6 +131,7 @@ export interface LocationDashboardMetrics {
   totalSlots?: number | null;
   availableSlots?: number | null;
   activeRentals: number;
+  rentedSlots?: number | null;
   pendingAlerts: number;
   totalRevenue?: number | null;
   recentAlerts: {
